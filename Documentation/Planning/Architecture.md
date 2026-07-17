@@ -32,7 +32,7 @@ Otherwise, Rust becomes an obvious candidate.
 
 Because of the limited sophistication of the original UI architecture, I quickly ended up with hard-coded entity types, hard-coded tools, and hard-coded view functions.
 
-Every week, these assumptions are challenged by new use cases, while the complexity of the templates grows almost geometrically.
+Every week, new use cases challenge these assumptions, while the complexity of the templates grows almost geometrically.
 
 The system must make it easy to introduce entirely new axes of interest without requiring architectural changes.
 
