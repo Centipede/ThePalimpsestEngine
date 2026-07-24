@@ -151,3 +151,13 @@ Years ago I learned enough cryptography and networking to build a secure solutio
 Today I simply connect through a VPN from my MacBook and use an `/etc/hosts` entry to simplify access to my local Django server.
 
 That is acceptable for a prototype, but it is clearly not the long-term solution.
+
+
+
+### Notes - unordered
+
+- Post-OCR modification. Should Palimpset have a complete OCR toolset built in? Should we allow minor fixes? Split a paragraph?
+  - Can we handle metadata / AI data? Split paragraph => re-summarize both old and new => rebuild section summaries+entities => rebuild parent-section conclusions?
+
+- Vector database - how to handle that we want precise quotes? (We use searchblocks that contains partial paragraphs)
+- 
