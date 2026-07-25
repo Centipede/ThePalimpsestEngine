@@ -66,7 +66,7 @@ let initialized = false;
 watch(allEntries, (entries) => {
   if (!initialized && entries.length > 0) {
     collapsed.value = entries
-      .filter(e => e.hasChildren)
+      .filter(e => e.hasChildren && e.depth >= 1)
       .map(e => e.section.path_full);
     initialized = true;
   }
@@ -127,6 +127,24 @@ function isVisible(entry: TocEntry): boolean {
   padding-left: 4rem;
 }
 
+.toc__row--depth-3 {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  padding-left: 5.5rem;
+}
+
+.toc__row--depth-4 {
+  font-size: 0.825rem;
+  color: var(--color-text-muted);
+  padding-left: 7rem;
+}
+
+.toc__row--depth-5 {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  padding-left: 8.5rem;
+}
+
 .toc__title {
   flex: 1;
   display: flex;
@@ -150,11 +168,13 @@ function isVisible(entry: TocEntry): boolean {
 .toc__badge {
   flex-shrink: 0;
   display: inline-block;
-  padding: 0.15em 0.5em;
+  padding: 0.1em 0.45em;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 500;
   font-family: var(--sl-font-mono, monospace);
+  line-height: 1.35;
   white-space: nowrap;
   text-align: center;
 }
