@@ -21,7 +21,7 @@
             class="book-list__item"
         >
           <img
-              :src="book.thumbnail_url || '#'"
+              :src="book.thumbnail_url || book.thumbnail_local || '#'"
               :alt="book.title"
               class="book-list__thumbnail"
           />
@@ -51,6 +51,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { apiFetch } from '../api';
 
 interface Book {
   id: number;
@@ -60,6 +61,14 @@ interface Book {
   published: string;
   machine_name: string;
   thumbnail_url?: string;
+  thumbnail_local?: string;
+  authors: unknown[];
+  organizations: unknown[];
+  physical_properties: Record<string, unknown>;
+  by_author: number;
+  by_author1: number | null;
+  by_author2: number | null;
+  by_author3: number | null;
 }
 
 interface BookGroup {
@@ -104,7 +113,7 @@ function publishedYear(value: string): string {
 
 onMounted(async () => {
   try {
-    const res = await fetch('/testbooks/api/v1/book/');
+    const res = await apiFetch('/testbooks/api/v1/book/');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     books.value = await res.json();

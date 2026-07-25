@@ -35,9 +35,6 @@ export default defineConfig(({ mode }) => {
         '/testbooks': {
           target: `http://${env.TESTSERVER_HOST}:${env.TESTSERVER_PORT}`,
           changeOrigin: true,
-          headers: {
-            Authorization: `Token ${env.API_TOKEN}`,
-          },
         },
         '/media': {
           target: `http://${env.TESTSERVER_HOST}:${env.TESTSERVER_PORT}`,
