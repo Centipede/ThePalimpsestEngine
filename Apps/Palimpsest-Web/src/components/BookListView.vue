@@ -21,7 +21,7 @@
             class="book-list__item"
         >
           <img
-              :src="book.thumbnail_url || '#'"
+              :src="book.thumbnail_url || book.thumbnail_local || '#'"
               :alt="book.title"
               class="book-list__thumbnail"
           />
@@ -40,8 +40,7 @@
           </div>
 
           <nav class="book-list__actions" aria-label="Book actions">
-            <a :href="`/testbooks/book/${book.machine_name}/`">View</a>
-            <a :href="`/teststudy/annotations/book/${book.id}/`">Study</a>
+            <RouterLink :to="`/study/${book.machine_name}`">Study</RouterLink>
           </nav>
         </article>
       </section>
@@ -50,32 +49,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import {computed, onMounted, ref} from 'vue';
+import {RouterLink} from 'vue-router';
+import {apiFetch} from '../api';
+import type {Author, Book} from "../types/library.ts";
 
-interface Book {
-  id: number;
-  title: string;
-  abbrev: string;
-  language: string;
-  published: string;
-  machine_name: string;
-  thumbnail_url?: string;
-}
-
-interface BookGroup {
+interface BookByAuthor {
   author: string;
   books: Book[];
 }
 
+const authors = ref<Author[]>([]);
 const books = ref<Book[]>([]);
 const loading = ref(true);
 const error = ref('');
 
-const booksByAuthor = computed<BookGroup[]>(() => {
-  const groups = new Map<string, Book[]>();
+
+const booksByAuthor = computed<BookByAuthor[]>(() => {
+  const groups = new Map<number | null, Book[]>();
 
   for (const book of books.value) {
-    const author = book.abbrev || 'Unknown';
+    const author = book.by_author || null;
 
     if (!groups.has(author)) {
       groups.set(author, []);
@@ -85,7 +79,7 @@ const booksByAuthor = computed<BookGroup[]>(() => {
   }
 
   return Array.from(groups.entries()).map(([author, groupedBooks]) => ({
-    author,
+    author: authors.value.find(a => a.id === author)?.abbrev || "Unknown",
     books: groupedBooks,
   }));
 });
@@ -104,10 +98,19 @@ function publishedYear(value: string): string {
 
 onMounted(async () => {
   try {
-    const res = await fetch('/testbooks/api/v1/book/');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    {
+      const res = await apiFetch('/testbooks/api/v1/author/')
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      authors.value = await res.json()
+    }
 
-    books.value = await res.json();
+    {
+      const res = await apiFetch('/testbooks/api/v1/book/');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      books.value = await res.json();
+    }
+
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load books';
   } finally {
