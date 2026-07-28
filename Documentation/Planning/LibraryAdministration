@@ -1,0 +1,10 @@
+# Library Administration
+
+One Palimpsest instance manages one library.
+
+### Topics
+
+Topics serve as the holding place for both the actual books as well
+as all parameters, prompts, entities, intelligence that is shared between books under the given topic.
+
+Hence we need topics for that reason alone. More info later.
