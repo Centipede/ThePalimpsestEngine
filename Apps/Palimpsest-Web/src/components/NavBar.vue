@@ -26,6 +26,7 @@
       </div>
 
       <div class="nav-end">
+        <sl-button @click="logout_and_redirect">Log out</sl-button>
         <sl-dropdown @sl-select="(e: Event) => setTheme((e as CustomEvent).detail.item.value)">
           <sl-icon-button slot="trigger" :name="themeIcon" label="Theme"></sl-icon-button>
           <sl-menu>
@@ -50,7 +51,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { RouterLink } from 'vue-router';
+import {RouterLink, useRouter} from 'vue-router';
+import {useAuth} from "../composables/useAuth.ts";
+
+const router = useRouter();
+const { logout } = useAuth();
 
 const ICONS: Record<string, string> = { light: 'sun', system: 'circle-half', dark: 'moon' };
 
@@ -70,6 +75,11 @@ function onSystemThemeChange() {
 }
 
 const mql = window.matchMedia('(prefers-color-scheme: dark)');
+
+function logout_and_redirect() {
+  logout();
+  router.push('/');
+}
 
 onMounted(() => {
   setTheme(themeMode.value);
