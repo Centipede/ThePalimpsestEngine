@@ -15,7 +15,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { apiFetch } from '../api';
-import type { Author, Book, Flow } from '../types/library';
+import type { Book, Flow } from '../types/library';
+import { useLibraryStore } from '../stores/library';
 import TableOfContents from './TableOfContents.vue';
 
 interface BookStructure {
@@ -25,22 +26,23 @@ interface BookStructure {
 
 const props = defineProps<{ machineName: string }>();
 
-const authors = ref<Author[] | null>(null);
+const store = useLibraryStore();
 const book = ref<BookStructure | null>(null);
-const author = computed(() => authors.value?.find(a => a.id === book.value?.book.by_author));
+const author = computed(() => store.getAuthorById(book.value?.book.by_author ?? null));
 const loading = ref(true);
 const error = ref('');
 
 onMounted(async () => {
   try {
-    const [authorsRes, bookRes] = await Promise.all([
-      apiFetch('/testbooks/api/v1/author/'),
-      apiFetch(`/testbooks/api/v1/book/${props.machineName}/structure/?tree_depth=5`),
-    ]);
-    if (!authorsRes.ok) throw new Error(`Authors: HTTP ${authorsRes.status}`);
+    // Ensure authors are loaded (cached in store)
+    const authorsPromise = store.fetchAuthors();
+
+    // Fetch book structure
+    const bookRes = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/structure/?tree_depth=5`);
     if (!bookRes.ok) throw new Error(`Book: HTTP ${bookRes.status}`);
-    authors.value = await authorsRes.json();
-    book.value = await bookRes.json();
+
+    const [_, bookData] = await Promise.all([authorsPromise, bookRes.json()]);
+    book.value = bookData;
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load book';
   } finally {

@@ -38,10 +38,11 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useAuth } from '../composables/useAuth';
 
 const router = useRouter();
+const route = useRoute();
 const { login } = useAuth();
 
 const username = ref('');
@@ -54,7 +55,8 @@ async function submit() {
   loading.value = true;
   try {
     await login(username.value, password.value);
-    router.push('/study');
+    const nextPath = (route.query.next as string) || '/study';
+    router.push(nextPath);
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Login failed';
   } finally {

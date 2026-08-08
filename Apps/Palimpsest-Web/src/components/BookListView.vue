@@ -49,40 +49,17 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, ref} from 'vue';
-import {RouterLink} from 'vue-router';
-import {apiFetch} from '../api';
-import type {Author, Book} from "../types/library.ts";
+import { onMounted } from 'vue';
+import { RouterLink } from 'vue-router';
+import { storeToRefs } from 'pinia';
+import { useLibraryStore } from '../stores/library';
 
-interface BookByAuthor {
-  author: string;
-  books: Book[];
-}
-
-const authors = ref<Author[]>([]);
-const books = ref<Book[]>([]);
-const loading = ref(true);
-const error = ref('');
-
-
-const booksByAuthor = computed<BookByAuthor[]>(() => {
-  const groups = new Map<number | null, Book[]>();
-
-  for (const book of books.value) {
-    const author = book.by_author || null;
-
-    if (!groups.has(author)) {
-      groups.set(author, []);
-    }
-
-    groups.get(author)?.push(book);
-  }
-
-  return Array.from(groups.entries()).map(([author, groupedBooks]) => ({
-    author: authors.value.find(a => a.id === author)?.abbrev || "Unknown",
-    books: groupedBooks,
-  }));
-});
+const store = useLibraryStore();
+const {
+  booksByAuthor,
+  isLoadingBooks: loading,
+  error
+} = storeToRefs(store);
 
 function publishedYear(value: string): string {
   if (!value) return '';
@@ -96,26 +73,9 @@ function publishedYear(value: string): string {
   return String(date.getFullYear());
 }
 
-onMounted(async () => {
-  try {
-    {
-      const res = await apiFetch('/testbooks/api/v1/author/')
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      authors.value = await res.json()
-    }
-
-    {
-      const res = await apiFetch('/testbooks/api/v1/book/');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      books.value = await res.json();
-    }
-
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to load books';
-  } finally {
-    loading.value = false;
-  }
+onMounted(() => {
+  store.fetchAuthors();
+  store.fetchBooks();
 });
 </script>
 

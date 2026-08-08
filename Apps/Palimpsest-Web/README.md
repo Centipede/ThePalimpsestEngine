@@ -1,4 +1,6 @@
-Put an API token in .env.local:
+Point to a running test server. If you don't know what it is,
+you can't do it!
 ```
-API_TOKEN=aabbccddeeffgg...
+TESTSERVER_HOST=xxxxxx
+TESTSERVER_PORT=19197
 ```
