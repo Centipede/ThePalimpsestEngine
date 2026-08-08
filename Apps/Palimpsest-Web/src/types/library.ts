@@ -43,3 +43,81 @@ export interface Flow {
     tree?: Section;
 }
 
+export interface ContentBlock {
+    path_id: string;
+    content_type: string;
+    content_text: string;
+    content_json: any;
+    inforecords: any[];
+}
+
+export interface SectionSummary {
+    theme: string;
+    key_events: string[];
+    key_people: string[];
+    brief_summary: string;
+    prose_summary: string;
+    key_institutions: string[];
+    paragraph_segments: Array<{
+        ranges: string[];
+        caption: string;
+        keywords: string[];
+    }>;
+    central_time_period: {
+        interval_years: number[][];
+        specific_years: number[];
+        full_description: string;
+        specific_full_dates: string[];
+    };
+    central_geographical_area: {
+        placenames: string[];
+        full_description: string;
+    };
+}
+
+export interface SectionEntities {
+    linked: Record<string, any>;
+    unlinked: {
+        times?: any[];
+        works?: any[];
+        people?: any[];
+        places?: any[];
+    };
+    unlinkable: Record<string, any>;
+    linked_count: number;
+    unlinked_count: number;
+    unlinkable_count: number;
+}
+
+export interface SectionDetail extends Section {
+    title_html: string;
+    of_book: number;
+    number_code: string;
+    pure_title: string;
+    content_hints: {
+        category: string;
+        ignore_in_search: boolean;
+    };
+    first_real_content: number;
+    last_real_content: number;
+    info?: {
+        summary?: SectionSummary;
+        entities?: SectionEntities;
+    };
+}
+
+export interface SectionContentResponse {
+    section: SectionDetail;
+    contents: ContentBlock[];
+}
+
+
+
+
+
+
+
+
+
+
+

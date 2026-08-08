@@ -30,3 +30,33 @@ To accelerate the implementation of necessary frontend features, the project has
 -   **Experimentation over Optimization:** Prioritize a platform that allows for rapid iteration of tools, prompts, and workflows.
 -   **Domain Agnostic:** The architecture must make it easy to introduce new axes of study (languages, historical entities, philosophical concepts, etc.) without structural changes.
 -   **Component Sophistication:** Use Vue.js to support the sophisticated interaction required for deep study, which server-rendered templates could not provide.
+
+## PR procedure
+
+- Each week (Monday-Friday) the planners and testers branch off from 'main' into a planning branch. This is the "planning branch". Some coding will also take place, but mostly research and adjustments. Unit testing as well. Comments are added to a planning github issue that goes with the branch.
+- Each weekend (Saturday-Sunday) is where the actual development happens. First order of business is to wrap up the planning branch.
+- When the weekend finishes, the result is squash merged into the main branch.
+- Copy PR description into the squash commit.
+- The PR message must look like:
+
+```
+[Briefly, what is accomplished with this PR? Example:]
+Adding a deeper exploration level below each entity in the categorised entity lists.
+
+Summary
+
+[List of items that has taken place during the branch. Example:]
+* Adds a collapsible box below the entity (collapsed on reload, non-persistent)
+* Requests from the backend a json body for the expanded entit
+* Displays the key information from the server. If the user further expands sub elements, displays them too. 
+
+Test plan
+
+[Lists of instructions for a human tester. Must contain the markdown-friendly [ ] checkbox container. Example:]
+* [ ] Open a section in a book containing entities. The list should be brief and condensed
+* [ ] Click on a name, a box should open up below the name which shows mentions
+* [ ] Click on a mention, it should expand with a quote and a link to the paragraph containing it
+```
+
+Unlike other projects, we run development and testing staggered. The developers simply merge in the PR and copies the description into the squash commit. 
+The testers will later come back to the PR (now closed) and perform all the instructions in the test plan. If any fails, they will give feedback in the planning github issue.

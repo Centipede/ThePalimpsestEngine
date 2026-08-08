@@ -7,7 +7,7 @@
         <h1 class="book-study__title">{{ book.book.title }}</h1>
         <p v-if="author" class="book-study__author">{{ author.full_name }}</p>
       </header>
-      <TableOfContents :flows="book.flows" />
+      <TableOfContents :flows="book.flows" :machineName="machineName" />
     </template>
   </div>
 </template>
