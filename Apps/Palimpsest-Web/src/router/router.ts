@@ -23,7 +23,14 @@ export const router = createRouter({
 
 router.beforeEach((to) => {
     const { isAuthenticated } = useAuth();
+    
+    // Redirect to login if not authenticated
     if (to.path !== '/' && !isAuthenticated.value) {
-        return '/';
+        return { path: '/', query: { next: to.fullPath } };
+    }
+    
+    // Redirect to study if already authenticated and hitting the landing page
+    if (to.path === '/' && isAuthenticated.value) {
+        return '/study';
     }
 });

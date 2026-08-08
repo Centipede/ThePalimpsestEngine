@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI agents (Junie, Claude, etc.) when working with code in this repository.
 
 ## Project Status
 
@@ -17,7 +17,7 @@ To accelerate the implementation of necessary frontend features, the project has
 3.  **Code Access:** The backend code is **not** included in this repository; it resides in a separate, private project. Agents should focus exclusively on the Vue.js frontend and assume the backend API is a given.
 4.  **Goal:** The primary objective is to implement frontend features that were identified as necessary during the planning and test project phases.
 
-## Guidance for Claude
+## Guidance for Agents
 
 -   **Consult Planning Documents:** Before proposing or implementing features, read the documents in `Documentation/Planning/`. These reflect deliberate architectural choices and lessons learned from the test project.
 -   **Frontend Focus:** All coding tasks should be directed at the Vue.js application. Do not attempt to modify or locate backend logic within this repository.
