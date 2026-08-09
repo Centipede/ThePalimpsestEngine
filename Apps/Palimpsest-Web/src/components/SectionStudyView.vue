@@ -18,13 +18,13 @@
       <SectionSummary v-if="data.section.info?.summary" :summary="data.section.info.summary" />
 
       <article class="section-study__content">
-        <div
-            v-for="block in data.contents"
+        <h2 class="section-study__content-title">Content</h2>
+        <ContentBlockView
+            v-for="(block, index) in data.contents"
             :key="block.path_id"
-            class="section-study__block"
-        >
-          <div class="section-study__text">{{ block.content_text }}</div>
-        </div>
+            :block="block"
+            :index="index"
+        />
       </article>
     </template>
   </div>
@@ -36,6 +36,7 @@ import { useRouter } from 'vue-router';
 import { apiFetch } from '../api';
 import type { SectionContentResponse, BookStructure, Section } from '../types/library';
 import SectionSummary from './SectionSummary.vue';
+import ContentBlockView from './ContentBlockView.vue';
 
 const props = defineProps<{
   machineName: string;
@@ -90,7 +91,7 @@ async function fetchSection() {
   loading.value = true;
   error.value = '';
   try {
-    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=sum,ents`);
+    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=sum,ents&cont_info=sum,ents`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data.value = await res.json();
   } catch (e) {
@@ -144,20 +145,19 @@ watch(() => props.sectionPath, fetchSection);
 .section-study__content {
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
-  max-width: 800px;
-  margin: 0 auto;
+  gap: 0;
+  max-width: 1200px;
+  margin: 2rem auto;
   width: 100%;
 }
 
-.section-study__block {
-  line-height: 1.7;
-}
-
-.section-study__text {
-  font-size: 1.125rem;
-  color: var(--color-text, #374151);
-  white-space: pre-wrap;
+.section-study__content-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: var(--color-text, #111827);
+  border-bottom: 2px solid var(--sl-color-neutral-200);
+  padding-bottom: 0.5rem;
 }
 
 .section-study__status {

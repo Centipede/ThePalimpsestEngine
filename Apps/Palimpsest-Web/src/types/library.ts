@@ -49,7 +49,45 @@ export interface ContentBlock {
     content_type: string;
     content_text: string;
     content_json: any;
-    inforecords: any[];
+    inforecords: InfoRecord[];
+}
+
+export interface InfoRecord {
+    id: number;
+    of_content_pi: string;
+    in_section_pf: string;
+    in_book_mn: string;
+    kind: 'summary' | 'named_entities' | string;
+    source: string;
+    created_at: string;
+    created_info: any;
+    content_js: SummaryInfoContent | EntitiesInfoContent | any;
+    valid: boolean;
+    validated_at: string | null;
+    version_info: Record<string, any>;
+    of_content: number;
+}
+
+export interface SummaryInfoContent {
+    caption: string;
+    summary: string;
+}
+
+export interface EntityInfo {
+    name: string;
+    quote: string;
+    location: string;
+    description: string;
+}
+
+export interface EntitiesInfoContent {
+    entities: {
+        times: EntityInfo[];
+        works: EntityInfo[];
+        people: EntityInfo[];
+        places: EntityInfo[];
+        fuzzy_answer: string;
+    };
 }
 
 export interface SectionSummary {
@@ -79,12 +117,7 @@ export interface SectionSummary {
 
 export interface SectionEntities {
     linked: Record<string, any>;
-    unlinked: {
-        times?: any[];
-        works?: any[];
-        people?: any[];
-        places?: any[];
-    };
+    unlinked: Record<string, any>;
     unlinkable: Record<string, any>;
     linked_count: number;
     unlinked_count: number;
