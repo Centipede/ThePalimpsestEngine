@@ -15,6 +15,8 @@
         <h1 class="section-study__title">{{ data.section.title_text }}</h1>
       </header>
 
+      <SectionSummary v-if="data.section.info?.summary" :summary="data.section.info.summary" />
+
       <article class="section-study__content">
         <div
             v-for="block in data.contents"
@@ -33,6 +35,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { apiFetch } from '../api';
 import type { SectionContentResponse, BookStructure, Section } from '../types/library';
+import SectionSummary from './SectionSummary.vue';
 
 const props = defineProps<{
   machineName: string;

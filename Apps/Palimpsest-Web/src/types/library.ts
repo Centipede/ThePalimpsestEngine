@@ -62,6 +62,7 @@ export interface SectionSummary {
     paragraph_segments: Array<{
         ranges: string[];
         caption: string;
+        description?: string;
         keywords: string[];
     }>;
     central_time_period: {
