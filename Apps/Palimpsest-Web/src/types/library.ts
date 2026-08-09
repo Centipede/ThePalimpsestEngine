@@ -26,6 +26,7 @@ export interface Section {
     id: number;
     path_id: string;
     path_full: string;
+    path_coded?: string;
     title_text: string;
     order_key: number;
     level_type: unknown | null;
@@ -109,6 +110,11 @@ export interface SectionDetail extends Section {
 export interface SectionContentResponse {
     section: SectionDetail;
     contents: ContentBlock[];
+}
+
+export interface BookStructure {
+    book: Book;
+    flows: Flow[];
 }
 
 

@@ -18,15 +18,18 @@ export const router = createRouter({
             props: (route) => ({
                 machineName: route.params.machine_name,
             }),
+            children: [
+                {
+                    path: 'section/:path_full',
+                    component: SectionStudyView,
+                    props: (route) => ({
+                        machineName: route.params.machine_name,
+                        sectionPath: route.params.path_full,
+                    }),
+                },
+            ],
         },
-        {
-            path: '/study/:machine_name/section/:path_full',
-            component: SectionStudyView,
-            props: (route) => ({
-                machineName: route.params.machine_name,
-                sectionPath: route.params.path_full,
-            }),
-        },    ],
+    ],
 });
 
 router.beforeEach((to) => {
