@@ -4,6 +4,7 @@ import AdminHome from '../views/AdminHome.vue';
 import StudyHome from '../views/StudyHome.vue';
 import { useAuth } from '../composables/useAuth';
 import BookStudyView from "../components/BookStudyView.vue";
+import SectionStudyView from "../components/SectionStudyView.vue";
 
 export const router = createRouter({
     history: createWebHistory(),
@@ -17,6 +18,16 @@ export const router = createRouter({
             props: (route) => ({
                 machineName: route.params.machine_name,
             }),
+            children: [
+                {
+                    path: 'section/:path_full',
+                    component: SectionStudyView,
+                    props: (route) => ({
+                        machineName: route.params.machine_name,
+                        sectionPath: route.params.path_full,
+                    }),
+                },
+            ],
         },
     ],
 });

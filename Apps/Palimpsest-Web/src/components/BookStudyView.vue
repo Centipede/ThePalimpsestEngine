@@ -7,24 +7,27 @@
         <h1 class="book-study__title">{{ book.book.title }}</h1>
         <p v-if="author" class="book-study__author">{{ author.full_name }}</p>
       </header>
-      <TableOfContents :flows="book.flows" />
+
+      <router-view v-if="isSectionActive" v-slot="{ Component }">
+        <component :is="Component" :book-structure="book" />
+      </router-view>
+      <TableOfContents v-else :flows="book.flows" :machineName="machineName" />
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { apiFetch } from '../api';
-import type { Book, Flow } from '../types/library';
+import type { BookStructure } from '../types/library';
 import { useLibraryStore } from '../stores/library';
 import TableOfContents from './TableOfContents.vue';
 
-interface BookStructure {
-  book: Book;
-  flows: Flow[];
-}
-
 const props = defineProps<{ machineName: string }>();
+
+const route = useRoute();
+const isSectionActive = computed(() => !!route.params.path_full);
 
 const store = useLibraryStore();
 const book = ref<BookStructure | null>(null);
