@@ -16,6 +16,7 @@
       </header>
 
       <SectionSummary v-if="data.section.info?.summary" :summary="data.section.info.summary" />
+      <SectionEntities v-if="data.section.info?.entities" :entities="data.section.info.entities" />
 
       <article class="section-study__content">
         <h2 class="section-study__content-title">Content</h2>
@@ -36,6 +37,7 @@ import { useRouter } from 'vue-router';
 import { apiFetch } from '../api';
 import type { SectionContentResponse, BookStructure, Section } from '../types/library';
 import SectionSummary from './SectionSummary.vue';
+import SectionEntities from './SectionEntities.vue';
 import ContentBlockView from './ContentBlockView.vue';
 
 const props = defineProps<{
