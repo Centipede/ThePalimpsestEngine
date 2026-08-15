@@ -1,49 +1,58 @@
 <template>
-  <div class="toc">
-    <div
-      v-for="entry in allEntries"
-      v-show="isVisible(entry)"
-      :key="entry.section.path_full"
-      class="toc__row"
-      :class="`toc__row--depth-${entry.depth}`"
-      @click="goToSection(entry.section.path_full)"
-    >
-      <span class="toc__badge toc__badge--id" :title="entry.section.path_full">
-        {{ entry.section.path_id }}
-      </span>
+  <sl-details
+      class="toc-wrapper toc-wrapper--details"
+      open
+  >
+    <div v-if="props.root_section_pf" slot="summary" class="toc-summary">Sections</div>
+    <div class="toc">
+      <div
+        v-for="entry in allEntries"
+        v-show="isVisible(entry)"
+        :key="entry.section.path_full"
+        class="toc__row"
+        :class="[`toc__row--depth-${entry.depth}`, { 'toc__row--ancestor': entry.isAncestor }]"
+      >
+        <span class="toc__badge toc__badge--id" :title="entry.section.path_full">
+          {{ entry.section.path_id }}
+        </span>
 
-      <span class="toc__title">
         <sl-icon
-          v-if="entry.hasChildren"
+          v-if="entry.hasChildren && !entry.isAncestor"
           :name="isCollapsed(entry.section.path_full) ? 'chevron-right' : 'chevron-down'"
           class="toc__chevron"
           @click.stop="toggle(entry.section.path_full)"
         />
         <span v-else class="toc__chevron-spacer" />
-        {{ entry.section.title_text }}
-      </span>
 
-      <span class="toc__badge toc__badge--qa" title="Questions &amp; Answers">Q&A</span>
+        <router-link
+          class="toc__title"
+          :to="`/study/${props.machineName}/section/${entry.section.path_full}`"
+        >
+          {{ entry.section.title_text }}
+        </router-link>
+
+        <span class="toc__badge toc__badge--qa" title="Questions &amp; Answers">Q&A</span>
+      </div>
     </div>
-  </div>
+  </sl-details>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { RouterLink } from 'vue-router';
 import type { Flow, Section } from '../types/library';
 
 const props = defineProps<{ 
   flows: Flow[],
-  machineName: string
+  machineName: string,
+  root_section_pf?: string
 }>();
-
-const router = useRouter();
 
 interface TocEntry {
   section: Section;
   depth: number;
   hasChildren: boolean;
+  isAncestor?: boolean;
 }
 
 function walkTree(sections: Section[], depth: number, result: TocEntry[] = []): TocEntry[] {
@@ -58,21 +67,74 @@ function walkTree(sections: Section[], depth: number, result: TocEntry[] = []): 
   return result;
 }
 
+function findPath(sections: Section[], targetPath: string): Section[] {
+  for (const s of sections) {
+    if (s.path_full === targetPath) return [s];
+    if (targetPath.startsWith(s.path_full + '.') && s.subsections) {
+      const subPath = findPath(s.subsections, targetPath);
+      if (subPath.length) return [s, ...subPath];
+    }
+  }
+  return [];
+}
+
 const mainFlow = computed(() => props.flows.find(f => f.name === 'main'));
 
 const allEntries = computed<TocEntry[]>(() => {
   const root = mainFlow.value?.tree;
   if (!root?.subsections?.length) return [];
+
+  if (props.root_section_pf) {
+    const path = findPath(root.subsections, props.root_section_pf);
+    if (!path.length) return [];
+
+    const entries: TocEntry[] = [];
+    // Ancestors (all but the last one in path)
+    for (let i = 0; i < path.length - 1; i++) {
+      entries.push({
+        section: path[i],
+        depth: i,
+        hasChildren: true,
+        isAncestor: true
+      });
+    }
+
+    // The target section and its children
+    const target = path[path.length - 1];
+    entries.push({
+      section: target,
+      depth: path.length - 1,
+      hasChildren: !!target.subsections?.length
+    });
+
+    if (target.subsections?.length) {
+      walkTree(target.subsections, path.length, entries);
+    }
+    return entries;
+  }
+
   return walkTree(root.subsections, 0);
 });
 
 const collapsed = ref<string[]>([]);
 let initialized = false;
 
+watch(() => props.root_section_pf, () => {
+  initialized = false;
+});
+
 watch(allEntries, (entries) => {
   if (!initialized && entries.length > 0) {
+    let threshold = 1;
+    if (props.root_section_pf) {
+      const targetEntry = entries.find(e => e.section.path_full === props.root_section_pf);
+      if (targetEntry) {
+        threshold = targetEntry.depth + 2;
+      }
+    }
+
     collapsed.value = entries
-      .filter(e => e.hasChildren && e.depth >= 1)
+      .filter(e => e.hasChildren && !e.isAncestor && e.depth >= threshold)
       .map(e => e.section.path_full);
     initialized = true;
   }
@@ -88,20 +150,44 @@ function toggle(pathFull: string) {
   else collapsed.value.push(pathFull);
 }
 
-function goToSection(pathFull: string) {
-  router.push(`/study/${props.machineName}/section/${pathFull}`);
-}
-
 function isVisible(entry: TocEntry): boolean {
+  if (entry.isAncestor) return true;
   const parts = entry.section.path_full.split('.');
+  // Check from the first level after book ID
   for (let i = 2; i < parts.length; i++) {
-    if (isCollapsed(parts.slice(0, i).join('.'))) return false;
+    const parentPath = parts.slice(0, i).join('.');
+    if (isCollapsed(parentPath)) return false;
   }
   return true;
 }
 </script>
 
 <style scoped>
+.toc-wrapper--details {
+  margin-bottom: 2rem;
+}
+
+sl-details::part(base) {
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  background: var(--color-bg, #ffffff);
+  overflow: hidden;
+}
+
+sl-details::part(header) {
+  padding: 0.75rem 1rem;
+}
+
+sl-details::part(content) {
+  padding: 0;
+  border-top: 1px solid var(--color-border, #e5e7eb);
+}
+
+.toc-summary {
+  font-weight: 600;
+  color: var(--color-text, #111827);
+}
+
 .toc {
   padding: 0.5rem 0;
 }
@@ -113,11 +199,15 @@ function isVisible(entry: TocEntry): boolean {
   padding: 0.375rem 1rem;
   transition: background 0.1s;
   user-select: none;
-  cursor: pointer;
 }
 
 .toc__row:hover {
   background: var(--color-bg-muted);
+}
+
+.toc__row--ancestor {
+  background: var(--color-bg-muted, #f9fafb);
+  opacity: 0.8;
 }
 
 .toc__row--depth-0 {
@@ -158,16 +248,20 @@ function isVisible(entry: TocEntry): boolean {
 
 .toc__title {
   flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
+  text-decoration: none;
+  color: inherit;
   min-width: 0;
+}
+
+.toc__title:hover {
+  text-decoration: underline;
 }
 
 .toc__chevron {
   flex-shrink: 0;
   font-size: 0.75em;
   color: var(--color-text-dimmed);
+  cursor: pointer;
 }
 
 .toc__chevron-spacer {

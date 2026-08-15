@@ -2,16 +2,17 @@
   <div class="book-study">
     <p v-if="loading" class="book-study__status">Loading…</p>
     <p v-else-if="error" class="book-study__status book-study__status--error">{{ error }}</p>
-    <template v-else-if="book">
+    <template v-else-if="book && !isSectionActive">
       <header class="book-study__header">
         <h1 class="book-study__title">{{ book.book.title }}</h1>
         <p v-if="author" class="book-study__author">{{ author.full_name }}</p>
       </header>
-
-      <router-view v-if="isSectionActive" v-slot="{ Component }">
+      <TableOfContents :flows="book.flows" :machineName="machineName" />
+    </template>
+    <template v-else-if="isSectionActive">
+      <router-view v-slot="{ Component }">
         <component :is="Component" :book-structure="book" />
       </router-view>
-      <TableOfContents v-else :flows="book.flows" :machineName="machineName" />
     </template>
   </div>
 </template>
