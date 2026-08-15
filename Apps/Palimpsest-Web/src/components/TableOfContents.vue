@@ -6,22 +6,25 @@
       :key="entry.section.path_full"
       class="toc__row"
       :class="`toc__row--depth-${entry.depth}`"
-      @click="goToSection(entry.section.path_full)"
     >
       <span class="toc__badge toc__badge--id" :title="entry.section.path_full">
         {{ entry.section.path_id }}
       </span>
 
-      <span class="toc__title">
-        <sl-icon
-          v-if="entry.hasChildren"
-          :name="isCollapsed(entry.section.path_full) ? 'chevron-right' : 'chevron-down'"
-          class="toc__chevron"
-          @click.stop="toggle(entry.section.path_full)"
-        />
-        <span v-else class="toc__chevron-spacer" />
+      <sl-icon
+        v-if="entry.hasChildren"
+        :name="isCollapsed(entry.section.path_full) ? 'chevron-right' : 'chevron-down'"
+        class="toc__chevron"
+        @click.stop="toggle(entry.section.path_full)"
+      />
+      <span v-else class="toc__chevron-spacer" />
+
+      <router-link
+        class="toc__title"
+        :to="`/study/${props.machineName}/section/${entry.section.path_full}`"
+      >
         {{ entry.section.title_text }}
-      </span>
+      </router-link>
 
       <span class="toc__badge toc__badge--qa" title="Questions &amp; Answers">Q&A</span>
     </div>
@@ -30,15 +33,13 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { RouterLink } from 'vue-router';
 import type { Flow, Section } from '../types/library';
 
 const props = defineProps<{ 
   flows: Flow[],
   machineName: string
 }>();
-
-const router = useRouter();
 
 interface TocEntry {
   section: Section;
@@ -88,10 +89,6 @@ function toggle(pathFull: string) {
   else collapsed.value.push(pathFull);
 }
 
-function goToSection(pathFull: string) {
-  router.push(`/study/${props.machineName}/section/${pathFull}`);
-}
-
 function isVisible(entry: TocEntry): boolean {
   const parts = entry.section.path_full.split('.');
   for (let i = 2; i < parts.length; i++) {
@@ -113,7 +110,6 @@ function isVisible(entry: TocEntry): boolean {
   padding: 0.375rem 1rem;
   transition: background 0.1s;
   user-select: none;
-  cursor: pointer;
 }
 
 .toc__row:hover {
@@ -158,16 +154,20 @@ function isVisible(entry: TocEntry): boolean {
 
 .toc__title {
   flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
+  text-decoration: none;
+  color: inherit;
   min-width: 0;
+}
+
+.toc__title:hover {
+  text-decoration: underline;
 }
 
 .toc__chevron {
   flex-shrink: 0;
   font-size: 0.75em;
   color: var(--color-text-dimmed);
+  cursor: pointer;
 }
 
 .toc__chevron-spacer {
