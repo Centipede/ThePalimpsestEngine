@@ -1,5 +1,15 @@
 <template>
   <div :id="'block-' + block.path_id" class="content-block">
+    <!-- Leftmost: Toggle -->
+    <div class="block-toggle">
+      <sl-icon-button
+        :name="isFolded ? 'chevron-right' : 'chevron-down'"
+        label="Toggle Content"
+        size="small"
+        @click="isFolded = !isFolded"
+      ></sl-icon-button>
+    </div>
+
     <!-- Left outer: Block link -->
     <div class="block-info">
       <div class="block-link">
@@ -14,12 +24,12 @@
     </div>
 
     <!-- Center: Content -->
-    <div class="block-content">
+    <div v-show="!isFolded" class="block-content">
       <div class="content-text">{{ block.content_text }}</div>
     </div>
 
     <!-- Right inner: Entities -->
-    <div class="block-entities">
+    <div v-show="!isFolded" class="block-entities">
       <small v-if="entitiesFuzzy"><i>{{ entitiesFuzzy }}</i></small>
     </div>
 
@@ -32,17 +42,22 @@
         <span v-if="lastPage && lastPage !== firstPage">{{ lastPage }}</span>
       </template>
     </div>
+
+    <!-- Rightmost: Spacer -->
+    <div class="block-spacer"></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { ContentBlock, SummaryInfoContent, EntitiesInfoContent } from '../types/library';
 
 const props = defineProps<{
   block: ContentBlock;
   index: number;
 }>();
+
+const isFolded = ref(false);
 
 const summaryCaption = computed(() => {
   const record = props.block.inforecords.find(r => r.kind === 'summary');
@@ -66,7 +81,7 @@ const lastPage = computed(() => {
 <style scoped>
 .content-block {
   display: grid;
-  grid-template-columns: 100px 1fr 4fr 1fr 70px;
+  grid-template-columns: 30px 100px 1fr 4fr 1fr 70px 30px;
   grid-gap: 1.5rem;
   align-items: first baseline;
   width: 100%;
@@ -76,6 +91,12 @@ const lastPage = computed(() => {
 
 .content-block:last-child {
   border-bottom: none;
+}
+
+.block-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .block-info {
@@ -113,21 +134,23 @@ const lastPage = computed(() => {
 }
 
 .block-pages {
+  grid-column: 6;
   font-size: 0.75rem;
   color: var(--sl-color-neutral-500);
   text-align: right;
   white-space: nowrap;
 }
 
+.block-spacer {
+  grid-column: 7;
+}
+
 @media (max-width: 1024px) {
   .content-block {
-    grid-template-columns: 80px 1fr 1fr 80px;
+    grid-template-columns: 30px 80px 1fr 1fr 80px 30px;
     grid-template-areas: 
-      "info content content pages"
-      ". summary entities .";
+      "toggle info content content pages spacer"
+      ". . summary entities . .";
   }
-  
-  /* Simplifying for mobile/smaller screens if needed, 
-     but keeping the requested grid for now as primary */
 }
 </style>

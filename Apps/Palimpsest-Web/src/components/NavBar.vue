@@ -15,7 +15,9 @@
         </RouterLink>
       </div>
 
-      <div class="nav-middle"></div>
+      <div class="nav-mid-title-portal"></div>
+
+      <div class="nav-end-tools-portal"></div>
 
       <div class="nav-end">
         <sl-button @click="logout_and_redirect">Log out</sl-button>
@@ -99,7 +101,7 @@ nav {
   height: 100%;
 }
 
-.nav-middle {
+.nav-mid-title-portal {
   flex: 1;
   display: flex;
   justify-content: flex-start;
@@ -110,6 +112,12 @@ nav {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+}
+
+.nav-end-tools-portal {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .nav-start,
