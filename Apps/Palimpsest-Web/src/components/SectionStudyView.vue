@@ -7,7 +7,7 @@
     <p v-if="loading" class="section-study__status">Loading…</p>
     <p v-else-if="error" class="section-study__status section-study__status--error">{{ error }}</p>
     <template v-else-if="data">
-      <Teleport to=".nav-middle">
+      <Teleport to=".nav-mid-title-portal">
         <sl-breadcrumb>
           <sl-breadcrumb-item v-for="crumb in breadcrumbs.splice(1)" :key="crumb.path">
             <router-link :to="crumb.path" class="breadcrumb-link">{{ crumb.title }}</router-link>

@@ -3,7 +3,7 @@
     <p v-if="loading" class="book-study__status">Loading…</p>
     <p v-else-if="error" class="book-study__status book-study__status--error">{{ error }}</p>
     <template v-else-if="book">
-      <Teleport to=".nav-middle">
+      <Teleport to=".nav-mid-title-portal">
         <header class="book-study__header">
           <router-link :to="`/study/${machineName}`">
             <h1 class="book-study__title">{{ book.book.title }}</h1>
