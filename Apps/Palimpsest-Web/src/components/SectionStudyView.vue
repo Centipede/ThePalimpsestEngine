@@ -1,16 +1,19 @@
 <template>
   <div class="section-study">
     <div class="section-study__nav">
-      <sl-breadcrumb>
-        <sl-breadcrumb-item v-for="crumb in breadcrumbs" :key="crumb.path">
-          <router-link :to="crumb.path" class="breadcrumb-link">{{ crumb.title }}</router-link>
-        </sl-breadcrumb-item>
-      </sl-breadcrumb>
+
     </div>
 
     <p v-if="loading" class="section-study__status">Loading…</p>
     <p v-else-if="error" class="section-study__status section-study__status--error">{{ error }}</p>
     <template v-else-if="data">
+      <Teleport to=".nav-middle">
+        <sl-breadcrumb>
+          <sl-breadcrumb-item v-for="crumb in breadcrumbs.splice(1)" :key="crumb.path">
+            <router-link :to="crumb.path" class="breadcrumb-link">{{ crumb.title }}</router-link>
+          </sl-breadcrumb-item>
+        </sl-breadcrumb>
+      </Teleport>
       <header class="section-study__header">
         <h1 class="section-study__title">{{ data.section.title_text }}</h1>
       </header>
