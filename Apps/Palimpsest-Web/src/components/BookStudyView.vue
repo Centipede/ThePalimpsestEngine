@@ -2,17 +2,25 @@
   <div class="book-study">
     <p v-if="loading" class="book-study__status">Loading…</p>
     <p v-else-if="error" class="book-study__status book-study__status--error">{{ error }}</p>
-    <template v-else-if="book && !isSectionActive">
-      <header class="book-study__header">
-        <h1 class="book-study__title">{{ book.book.title }}</h1>
-        <p v-if="author" class="book-study__author">{{ author.full_name }}</p>
-      </header>
-      <TableOfContents :flows="book.flows" :machineName="machineName" />
-    </template>
-    <template v-else-if="isSectionActive">
-      <router-view v-slot="{ Component }">
-        <component :is="Component" :book-structure="book" />
-      </router-view>
+    <template v-else-if="book">
+      <Teleport to=".nav-middle">
+        <header class="book-study__header">
+          <router-link :to="`/study/${machineName}`">
+            <h1 class="book-study__title">{{ book.book.title }}</h1>
+          </router-link>
+          <p v-if="author" class="book-study__author">{{ author.full_name }}</p>
+        </header>
+      </Teleport>
+
+      <template v-if="!isSectionActive">
+        <TableOfContents :flows="book.flows" :machineName="machineName"/>
+      </template>
+      <template v-else-if="isSectionActive">
+        <router-view v-slot="{ Component }">
+          <component :is="Component" :book-structure="book"/>
+        </router-view>
+      </template>
+
     </template>
   </div>
 </template>
@@ -64,8 +72,10 @@ onMounted(async () => {
 }
 
 .book-study__header {
-  padding: 1.5rem 1rem 1rem;
-  border-bottom: 1px solid var(--color-border);
+  padding: 0.1rem 1rem 0.1rem;
+  display: flex;
+  flex-direction: column;
+
 }
 
 .book-study__title {

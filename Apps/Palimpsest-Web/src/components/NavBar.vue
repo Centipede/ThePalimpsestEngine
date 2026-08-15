@@ -1,16 +1,6 @@
 <template>
   <header class="vue-header">
     <nav>
-      <RouterLink to="/" custom v-slot="{ navigate, isExactActive }">
-        <sl-button
-            class="nav-brand"
-            :variant="isExactActive ? 'primary' : 'text'"
-            @click="navigate"
-        >
-          Palimpsest
-        </sl-button>
-      </RouterLink>
-
       <div class="nav-start">
         <RouterLink to="/study" custom v-slot="{ navigate, isActive }">
           <sl-button :variant="isActive ? 'primary' : 'text'" @click="navigate">
@@ -24,6 +14,8 @@
           </sl-button>
         </RouterLink>
       </div>
+
+      <div class="nav-middle"></div>
 
       <div class="nav-end">
         <sl-button @click="logout_and_redirect">Log out</sl-button>
@@ -107,8 +99,17 @@ nav {
   height: 100%;
 }
 
-.nav-brand {
+.nav-middle {
+  flex: 1;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 0 1rem;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .nav-start,
