@@ -80,22 +80,36 @@
 
               <div class="segment-content">
                 <p v-if="seg.description" class="segment-description-full">{{ seg.description }}</p>
-                <ContentBlockView
-                    v-for="block in seg.blocks"
-                    :key="block.path_id"
-                    :block="block"
-                    :index="data.contents.indexOf(block)"
-                />
+
+                <template
+                    v-for="(entry, blockIdx) in seg.blocks"
+                    :key="entry.block.path_id"
+                >
+                  <div
+                      v-if="blockIdx > 0 && entry.index - seg.blocks[blockIdx - 1].index > 1"
+                      class="skipped-blocks"
+                  >
+                    <i>
+                      … skipped {{ skippedBlockCount(entry.index, seg.blocks[blockIdx - 1].index) }}
+                      {{ skippedBlockCount(entry.index, seg.blocks[blockIdx - 1].index) === 1 ? 'paragraph' : 'paragraphs' }} …
+                    </i>
+                  </div>
+
+                  <ContentBlockView
+                      :block="entry.block"
+                      :index="entry.index"
+                  />
+                </template>
               </div>
             </sl-details>
 
             <div v-if="segmentedData.orphans.length > 0" class="orphans-section">
               <h3 class="orphans-title">Other Paragraphs</h3>
               <ContentBlockView
-                  v-for="block in segmentedData.orphans"
-                  :key="block.path_id"
-                  :block="block"
-                  :index="data.contents.indexOf(block)"
+                  v-for="entry in segmentedData.orphans"
+                  :key="entry.block.path_id"
+                  :block="entry.block"
+                  :index="entry.index"
               />
             </div>
           </div>
@@ -130,6 +144,10 @@ function toggleSegment(index: number, isOpen: boolean) {
   openSegments.value[index] = isOpen;
 }
 
+function skippedBlockCount(currentIndex: number, previousIndex: number) {
+  return Math.max(0, currentIndex - previousIndex - 1);
+}
+
 const parseRanges = (ranges: string[]): Set<number> => {
   const indices = new Set<number>();
   for (const range of ranges) {
@@ -152,21 +170,26 @@ const segmentedData = computed(() => {
 
   const paragraphSegments = data.value.section.info?.summary?.paragraph_segments;
   if (!paragraphSegments || paragraphSegments.length === 0) {
-    return {segments: [], orphans: data.value.contents};
+    return {segments: [], orphans: data.value.contents.map( (block, index) => ({block, index}))};
   }
 
   const allSegmentedIndices = new Set<number>();
   const segments = paragraphSegments.map(seg => {
     const indices = parseRanges(seg.ranges);
     indices.forEach(i => allSegmentedIndices.add(i));
-    const blocks = data.value!.contents.filter((_, i) => indices.has(i));
+    const blocks = data.value!.contents
+        .map((block, index) => ({ block, index }))
+        .filter(({ index }) => indices.has(index));
+
     return {
       ...seg,
       blocks
     };
   });
 
-  const orphans = data.value.contents.filter((_, i) => !allSegmentedIndices.has(i));
+  const orphans = data.value.contents
+      .map((block, index) => ({ block, index }))
+      .filter(({ index }) => !allSegmentedIndices.has(index));
 
   return {segments, orphans};
 });
