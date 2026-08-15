@@ -15,6 +15,13 @@
         <h1 class="section-study__title">{{ data.section.title_text }}</h1>
       </header>
 
+      <TableOfContents
+        v-if="props.bookStructure"
+        :flows="props.bookStructure.flows"
+        :machine-name="props.machineName"
+        :root_section_pf="props.sectionPath"
+      />
+
       <SectionSummary v-if="data.section.info?.summary" :summary="data.section.info.summary" />
       <SectionEntities v-if="data.section.info?.entities" :entities="data.section.info.entities" />
 
@@ -39,6 +46,7 @@ import type { SectionContentResponse, BookStructure, Section } from '../types/li
 import SectionSummary from './SectionSummary.vue';
 import SectionEntities from './SectionEntities.vue';
 import ContentBlockView from './ContentBlockView.vue';
+import TableOfContents from './TableOfContents.vue';
 
 const props = defineProps<{
   machineName: string;
@@ -74,7 +82,7 @@ const breadcrumbs = computed(() => {
     if (currentPath) currentPath += '.';
     currentPath += part;
 
-    const found: Section | undefined = currentTree?.subsections?.find(s => s.path_id === currentPath);
+    const found: Section | undefined = currentTree?.subsections?.find(s => s.path_id === part);
     if (found) {
       crumbs.push({
         title: found.title_text,
