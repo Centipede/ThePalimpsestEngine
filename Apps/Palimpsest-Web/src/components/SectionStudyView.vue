@@ -50,7 +50,6 @@
       <SectionEntities v-if="data.section.info?.entities" :entities="data.section.info.entities"/>
 
       <article class="section-study__content">
-        <h2 class="section-study__content-title">Content</h2>
 
         <template v-if="organiseMode === 'linear'">
           <ContentBlockView
@@ -74,7 +73,7 @@
                 <sl-badge variant="success" pill class="segment-range-badge">{{ seg.ranges.join(', ') }}</sl-badge>
                 <span class="segment-caption">{{ seg.caption }}</span>
                 <span v-if="!openSegments[idx]" class="segment-description-preview">
-                  &nbsp; - <i>{{ seg.description }}</i>
+                  <i>{{ seg.description }}</i>
                 </span>
               </div>
 
@@ -290,7 +289,7 @@ watch(() => props.sectionPath, fetchSection);
 }
 
 .segment-details::part(base) {
-  border: 1px solid var(--sl-color-neutral-200);
+  border: 0px solid var(--sl-color-neutral-200);
   border-radius: var(--sl-border-radius-medium);
   background-color: var(--sl-color-neutral-50);
   overflow: hidden;
@@ -300,25 +299,28 @@ watch(() => props.sectionPath, fetchSection);
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-weight: 600;
 }
 
 .segment-range-badge {
   flex-shrink: 0;
 }
 
+.segment-caption {
+  font-weight: 300;
+}
+
 .segment-description-preview {
   font-weight: normal;
   color: var(--sl-color-neutral-500);
   font-size: 0.9rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  text-overflow: initial;
+  white-space: wrap;
 }
 
 .segment-content {
-  padding: 1rem;
-  background-color: var(--sl-color-white);
+  padding: 0.25rem;
+  background-color: var(--sl-color-neutral-0);
   border-top: 1px solid var(--sl-color-neutral-200);
 }
 
@@ -357,18 +359,9 @@ watch(() => props.sectionPath, fetchSection);
   display: flex;
   flex-direction: column;
   gap: 0;
-  max-width: 1200px;
+  max-width: initial;
   margin: 2rem auto;
   width: 100%;
-}
-
-.section-study__content-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 1.5rem;
-  color: var(--color-text, #111827);
-  border-bottom: 2px solid var(--sl-color-neutral-200);
-  padding-bottom: 0.5rem;
 }
 
 .section-study__status {

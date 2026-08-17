@@ -99,8 +99,7 @@ const lastPage = computed(() => {
   grid-gap: 1.5rem;
   align-items: first baseline;
   width: 100%;
-  padding: 1rem 0;
-  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  padding: 0.5rem 0;
 }
 
 .content-block.is-folded {

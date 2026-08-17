@@ -50,9 +50,9 @@ defineProps<{
 }
 
 sl-details::part(base) {
-  border: 1px solid var(--border);
+  border: 1px solid var(--sl-color-neutral-200);;
   border-radius: 8px;
-  background: var(--bg);
+  background: var(--sl-color-neutral-50);
   overflow: hidden;
 }
 
@@ -62,13 +62,13 @@ sl-details::part(header) {
 
 sl-details::part(content) {
   padding: 1rem;
-  border-top: 1px solid var(--border);
-  background: var(--code-bg);
+  border-top: 1px solid var(--sl-color-neutral-200);;
+  background: var(--sl-color-neutral-50);
 }
 
 .summary-header {
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--sl-color-lime-700);
 }
 
 .summary-content {
@@ -108,8 +108,8 @@ sl-details::part(content) {
 }
 
 .segment-caption {
-  font-weight: 600;
-  color: var(--text-h);
+  font-weight: 200;
+  color: var(--sl-color-lime-800);
 }
 
 .segment-description {
@@ -120,7 +120,7 @@ sl-details::part(content) {
 
 .segment-keywords {
   font-size: 0.85rem;
-  color: var(--text);
+  color: var(--sl-color-primary-600);
   opacity: 0.8;
 }
 </style>

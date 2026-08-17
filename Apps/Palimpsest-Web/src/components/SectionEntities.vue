@@ -95,9 +95,9 @@ const shouldShowHrAfterUnlinked = (category: string) => {
 }
 
 sl-details::part(base) {
-  border: 1px solid var(--border);
+  border: 1px solid var(--sl-color-neutral-200);;
   border-radius: 8px;
-  background: var(--bg);
+  background: var(--sl-color-neutral-50);
   overflow: hidden;
 }
 
@@ -107,13 +107,13 @@ sl-details::part(header) {
 
 sl-details::part(content) {
   padding: 1rem;
-  border-top: 1px solid var(--border);
-  background: var(--code-bg);
+  border-top: 1px solid var(--sl-color-neutral-200);
+  background: var(--sl-color-neutral-50);
 }
 
 .entities-header {
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--sl-color-lime-700);
 }
 
 .categories-grid {
@@ -126,7 +126,7 @@ sl-details::part(content) {
   font-weight: 600;
   font-size: 1.1rem;
   margin-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--sl-color-neutral-200);;
   padding-bottom: 0.25rem;
 }
 
@@ -143,7 +143,7 @@ sl-details::part(content) {
 
 hr {
   border: 0;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--sl-color-neutral-200);;
   margin: 0.5rem 0;
 }
 </style>
