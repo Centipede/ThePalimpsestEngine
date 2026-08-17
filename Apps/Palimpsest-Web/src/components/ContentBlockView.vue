@@ -123,11 +123,11 @@ const lastPage = computed(() => {
   grid-area: info;
   font-size: 0.75rem;
   line-height: 1.3;
+  font-weight: 300;
 }
 
 .block-link {
   color: var(--sl-color-success-700);
-  font-weight: 600;
   text-decoration: none;
 }
 
@@ -137,6 +137,7 @@ const lastPage = computed(() => {
   font-size: 0.875rem;
   line-height: 1.4;
   word-break: break-word;
+  font-weight: 300;
 }
 
 .block-entities {
@@ -146,6 +147,7 @@ const lastPage = computed(() => {
   line-height: 1.4;
   word-break: break-word;
   white-space: pre-wrap;
+  font-weight: 300;
 }
 
 .block-content {
@@ -167,6 +169,7 @@ const lastPage = computed(() => {
   color: var(--sl-color-neutral-500);
   text-align: right;
   white-space: nowrap;
+  font-weight: 300;
 }
 
 .block-spacer {
