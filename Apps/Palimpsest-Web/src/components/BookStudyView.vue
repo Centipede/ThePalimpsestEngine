@@ -5,10 +5,10 @@
     <template v-else-if="book">
       <Teleport to=".nav-mid-title-portal">
         <header class="book-study__header">
-          <router-link :to="`/study/${machineName}`">
-            <h1 class="book-study__title">{{ book.book.title }}</h1>
+          <router-link :to="`/study/${machineName}`" style="text-decoration: none;">
+            <div class="book-study__title">{{ book.book.title }}</div>
           </router-link>
-          <p v-if="author" class="book-study__author">{{ author.full_name }}</p>
+          <span v-if="author" class="book-study__author">{{ author.full_name }}</span>
         </header>
       </Teleport>
 
@@ -75,18 +75,20 @@ onMounted(async () => {
   padding: 0.1rem 1rem 0.1rem;
   display: flex;
   flex-direction: column;
-
 }
 
 .book-study__title {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--color-text-muted);
+  text-decoration: none;
 }
 
 .book-study__author {
   margin: 0.25rem 0 0;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 300;
   color: var(--color-text-muted);
 }
 

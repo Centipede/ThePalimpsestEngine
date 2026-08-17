@@ -151,6 +151,11 @@ export interface BookStructure {
     flows: Flow[];
 }
 
+export interface FoldTrigger {
+    command: 'expand-all' | 'collapse-all';
+    count: number;
+}
+
 
 
 

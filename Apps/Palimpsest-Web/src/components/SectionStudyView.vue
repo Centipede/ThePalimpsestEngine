@@ -1,8 +1,5 @@
 <template>
   <div class="section-study">
-    <div class="section-study__nav">
-
-    </div>
 
     <p v-if="loading" class="section-study__status">Loading…</p>
     <p v-else-if="error" class="section-study__status section-study__status--error">{{ error }}</p>
@@ -14,30 +11,66 @@
               <router-link :to="crumb.path" class="breadcrumb-link">{{ crumb.title }}</router-link>
             </sl-breadcrumb-item>
           </sl-breadcrumb>
-
-          <sl-button-group v-if="data.section.info?.summary?.paragraph_segments?.length" class="organise-toggle">
-            <sl-button
-                size="small"
-                :variant="organiseMode === 'linear' ? 'primary' : 'default'"
-                @click="organiseMode = 'linear'"
-                title="Linear View"
-            >
-              <sl-icon name="list"></sl-icon>
-            </sl-button>
-            <sl-button
-                size="small"
-                :variant="organiseMode === 'segmented' ? 'primary' : 'default'"
-                @click="organiseMode = 'segmented'"
-                title="Segmented View"
-            >
-              <sl-icon name="layers-half"></sl-icon>
-            </sl-button>
-          </sl-button-group>
         </div>
       </Teleport>
+
       <header class="section-study__header">
         <h1 class="section-study__title">{{ data.section.title_text }}</h1>
       </header>
+
+      <div class="section-study__toolbar">
+        <sl-button-group class="organise-toggle">
+          <sl-button
+              size="small"
+              :variant="organiseMode === 'linear' ? 'primary' : 'default'"
+              @click="organiseMode = 'linear'"
+              title="Linear View"
+          >
+            <sl-icon name="list"></sl-icon>
+          </sl-button>
+          <sl-button
+              v-if="data.section.info?.summary?.paragraph_segments?.length"
+              size="small"
+              :variant="organiseMode === 'segmented' ? 'primary' : 'default'"
+              @click="organiseMode = 'segmented'"
+              title="Segmented View"
+          >
+            <sl-icon name="layers-half"></sl-icon>
+          </sl-button>
+        </sl-button-group>
+
+        <sl-divider vertical></sl-divider>
+
+        <sl-button-group class="paragraph-controls">
+          <sl-tooltip content="Expand All Paragraphs">
+            <sl-icon-button name="arrows-expand" label="Expand All Paragraphs" @click="expandAllParagraphs"></sl-icon-button>
+          </sl-tooltip>
+          <sl-tooltip content="Collapse All Paragraphs">
+            <sl-icon-button name="arrows-collapse" label="Collapse All Paragraphs" @click="collapseAllParagraphs"></sl-icon-button>
+          </sl-tooltip>
+        </sl-button-group>
+
+        <sl-divider vertical></sl-divider>
+
+        <sl-button-group class="segment-controls">
+          <sl-tooltip content="Expand All Segments">
+            <sl-icon-button
+              name="plus-square"
+              label="Expand All Segments"
+              :disabled="organiseMode !== 'segmented'"
+              @click="expandAllSegments"
+            ></sl-icon-button>
+          </sl-tooltip>
+          <sl-tooltip content="Collapse All Segments">
+            <sl-icon-button
+              name="dash-square"
+              label="Collapse All Segments"
+              :disabled="organiseMode !== 'segmented'"
+              @click="collapseAllSegments"
+            ></sl-icon-button>
+          </sl-tooltip>
+        </sl-button-group>
+      </div>
 
       <TableOfContents
           v-if="props.bookStructure"
@@ -57,6 +90,7 @@
               :key="block.path_id"
               :block="block"
               :index="index"
+              :fold-trigger="paragraphFoldTrigger"
           />
         </template>
 
@@ -66,6 +100,7 @@
                 v-for="(seg, idx) in segmentedData.segments"
                 :key="idx"
                 class="segment-details"
+                :open="!!openSegments[idx]"
                 @sl-show="toggleSegment(idx, true)"
                 @sl-hide="toggleSegment(idx, false)"
             >
@@ -97,6 +132,7 @@
                   <ContentBlockView
                       :block="entry.block"
                       :index="entry.index"
+                      :fold-trigger="paragraphFoldTrigger"
                   />
                 </template>
               </div>
@@ -109,6 +145,7 @@
                   :key="entry.block.path_id"
                   :block="entry.block"
                   :index="entry.index"
+                  :fold-trigger="paragraphFoldTrigger"
               />
             </div>
           </div>
@@ -121,7 +158,7 @@
 <script setup lang="ts">
 import {computed, onMounted, ref, watch} from 'vue';
 import {apiFetch} from '../api';
-import type {SectionContentResponse, BookStructure, Section} from '../types/library';
+import type {SectionContentResponse, BookStructure, Section, FoldTrigger} from '../types/library';
 import SectionSummary from './SectionSummary.vue';
 import SectionEntities from './SectionEntities.vue';
 import ContentBlockView from './ContentBlockView.vue';
@@ -138,9 +175,30 @@ const loading = ref(true);
 const error = ref('');
 const organiseMode = ref<'linear' | 'segmented'>('linear');
 const openSegments = ref<Record<number, boolean>>({});
+const paragraphFoldTrigger = ref<FoldTrigger>({ command: 'expand-all', count: 0 });
 
 function toggleSegment(index: number, isOpen: boolean) {
   openSegments.value[index] = isOpen;
+}
+
+function expandAllParagraphs() {
+  paragraphFoldTrigger.value = { command: 'expand-all', count: paragraphFoldTrigger.value.count + 1 };
+}
+
+function collapseAllParagraphs() {
+  paragraphFoldTrigger.value = { command: 'collapse-all', count: paragraphFoldTrigger.value.count + 1 };
+}
+
+function expandAllSegments() {
+  segmentedData.value.segments.forEach((_, idx) => {
+    openSegments.value[idx] = true;
+  });
+}
+
+function collapseAllSegments() {
+  segmentedData.value.segments.forEach((_, idx) => {
+    openSegments.value[idx] = false;
+  });
 }
 
 function skippedBlockCount(currentIndex: number, previousIndex: number) {
@@ -254,12 +312,29 @@ watch(() => props.sectionPath, fetchSection);
   flex-direction: column;
   height: 100%;
   overflow: auto;
-  padding: 2rem;
+  padding: 0.5rem 1rem;
 }
 
-.section-study__nav {
-  margin-bottom: 2rem;
-  padding: 0.5rem 0;
+.section-study__toolbar {
+  position: sticky;
+  top: -0.5rem;
+  z-index: 100;
+  background: var(--color-bg);
+  padding: 0.25rem 0;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.section-study__toolbar sl-divider {
+  height: 1.5rem;
+  --spacing: 0.5rem;
+}
+
+.section-study__toolbar sl-icon-button {
+  font-size: 1.1rem;
 }
 
 .breadcrumb-link {
@@ -343,7 +418,7 @@ watch(() => props.sectionPath, fetchSection);
 }
 
 .section-study__header {
-  margin-bottom: 2.5rem;
+  margin-bottom: 1rem;
   border-bottom: 1px solid var(--color-border, #e5e7eb);
   padding-bottom: 1rem;
 }

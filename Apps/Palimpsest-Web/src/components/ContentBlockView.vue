@@ -57,15 +57,26 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import type { ContentBlock, SummaryInfoContent, EntitiesInfoContent } from '../types/library';
+import { computed, ref, watch } from 'vue';
+import type { ContentBlock, SummaryInfoContent, EntitiesInfoContent, FoldTrigger } from '../types/library';
 
 const props = defineProps<{
   block: ContentBlock;
   index: number;
+  foldTrigger?: FoldTrigger;
 }>();
 
 const isFolded = ref(false);
+
+watch(() => props.foldTrigger?.count, () => {
+  if (props.foldTrigger) {
+    if (props.foldTrigger.command === 'expand-all') {
+      isFolded.value = false;
+    } else if (props.foldTrigger.command === 'collapse-all') {
+      isFolded.value = true;
+    }
+  }
+});
 
 const summaryCaption = computed(() => {
   const record = props.block.inforecords.find(r => r.kind === 'summary');
