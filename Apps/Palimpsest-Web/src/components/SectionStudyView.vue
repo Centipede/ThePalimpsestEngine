@@ -321,7 +321,7 @@ watch(() => props.sectionPath, fetchSection);
 .segment-content {
   padding: 0.25rem;
   background-color: var(--sl-color-neutral-0);
-  border-top: 1px solid var(--sl-color-neutral-200);
+  border-top: 0 solid var(--sl-color-neutral-200);
 }
 
 .segment-description-full {

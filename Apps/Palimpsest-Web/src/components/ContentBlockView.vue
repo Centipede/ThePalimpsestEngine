@@ -20,7 +20,7 @@
     <template v-if="isFolded">
       <!-- Center: Wide Summary (folded) -->
       <div class="block-summary">
-        <small v-if="summaryText"><i>{{ summaryText }}</i></small>
+        <span v-if="summaryText"><i>{{ summaryText }}</i></span>
       </div>
     </template>
 
@@ -94,16 +94,16 @@ const lastPage = computed(() => {
 <style scoped>
 .content-block {
   display: grid;
-  grid-template-columns: 30px 100px 1fr 4fr 1fr 70px 30px;
+  grid-template-columns: 20px 80px 1fr 4fr 1fr 80px 20px;
   grid-template-areas: "toggle info summary content entities pages spacer";
-  grid-gap: 1.5rem;
+  grid-gap: 0.5rem;
   align-items: first baseline;
   width: 100%;
   padding: 0.5rem 0;
 }
 
 .content-block.is-folded {
-  grid-template-columns: 30px 100px 1fr 70px 30px;
+  grid-template-columns: 20px 80px 1fr 80px 20px;
   grid-template-areas: "toggle info summary pages spacer";
 }
 
@@ -120,7 +120,7 @@ const lastPage = computed(() => {
 
 .block-info {
   grid-area: info;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   line-height: 1.3;
   font-weight: 300;
 }
@@ -132,11 +132,11 @@ const lastPage = computed(() => {
 
 .block-summary {
   grid-area: summary;
-  color: var(--sl-color-neutral-600);
-  font-size: 0.875rem;
+  color: var(--sl-color-neutral-500);
+  font-size: 0.9rem;
   line-height: 1.4;
   word-break: break-word;
-  font-weight: 300;
+  font-weight: 400;
 }
 
 .block-entities {
@@ -146,7 +146,7 @@ const lastPage = computed(() => {
   line-height: 1.4;
   word-break: break-word;
   white-space: pre-wrap;
-  font-weight: 300;
+  font-weight: 400;
 }
 
 .block-content {
@@ -164,7 +164,7 @@ const lastPage = computed(() => {
 
 .block-pages {
   grid-area: pages;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--sl-color-neutral-500);
   text-align: right;
   white-space: nowrap;
