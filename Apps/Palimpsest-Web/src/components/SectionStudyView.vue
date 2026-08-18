@@ -144,16 +144,17 @@
                 @sl-hide="toggleSegment(idx, false)"
             >
               <div slot="summary" class="segment-summary-header">
-                <sl-badge variant="success" pill class="segment-range-badge">{{ seg.ranges.join(', ') }}</sl-badge>
-                <span class="segment-caption">{{ seg.caption }}</span>
-                <span v-if="!openSegments[idx]" class="segment-description-preview">
-                  <i>{{ seg.description }}</i>
-                </span>
+                <div class="segment-header">
+                  <sl-badge variant="success" pill class="segment-range-badge">{{ seg.ranges.join(', ') }}</sl-badge>
+                  <span class="segment-caption">{{ seg.caption }}</span>
+                </div>
+                <p v-if="seg.description" class="segment-description">{{ seg.description }}</p>
+                <div v-if="seg.keywords?.length" class="segment-keywords">
+                  <strong>Keywords:</strong> {{ seg.keywords.join(', ') }}
+                </div>
               </div>
 
               <div class="segment-content">
-                <p v-if="seg.description" class="segment-description-full">{{ seg.description }}</p>
-
                 <template
                     v-for="(entry, blockIdx) in seg.blocks"
                     :key="entry.block.path_id"
@@ -418,8 +419,16 @@ watch(() => props.sectionPath, fetchSection);
 
 .segment-summary-header {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 0.5rem;
+  text-align: left;
+}
+
+.segment-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .segment-range-badge {
@@ -427,28 +436,26 @@ watch(() => props.sectionPath, fetchSection);
 }
 
 .segment-caption {
-  font-weight: 300;
+  font-weight: 200;
+  color: var(--sl-color-lime-800);
 }
 
-.segment-description-preview {
-  font-weight: normal;
-  color: var(--sl-color-neutral-500);
-  font-size: 0.9rem;
-  overflow: visible;
-  text-overflow: initial;
-  white-space: wrap;
+.segment-description {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.segment-keywords {
+  font-size: 0.85rem;
+  color: var(--sl-color-primary-600);
+  opacity: 0.8;
 }
 
 .segment-content {
   padding: 0.25rem;
   background-color: var(--sl-color-neutral-0);
   border-top: 0 solid var(--sl-color-neutral-200);
-}
-
-.segment-description-full {
-  margin: 0 0 1.5rem 0;
-  font-style: italic;
-  color: var(--sl-color-neutral-700);
 }
 
 .orphans-section {
