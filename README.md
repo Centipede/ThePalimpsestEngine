@@ -1,15 +1,15 @@
 # The Palimpsest Engine
 
-**Status June 2026: Still in the planning phase**
+**Status August 2026: Planning happening alongside early implementation**
 
-A study environment for people who still need books and paper beneath their fingertips.
+A study environment for people who still need books and paper.
 
 The Palimpsest Engine depends upon its sister project:
 [The OmniGraph Engine](https://github.com/Centipede/TheOmnigraphEngine)
 
-**OmniGraph** reconstructs the structure of scanned books.
+**OmniGraph** is a userfriendly but mostly manual tool for rebuilding the chapter structure of scanned books and of repairing OCR.
 
-**Palimpsest** attempts to reconstruct the experience of studying them.
+**Palimpsest** attempts to provide the experience of studying them.
 
 ## Prelude
 
@@ -32,14 +32,11 @@ It must be dynamic and flexible enough to allow experimentation and personalisat
 There is no way around an evolutionary process: some ideas survive, others do not.
 The faster one can iterate over tools, prompts, workflows, and scripts, the better.
 
-Books are not databases.
-
-They are arguments, narratives, hierarchies, and conversations that unfold across chapters and sometimes across entire libraries.
 
 
 ### This Project – The Background Story
 
-I originally addressed these practical challenges the hard way—with a quick-and-dirty web application. It’s spaghetti
+I originally addressed these practical challenges the hard way—with a quick-and-dirty web application. It was spaghetti
 code, never meant for public consumption, but it has served me well for over a year.
 
 Now, the time has come to share the useful parts publicly. To do that, I need to rewrite components that I can tolerate

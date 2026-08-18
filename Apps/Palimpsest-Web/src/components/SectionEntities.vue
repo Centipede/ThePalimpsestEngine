@@ -1,37 +1,33 @@
 <template>
-  <div class="section-entities">
-    <!-- fuzzy_answer is ignored for now per requirements -->
-    <sl-details v-if="hasEntities">
-      <div slot="summary" class="entities-header">Entities</div>
-      <div class="categories-grid">
-        <div v-for="category in sortedCategories" :key="category" class="category-column">
-          <p class="category-title">{{ categoryLabel(category) }}</p>
-          <div class="entities-list">
-            <template v-for="(entity, index) in entities.linked[category]" :key="`linked-${category}-${index}`">
-              <div class="entity-item">
-                {{ getSymbol(category) }} {{ entity.name }}
-              </div>
-            </template>
-            
-            <hr v-if="shouldShowHrAfterLinked(category)" />
+  <div v-if="hasEntities" class="section-entities">
+    <div class="categories-grid">
+      <div v-for="category in sortedCategories" :key="category" class="category-column">
+        <p class="category-title">{{ categoryLabel(category) }}</p>
+        <div class="entities-list">
+          <template v-for="(entity, index) in entities.linked[category]" :key="`linked-${category}-${index}`">
+            <div class="entity-item">
+              {{ getSymbol(category) }} {{ entity.name }}
+            </div>
+          </template>
+          
+          <hr v-if="shouldShowHrAfterLinked(category)" />
 
-            <template v-for="(entity, index) in entities.unlinked[category]" :key="`unlinked-${category}-${index}`">
-              <div class="entity-item">
-                {{ getSymbol(category) }} {{ entity.name }}
-              </div>
-            </template>
+          <template v-for="(entity, index) in entities.unlinked[category]" :key="`unlinked-${category}-${index}`">
+            <div class="entity-item">
+              {{ getSymbol(category) }} {{ entity.name }}
+            </div>
+          </template>
 
-            <hr v-if="shouldShowHrAfterUnlinked(category)" />
+          <hr v-if="shouldShowHrAfterUnlinked(category)" />
 
-            <template v-for="(entity, index) in entities.unlinkable[category]" :key="`unlinkable-${category}-${index}`">
-              <div class="entity-item">
-                {{ getSymbol(category) }} {{ entity.name }}
-              </div>
-            </template>
-          </div>
+          <template v-for="(entity, index) in entities.unlinkable[category]" :key="`unlinkable-${category}-${index}`">
+            <div class="entity-item">
+              {{ getSymbol(category) }} {{ entity.name }}
+            </div>
+          </template>
         </div>
       </div>
-    </sl-details>
+    </div>
   </div>
 </template>
 
@@ -92,28 +88,7 @@ const shouldShowHrAfterUnlinked = (category: string) => {
 <style scoped>
 .section-entities {
   margin-bottom: 2rem;
-}
-
-sl-details::part(base) {
-  border: 1px solid var(--sl-color-neutral-200);;
-  border-radius: 8px;
-  background: var(--sl-color-neutral-50);
-  overflow: hidden;
-}
-
-sl-details::part(header) {
-  padding: 0.75rem 1rem;
-}
-
-sl-details::part(content) {
-  padding: 1rem;
-  border-top: 1px solid var(--sl-color-neutral-200);
-  background: var(--sl-color-neutral-50);
-}
-
-.entities-header {
-  font-weight: 600;
-  color: var(--sl-color-lime-700);
+  text-align: left;
 }
 
 .categories-grid {

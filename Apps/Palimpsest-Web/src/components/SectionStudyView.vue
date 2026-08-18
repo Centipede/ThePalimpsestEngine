@@ -19,6 +19,36 @@
       </header>
 
       <div class="section-study__toolbar">
+
+        <sl-button-group class="overview-controls">
+          <sl-button
+              size="small"
+              :variant="showSummary ? 'primary' : 'default'"
+              @click="showSummary = !showSummary"
+              title="Toggle Summary"
+          >
+            <sl-icon name="card-heading"></sl-icon>
+          </sl-button>
+          <sl-button
+              size="small"
+              :variant="showSegmentsOverview ? 'primary' : 'default'"
+              @click="showSegmentsOverview = !showSegmentsOverview"
+              title="Toggle Segments Overview"
+          >
+            <sl-icon name="hdd-stack"></sl-icon>
+          </sl-button>
+          <sl-button
+              size="small"
+              :variant="showEntities ? 'primary' : 'default'"
+              @click="showEntities = !showEntities"
+              title="Toggle Entities"
+          >
+            <sl-icon name="people"></sl-icon>
+          </sl-button>
+        </sl-button-group>
+
+        <sl-divider vertical></sl-divider>
+
         <sl-button-group class="organise-toggle">
           <sl-button
               size="small"
@@ -41,33 +71,33 @@
 
         <sl-divider vertical></sl-divider>
 
+        <sl-button-group class="segment-controls">
+          <sl-tooltip content="Expand All Segments">
+            <sl-icon-button
+                name="plus-square"
+                label="Expand All Segments"
+                :disabled="organiseMode !== 'segmented'"
+                @click="expandAllSegments"
+            ></sl-icon-button>
+          </sl-tooltip>
+          <sl-tooltip content="Collapse All Segments">
+            <sl-icon-button
+                name="dash-square"
+                label="Collapse All Segments"
+                :disabled="organiseMode !== 'segmented'"
+                @click="collapseAllSegments"
+            ></sl-icon-button>
+          </sl-tooltip>
+        </sl-button-group>
+
+        <sl-divider vertical></sl-divider>
+
         <sl-button-group class="paragraph-controls">
           <sl-tooltip content="Expand All Paragraphs">
             <sl-icon-button name="arrows-expand" label="Expand All Paragraphs" @click="expandAllParagraphs"></sl-icon-button>
           </sl-tooltip>
           <sl-tooltip content="Collapse All Paragraphs">
             <sl-icon-button name="arrows-collapse" label="Collapse All Paragraphs" @click="collapseAllParagraphs"></sl-icon-button>
-          </sl-tooltip>
-        </sl-button-group>
-
-        <sl-divider vertical></sl-divider>
-
-        <sl-button-group class="segment-controls">
-          <sl-tooltip content="Expand All Segments">
-            <sl-icon-button
-              name="plus-square"
-              label="Expand All Segments"
-              :disabled="organiseMode !== 'segmented'"
-              @click="expandAllSegments"
-            ></sl-icon-button>
-          </sl-tooltip>
-          <sl-tooltip content="Collapse All Segments">
-            <sl-icon-button
-              name="dash-square"
-              label="Collapse All Segments"
-              :disabled="organiseMode !== 'segmented'"
-              @click="collapseAllSegments"
-            ></sl-icon-button>
           </sl-tooltip>
         </sl-button-group>
       </div>
@@ -79,8 +109,9 @@
           :root_section_pf="props.sectionPath"
       />
 
-      <SectionSummary v-if="data.section.info?.summary" :summary="data.section.info.summary"/>
-      <SectionEntities v-if="data.section.info?.entities" :entities="data.section.info.entities"/>
+      <SectionSummary v-if="showSummary && data.section.info?.summary" :summary="data.section.info.summary"/>
+      <SectionSegmentsOverview v-if="showSegmentsOverview && data.section.info?.summary?.paragraph_segments" :segments="data.section.info.summary.paragraph_segments"/>
+      <SectionEntities v-if="showEntities && data.section.info?.entities" :entities="data.section.info.entities"/>
 
       <article class="section-study__content">
 
@@ -160,6 +191,7 @@ import {computed, onMounted, ref, watch} from 'vue';
 import {apiFetch} from '../api';
 import type {SectionContentResponse, BookStructure, Section, FoldTrigger} from '../types/library';
 import SectionSummary from './SectionSummary.vue';
+import SectionSegmentsOverview from './SectionSegmentsOverview.vue';
 import SectionEntities from './SectionEntities.vue';
 import ContentBlockView from './ContentBlockView.vue';
 import TableOfContents from './TableOfContents.vue';
@@ -176,6 +208,10 @@ const error = ref('');
 const organiseMode = ref<'linear' | 'segmented'>('linear');
 const openSegments = ref<Record<number, boolean>>({});
 const paragraphFoldTrigger = ref<FoldTrigger>({ command: 'expand-all', count: 0 });
+
+const showSummary = ref(true);
+const showSegmentsOverview = ref(false);
+const showEntities = ref(false);
 
 function toggleSegment(index: number, isOpen: boolean) {
   openSegments.value[index] = isOpen;
