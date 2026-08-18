@@ -23,6 +23,14 @@
         <sl-button-group class="overview-controls">
           <sl-button
               size="small"
+              :variant="showTableOfContents ? 'primary' : 'default'"
+              @click="showTableOfContents = !showTableOfContents"
+              title="Toggle Table of Contents"
+          >
+            <sl-icon name="diagram-3"></sl-icon>
+          </sl-button>
+          <sl-button
+              size="small"
               :variant="showSummary ? 'primary' : 'default'"
               @click="showSummary = !showSummary"
               title="Toggle Summary"
@@ -103,7 +111,7 @@
       </div>
 
       <TableOfContents
-          v-if="props.bookStructure"
+          v-if="showTableOfContents && props.bookStructure"
           :flows="props.bookStructure.flows"
           :machine-name="props.machineName"
           :root_section_pf="props.sectionPath"
@@ -181,6 +189,7 @@
             </div>
           </div>
         </template>
+
       </article>
     </template>
   </div>
@@ -209,7 +218,8 @@ const organiseMode = ref<'linear' | 'segmented'>('linear');
 const openSegments = ref<Record<number, boolean>>({});
 const paragraphFoldTrigger = ref<FoldTrigger>({ command: 'expand-all', count: 0 });
 
-const showSummary = ref(true);
+const showTableOfContents = ref(true);
+const showSummary = ref(false);
 const showSegmentsOverview = ref(false);
 const showEntities = ref(false);
 
