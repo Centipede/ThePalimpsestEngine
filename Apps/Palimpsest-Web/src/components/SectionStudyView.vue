@@ -20,94 +20,132 @@
 
       <div class="section-study__toolbar">
 
-        <sl-button-group class="overview-controls">
-          <sl-button
-              size="small"
-              :variant="showTableOfContents ? 'primary' : 'default'"
-              @click="showTableOfContents = !showTableOfContents"
-              title="Toggle Table of Contents"
-          >
-            <sl-icon name="diagram-3"></sl-icon>
-          </sl-button>
-          <sl-button
-              size="small"
-              :variant="showSummary ? 'primary' : 'default'"
-              @click="showSummary = !showSummary"
-              title="Toggle Summary"
-          >
-            <sl-icon name="card-heading"></sl-icon>
-          </sl-button>
-          <sl-button
-              size="small"
-              :variant="showSegmentsOverview ? 'primary' : 'default'"
-              @click="showSegmentsOverview = !showSegmentsOverview"
-              title="Toggle Segments Overview"
-          >
-            <sl-icon name="hdd-stack"></sl-icon>
-          </sl-button>
-          <sl-button
-              size="small"
-              :variant="showEntities ? 'primary' : 'default'"
-              @click="showEntities = !showEntities"
-              title="Toggle Entities"
-          >
-            <sl-icon name="people"></sl-icon>
-          </sl-button>
-        </sl-button-group>
+        <div class="toolbar-infoleft" />
 
-        <sl-divider vertical></sl-divider>
+        <div class="tools-left">
+          <sl-dropdown stay-open-on-select>
+            <sl-button slot="trigger" size="small" caret>Summaries</sl-button>
+            <sl-menu>
+              <sl-menu-item type="checkbox" size="small" checked>General</sl-menu-item>
+              <sl-menu-item type="checkbox" size="small" checked>Annotations (#3+#17)</sl-menu-item>
+              <sl-menu-item type="checkbox" size="small" checked>Notes (Study #10)</sl-menu-item>
+            </sl-menu>
+          </sl-dropdown>
+        </div>
 
-        <sl-button-group class="organise-toggle">
-          <sl-button
-              size="small"
-              :variant="organiseMode === 'linear' ? 'primary' : 'default'"
-              @click="organiseMode = 'linear'"
-              title="Linear View"
-          >
-            <sl-icon name="list"></sl-icon>
-          </sl-button>
-          <sl-button
-              v-if="data.section.info?.summary?.paragraph_segments?.length"
-              size="small"
-              :variant="organiseMode === 'segmented' ? 'primary' : 'default'"
-              @click="organiseMode = 'segmented'"
-              title="Segmented View"
-          >
-            <sl-icon name="layers-half"></sl-icon>
-          </sl-button>
-        </sl-button-group>
+        <div class="tools-mid">
+          <sl-button-group>
+            <sl-button
+                size="small"
+                :variant="showTableOfContents ? 'primary' : 'default'"
+                @click="showTableOfContents = !showTableOfContents"
+                title="Toggle Table of Contents"
+            >
+              <sl-icon name="diagram-3"></sl-icon>
+            </sl-button>
+            <sl-button
+                size="small"
+                :variant="showSummary ? 'primary' : 'default'"
+                @click="showSummary = !showSummary"
+                title="Toggle Summary"
+            >
+              <sl-icon name="card-heading"></sl-icon>
+            </sl-button>
+            <sl-button
+                size="small"
+                :variant="showSegmentsOverview ? 'primary' : 'default'"
+                @click="showSegmentsOverview = !showSegmentsOverview"
+                title="Toggle Segments Overview"
+            >
+              <sl-icon name="hdd-stack"></sl-icon>
+            </sl-button>
+            <sl-button
+                size="small"
+                :variant="showEntities ? 'primary' : 'default'"
+                @click="showEntities = !showEntities"
+                title="Toggle Entities"
+            >
+              <sl-icon name="people"></sl-icon>
+            </sl-button>
+          </sl-button-group>
 
-        <sl-divider vertical></sl-divider>
+          <sl-divider vertical></sl-divider>
 
-        <sl-button-group class="segment-controls">
-          <sl-tooltip content="Expand All Segments">
-            <sl-icon-button
-                name="plus-square"
-                label="Expand All Segments"
-                :disabled="organiseMode !== 'segmented'"
-                @click="expandAllSegments"
-            ></sl-icon-button>
-          </sl-tooltip>
-          <sl-tooltip content="Collapse All Segments">
-            <sl-icon-button
-                name="dash-square"
-                label="Collapse All Segments"
-                :disabled="organiseMode !== 'segmented'"
-                @click="collapseAllSegments"
-            ></sl-icon-button>
-          </sl-tooltip>
-        </sl-button-group>
+            <sl-button-group>
+              <sl-button
+                  size="small"
+                  :variant="organiseMode === 'linear' ? 'primary' : 'default'"
+                  @click="organiseMode = 'linear'"
+                  title="Linear View"
+              >
+                <sl-icon name="list"></sl-icon>
+              </sl-button>
+              <sl-button
+                  v-if="data.section.info?.summary?.paragraph_segments?.length"
+                  size="small"
+                  :variant="organiseMode === 'segmented' ? 'primary' : 'default'"
+                  @click="organiseMode = 'segmented'"
+                  title="Segmented View"
+              >
+                <sl-icon name="layers-half"></sl-icon>
+              </sl-button>
+            </sl-button-group>
 
-        <sl-divider vertical></sl-divider>
+            <sl-button-group>
+              <sl-tooltip content="Expand All Segments">
+                <sl-icon-button
+                    name="plus-square"
+                    label="Expand All Segments"
+                    :disabled="organiseMode !== 'segmented'"
+                    @click="expandAllSegments"
+                ></sl-icon-button>
+              </sl-tooltip>
+              <sl-tooltip content="Collapse All Segments">
+                <sl-icon-button
+                    name="dash-square"
+                    label="Collapse All Segments"
+                    :disabled="organiseMode !== 'segmented'"
+                    @click="collapseAllSegments"
+                ></sl-icon-button>
+              </sl-tooltip>
+            </sl-button-group>
 
-        <sl-button-group class="paragraph-controls">
-          <sl-tooltip content="Expand All Paragraphs">
-            <sl-icon-button name="arrows-expand" label="Expand All Paragraphs" @click="expandAllParagraphs"></sl-icon-button>
-          </sl-tooltip>
-          <sl-tooltip content="Collapse All Paragraphs">
-            <sl-icon-button name="arrows-collapse" label="Collapse All Paragraphs" @click="collapseAllParagraphs"></sl-icon-button>
-          </sl-tooltip>
-        </sl-button-group>
+          <sl-divider vertical></sl-divider>
+
+          <sl-button-group>
+            <sl-tooltip content="Expand All Paragraphs">
+              <sl-icon-button name="arrows-expand" label="Expand All Paragraphs" @click="expandAllParagraphs"></sl-icon-button>
+            </sl-tooltip>
+            <sl-tooltip content="Collapse All Paragraphs">
+              <sl-icon-button name="arrows-collapse" label="Collapse All Paragraphs" @click="collapseAllParagraphs"></sl-icon-button>
+            </sl-tooltip>
+          </sl-button-group>
+
+          <sl-dropdown stay-open-on-select>
+            <sl-button slot="trigger" size="small" caret>Highlights</sl-button>
+            <sl-menu>
+              <sl-menu-item type="checkbox" size="small" checked>General</sl-menu-item>
+              <sl-menu-item type="checkbox" size="small" checked>Study #3</sl-menu-item>
+              <sl-menu-item type="checkbox" size="small" checked>Study #17</sl-menu-item>
+            </sl-menu>
+          </sl-dropdown>
+
+        </div>
+
+        <div class="tools-right">
+          <sl-dropdown stay-open-on-select>
+            <sl-button slot="trigger" size="small" caret>Entities</sl-button>
+            <sl-menu>
+              <sl-menu-item type="checkbox" size="small" checked>People</sl-menu-item>
+              <sl-menu-item type="checkbox" size="small" checked>Times</sl-menu-item>
+              <sl-menu-item type="checkbox" size="small" checked>Places</sl-menu-item>
+              <sl-menu-item type="checkbox" size="small" checked>Works</sl-menu-item>
+            </sl-menu>
+          </sl-dropdown>
+        </div>
+
+        <div class="toolbar-inforight" />
+
       </div>
 
       <TableOfContents
@@ -369,9 +407,12 @@ watch(() => props.sectionPath, fetchSection);
   background: var(--color-bg);
   padding: 0.25rem 0;
   margin-bottom: 1rem;
-  display: flex;
+  display: grid;
+  grid-template-columns: 80px 1fr 4fr 1fr 80px;
+  grid-template-areas: "infoleft summary content entities inforight";
   align-items: center;
-  gap: 0.25rem;
+
+  gap: 0.5rem;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -382,6 +423,37 @@ watch(() => props.sectionPath, fetchSection);
 
 .section-study__toolbar sl-icon-button {
   font-size: 1.1rem;
+}
+
+.toolbar-infoleft {
+  grid-area: infoleft;
+}
+
+.section-study__toolbar .tools-left {
+  grid-area: summary;
+  justify-self: start;
+}
+
+.section-study__toolbar .tools-mid {
+  grid-area: content;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.section-study__toolbar .tools-right {
+  grid-area: entities;
+  justify-self: end;
+}
+
+.toolbar-inforight {
+  grid-area: inforight;
+}
+
+.section-study__toolbar sl-dropdown sl-menu::part(base),
+.section-study__toolbar sl-dropdown sl-menu-item::part(base) {
+  font-size: 0.85rem;
 }
 
 .breadcrumb-link {
@@ -398,9 +470,6 @@ watch(() => props.sectionPath, fetchSection);
   display: flex;
   align-items: center;
   gap: 1.5rem;
-}
-
-.organise-toggle {
   margin-left: 0.5rem;
 }
 
@@ -471,9 +540,9 @@ watch(() => props.sectionPath, fetchSection);
 }
 
 .section-study__header {
-  margin-bottom: 1rem;
+  margin-bottom: 0.1rem;
   border-bottom: 1px solid var(--color-border, #e5e7eb);
-  padding-bottom: 1rem;
+  padding-bottom: 0.1rem;
 }
 
 .section-study__title {

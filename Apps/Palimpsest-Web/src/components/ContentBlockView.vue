@@ -1,19 +1,17 @@
 <template>
   <div :id="'block-' + block.path_id" class="content-block" :class="{ 'is-folded': isFolded }">
-    <!-- Leftmost: Toggle -->
-    <div class="block-toggle">
-      <sl-icon-button
-        :name="isFolded ? 'chevron-right' : 'chevron-down'"
-        label="Toggle Content"
-        size="small"
-        @click="isFolded = !isFolded"
-      ></sl-icon-button>
-    </div>
 
     <!-- Left outer: Block link -->
     <div class="block-info">
       <div class="block-link" title="{{ block.path_id }}">
-        Paragraph {{ index + 1 }}
+        ¶ {{ index + 1 }}
+        <sl-icon-button
+            :name="isFolded ? 'chevron-right' : 'chevron-down'"
+            label="Toggle Content"
+            size="small"
+            @click="isFolded = !isFolded"
+        ></sl-icon-button>
+
       </div>
     </div>
 
@@ -51,8 +49,6 @@
       </template>
     </div>
 
-    <!-- Rightmost: Spacer -->
-    <div class="block-spacer"></div>
   </div>
 </template>
 
@@ -105,8 +101,8 @@ const lastPage = computed(() => {
 <style scoped>
 .content-block {
   display: grid;
-  grid-template-columns: 20px 80px 1fr 4fr 1fr 80px 20px;
-  grid-template-areas: "toggle info summary content entities pages spacer";
+  grid-template-columns: 80px 1fr 4fr 1fr 80px;
+  grid-template-areas: "infoleft summary content entities inforight";
   grid-gap: 0.5rem;
   align-items: first baseline;
   width: 100%;
@@ -114,23 +110,16 @@ const lastPage = computed(() => {
 }
 
 .content-block.is-folded {
-  grid-template-columns: 20px 80px 1fr 80px 20px;
-  grid-template-areas: "toggle info summary pages spacer";
+  grid-template-columns: 80px 1fr 80px;
+  grid-template-areas: "infoleft summary inforight";
 }
 
 .content-block:last-child {
   border-bottom: none;
 }
 
-.block-toggle {
-  grid-area: toggle;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .block-info {
-  grid-area: info;
+  grid-area: infoleft;
   font-size: 0.85rem;
   line-height: 1.3;
   font-weight: 300;
@@ -174,7 +163,7 @@ const lastPage = computed(() => {
 }
 
 .block-pages {
-  grid-area: pages;
+  grid-area: inforight;
   font-size: 0.85rem;
   color: var(--sl-color-neutral-500);
   text-align: right;

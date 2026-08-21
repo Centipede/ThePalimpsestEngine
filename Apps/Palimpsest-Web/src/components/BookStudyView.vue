@@ -75,6 +75,7 @@ onMounted(async () => {
   padding: 0.1rem 1rem 0.1rem;
   display: flex;
   flex-direction: column;
+  border-right: 1px solid var(--sl-color-neutral-200);
 }
 
 .book-study__title-link {
