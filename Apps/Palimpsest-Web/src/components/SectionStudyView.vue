@@ -125,8 +125,6 @@
             <sl-button slot="trigger" size="small" caret>Highlights</sl-button>
             <sl-menu>
               <sl-menu-item type="checkbox" size="small" checked>General</sl-menu-item>
-              <sl-menu-item type="checkbox" size="small" checked>Study #3</sl-menu-item>
-              <sl-menu-item type="checkbox" size="small" checked>Study #17</sl-menu-item>
             </sl-menu>
           </sl-dropdown>
 

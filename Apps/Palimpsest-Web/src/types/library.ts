@@ -57,20 +57,25 @@ export interface InfoRecord {
     of_content_pi: string;
     in_section_pf: string;
     in_book_mn: string;
-    kind: 'summary' | 'named_entities' | string;
+    kind: 'summary' | 'named_entities' | 'emphasis' | string;
     source: string;
     created_at: string;
     created_info: any;
-    content_js: SummaryInfoContent | EntitiesInfoContent | any;
+    content_js: ContentSummary | ContentEntities | ContentEmphasis | any;
     valid: boolean;
     validated_at: string | null;
     version_info: Record<string, any>;
     of_content: number;
 }
 
-export interface SummaryInfoContent {
+export interface ContentSummary {
     caption: string;
     summary: string;
+}
+
+export interface ContentEmphasis {
+    color: string;
+    fragment: string;
 }
 
 export interface EntityInfo {
@@ -80,7 +85,7 @@ export interface EntityInfo {
     description: string;
 }
 
-export interface EntitiesInfoContent {
+export interface ContentEntities {
     entities: {
         times: EntityInfo[];
         works: EntityInfo[];
@@ -154,6 +159,20 @@ export interface BookStructure {
 export interface FoldTrigger {
     command: 'expand-all' | 'collapse-all';
     count: number;
+}
+
+export interface Highlight {
+    id: string;
+    start: number;
+    end: number;
+    color: string;
+    distance: number;
+}
+
+export interface TextSegment {
+    start: number;
+    end: number;
+    highlights: Highlight[];
 }
 
 

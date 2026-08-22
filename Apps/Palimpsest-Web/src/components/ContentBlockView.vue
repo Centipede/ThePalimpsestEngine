@@ -30,7 +30,19 @@
 
       <!-- Center: Content -->
       <div class="block-content">
-        <div class="content-text">{{ block.content_text }}</div>
+        <div>
+          <sl-input ref="inputQuote1" size="small" placeholder="Quote 1" @sl-input="handleSearch(($event.target as any).value, 1)"></sl-input>
+          <sl-input ref="inputQuote2" size="small" placeholder="Quote 2" @sl-input="handleSearch(($event.target as any).value, 2)"></sl-input>
+        </div>
+        <div class="content-text">
+          <span
+              v-for="segment in segments"
+              :key="`${segment.start}-${segment.end}`"
+              :style="{ backgroundColor: segment.highlights.length > 0 ? 'yellow' : 'transparent' }"
+          >
+            {{ block.content_text.slice(segment.start, segment.end) }}
+          </span>
+        </div>
       </div>
 
       <!-- Right inner: Entities -->
@@ -54,7 +66,9 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import type { ContentBlock, SummaryInfoContent, EntitiesInfoContent, FoldTrigger } from '../types/library';
+import { fuzzySearch } from 'levenshtein-search';
+import type { ContentBlock, ContentSummary, ContentEntities, FoldTrigger, Highlight } from '../types/library';
+import { computeSegments } from '../utils/text';
 
 const props = defineProps<{
   block: ContentBlock;
@@ -76,17 +90,17 @@ watch(() => props.foldTrigger?.count, () => {
 
 const summaryCaption = computed(() => {
   const record = props.block.inforecords.find(r => r.kind === 'summary');
-  return (record?.content_js as SummaryInfoContent)?.caption;
+  return (record?.content_js as ContentSummary)?.caption;
 });
 
 const summaryText = computed(() => {
   const record = props.block.inforecords.find(r => r.kind === 'summary');
-  return (record?.content_js as SummaryInfoContent)?.summary;
+  return (record?.content_js as ContentSummary)?.summary;
 });
 
 const entitiesFuzzy = computed(() => {
   const record = props.block.inforecords.find(r => r.kind === 'named_entities');
-  return (record?.content_js as EntitiesInfoContent)?.entities?.fuzzy_answer;
+  return (record?.content_js as ContentEntities)?.entities?.fuzzy_answer;
 });
 
 const firstPage = computed(() => {
@@ -96,6 +110,51 @@ const firstPage = computed(() => {
 const lastPage = computed(() => {
   return props.block.content_json?.last_page?.page_number || props.block.content_json?.last_block;
 });
+
+const activeHighlights = ref<Record<number, Highlight>>({});
+
+const segments = computed(() => {
+  return computeSegments(props.block.content_text, Object.values(activeHighlights.value));
+});
+
+watch(
+    segments,
+    (newSegments) => {
+      console.log(`Segments for block ${props.block.path_id}:`, newSegments);
+    },
+    { immediate: true }
+);
+
+
+function handleSearch(query: string, quoteIndex: number) {
+
+  if (!query || query.length < 3) {
+    if (activeHighlights.value[quoteIndex]) {
+      delete activeHighlights.value[quoteIndex];
+    }
+    return;
+  }
+
+  const maxDist = 2;
+  let matches = [...fuzzySearch(query, props.block.content_text, maxDist)];
+
+  if (matches.length > 0) {
+    let ranked = [...matches].sort((a, b) => a.dist - b.dist);
+    let best = ranked[0];
+    
+    activeHighlights.value[quoteIndex] = {
+      id: `quote-${quoteIndex}`,
+      start: best.start,
+      end: best.end,
+      color: quoteIndex === 1 ? 'yellow' : 'lime',
+      distance: best.dist
+    };
+  } else if (activeHighlights.value[quoteIndex]) {
+    delete activeHighlights.value[quoteIndex];
+  }
+
+
+}
 </script>
 
 <style scoped>
