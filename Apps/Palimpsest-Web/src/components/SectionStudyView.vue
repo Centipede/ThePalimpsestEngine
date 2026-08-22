@@ -25,10 +25,17 @@
         <div class="tools-left">
           <sl-dropdown stay-open-on-select>
             <sl-button slot="trigger" size="small" caret>Summaries</sl-button>
-            <sl-menu>
-              <sl-menu-item type="checkbox" size="small" checked>General</sl-menu-item>
-              <sl-menu-item type="checkbox" size="small" checked>Annotations (#3+#17)</sl-menu-item>
-              <sl-menu-item type="checkbox" size="small" checked>Notes (Study #10)</sl-menu-item>
+            <sl-menu @sl-select="handleToolbarSelect('info-left', $event)">
+              <sl-menu-item
+                  v-for="item in availableInfoLeft"
+                  :key="item.type"
+                  :value="item.type"
+                  type="checkbox"
+                  size="small"
+                  :checked="item.checked"
+              >
+                {{ item.name }}
+              </sl-menu-item>
             </sl-menu>
           </sl-dropdown>
         </div>
@@ -123,10 +130,17 @@
 
           <sl-dropdown stay-open-on-select>
             <sl-button slot="trigger" size="small" caret>Highlights</sl-button>
-            <sl-menu>
-              <sl-menu-item type="checkbox" size="small" checked>General</sl-menu-item>
-              <sl-menu-item type="checkbox" size="small" checked>Study #3</sl-menu-item>
-              <sl-menu-item type="checkbox" size="small" checked>Study #17</sl-menu-item>
+            <sl-menu @sl-select="handleToolbarSelect('highlights', $event)">
+              <sl-menu-item
+                  v-for="item in availableHighlights"
+                  :key="item.type"
+                  :value="item.type"
+                  type="checkbox"
+                  size="small"
+                  :checked="item.checked"
+              >
+                {{ item.name }}
+              </sl-menu-item>
             </sl-menu>
           </sl-dropdown>
 
@@ -135,11 +149,17 @@
         <div class="tools-right">
           <sl-dropdown stay-open-on-select>
             <sl-button slot="trigger" size="small" caret>Entities</sl-button>
-            <sl-menu>
-              <sl-menu-item type="checkbox" size="small" checked>People</sl-menu-item>
-              <sl-menu-item type="checkbox" size="small" checked>Times</sl-menu-item>
-              <sl-menu-item type="checkbox" size="small" checked>Places</sl-menu-item>
-              <sl-menu-item type="checkbox" size="small" checked>Works</sl-menu-item>
+            <sl-menu @sl-select="handleToolbarSelect('info-right', $event)">
+              <sl-menu-item
+                  v-for="item in availableInfoRight"
+                  :key="item.type"
+                  :value="item.type"
+                  type="checkbox"
+                  size="small"
+                  :checked="item.checked"
+              >
+                {{ item.name }}
+              </sl-menu-item>
             </sl-menu>
           </sl-dropdown>
         </div>
@@ -168,6 +188,7 @@
               :block="block"
               :index="index"
               :fold-trigger="paragraphFoldTrigger"
+              :available-highlights="availableHighlights"
           />
         </template>
 
@@ -211,6 +232,7 @@
                       :block="entry.block"
                       :index="entry.index"
                       :fold-trigger="paragraphFoldTrigger"
+                      :available-highlights="availableHighlights"
                   />
                 </template>
               </div>
@@ -224,6 +246,7 @@
                   :block="entry.block"
                   :index="entry.index"
                   :fold-trigger="paragraphFoldTrigger"
+                  :available-highlights="availableHighlights"
               />
             </div>
           </div>
@@ -237,7 +260,7 @@
 <script setup lang="ts">
 import {computed, onMounted, ref, watch} from 'vue';
 import {apiFetch} from '../api';
-import type {SectionContentResponse, BookStructure, Section, FoldTrigger} from '../types/library';
+import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle} from '../types/library';
 import SectionSummary from './SectionSummary.vue';
 import SectionSegmentsOverview from './SectionSegmentsOverview.vue';
 import SectionEntities from './SectionEntities.vue';
@@ -256,6 +279,51 @@ const error = ref('');
 const organiseMode = ref<'linear' | 'segmented'>('linear');
 const openSegments = ref<Record<number, boolean>>({});
 const paragraphFoldTrigger = ref<FoldTrigger>({ command: 'expand-all', count: 0 });
+
+const availableInfoLeft = ref<ToolbarToggle[]>([
+  { name: 'General', type: 'general', checked: true },
+  { name: 'Annotations (#3+#17)', type: 'annotations', checked: true },
+  { name: 'Notes (Study #10)', type: 'notes', checked: true },
+]);
+
+const availableHighlights = ref<ToolbarToggle[]>([
+  { name: 'Summary Quotes', type: 'summary-quotes', checked: true },
+]);
+
+const availableInfoRight = ref<ToolbarToggle[]>([
+  { name: 'People', type: 'people', checked: true },
+  { name: 'Times', type: 'times', checked: true },
+  { name: 'Places', type: 'places', checked: true },
+  { name: 'Works', type: 'works', checked: true },
+]);
+
+type ToolbarToggleGroup = 'info-left' | 'highlights' | 'info-right';
+
+function handleToolbarSelect(group: ToolbarToggleGroup, event: Event) {
+  const selectedItem = (event as CustomEvent<{ item: HTMLElement }>).detail.item as HTMLElement & {
+    value: string;
+    checked: boolean;
+  };
+
+  setToolbarToggle(group, selectedItem.value, selectedItem.checked);
+}
+
+function setToolbarToggle(
+    group: ToolbarToggleGroup,
+    type: string,
+    checked: boolean
+) {
+  const update = (items: ToolbarToggle[]) =>
+      items.map(item => item.type === type ? { ...item, checked } : item);
+
+  if (group === 'info-left') {
+    availableInfoLeft.value = update(availableInfoLeft.value);
+  } else if (group === 'highlights') {
+    availableHighlights.value = update(availableHighlights.value);
+  } else {
+    availableInfoRight.value = update(availableInfoRight.value);
+  }
+}
 
 const showTableOfContents = ref(true);
 const showSummary = ref(true);
