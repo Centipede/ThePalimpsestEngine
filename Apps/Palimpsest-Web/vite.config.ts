@@ -36,6 +36,10 @@ export default defineConfig(({ mode }) => {
           target: `http://${env.TESTSERVER_HOST}:${env.TESTSERVER_PORT}`,
           changeOrigin: true,
         },
+        '/teststudy': {
+          target: `http://${env.TESTSERVER_HOST}:${env.TESTSERVER_PORT}`,
+          changeOrigin: true,
+        },
         '/media': {
           target: `http://${env.TESTSERVER_HOST}:${env.TESTSERVER_PORT}`,
           changeOrigin: true,
