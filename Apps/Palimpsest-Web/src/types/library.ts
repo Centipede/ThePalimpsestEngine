@@ -175,6 +175,12 @@ export interface TextSegment {
     mixedColor?: string;
 }
 
+export interface ToolbarToggle {
+    name: string;
+    type: string;
+    checked: boolean;
+}
+
 
 
 

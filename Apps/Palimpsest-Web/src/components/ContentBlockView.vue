@@ -62,14 +62,23 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import type { ContentBlock, ContentSummary, ContentEntities, FoldTrigger, Highlight, ContentEmphasis } from '../types/library';
+import type { ContentBlock, ContentSummary, ContentEntities, FoldTrigger, Highlight, ContentEmphasis, ToolbarToggle } from '../types/library';
 import { computeSegments, searchForFragments } from '../utils/text';
 
 const props = defineProps<{
   block: ContentBlock;
   index: number;
   foldTrigger?: FoldTrigger;
+  availableHighlights?: ToolbarToggle[];
 }>();
+
+watch(
+    () => props.availableHighlights,
+    value => {
+      console.log('availableHighlights changed in ContentBlockView:', value);
+    },
+    { deep: true }
+);
 
 const isFolded = ref(false);
 
@@ -107,14 +116,16 @@ const lastPage = computed(() => {
 });
 
 const allHighlights = computed(() => {
-  const emphasisHighlights = props.block.inforecords
+  const showSummaryQuotes = props.availableHighlights?.find(h => h.type === 'summary-quotes')?.checked ?? true;
+
+  const emphasisHighlights = showSummaryQuotes ? props.block.inforecords
     .filter(r => r.kind === 'emphasis')
     .flatMap(r => {
       const content = r.content_js as ContentEmphasis;
       if (!content.fragment) return [];
 
       return searchForFragments(props.block.content_text, content.fragment, content.color || 'green');
-    });
+    }) : [];
 
   const entityQuoteHighlights: Highlight[] = []; // Placeholder
   const studyAnnotations: Highlight[] = []; // Placeholder
