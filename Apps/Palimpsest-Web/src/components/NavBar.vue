@@ -5,7 +5,7 @@
         <RouterLink to="/study" custom v-slot="{ navigate, isActive }">
           <sl-icon-button
             :name="isActive ? 'house-fill' : 'house'"
-            label="Study"
+            label="Home"
             style="font-size: 1.5rem;"
             @click="navigate"
           ></sl-icon-button>
@@ -17,16 +17,6 @@
       <div class="nav-end-tools-portal"></div>
 
       <div class="nav-end">
-        <sl-dropdown v-if="isStaff" @sl-select="(e: Event) => router.push((e as CustomEvent).detail.item.value)">
-          <sl-icon-button slot="trigger" name="list" label="Menu"></sl-icon-button>
-          <sl-menu>
-            <sl-menu-item value="/admin">
-              <sl-icon slot="prefix" name="shield-lock"></sl-icon>
-              Admin
-            </sl-menu-item>
-          </sl-menu>
-        </sl-dropdown>
-
         <sl-icon-button
           v-if="isAuthenticated"
           name="box-arrow-right"
@@ -35,7 +25,7 @@
         ></sl-icon-button>
         <sl-icon-button
           v-else
-          name="box-arrow-in-right"
+          name="box-arrow-left"
           label="Log in"
           @click="router.push('/')"
         ></sl-icon-button>
@@ -54,6 +44,16 @@
             <sl-menu-item value="dark">
               <sl-icon slot="prefix" name="moon"></sl-icon>
               Dark
+            </sl-menu-item>
+          </sl-menu>
+        </sl-dropdown>
+
+        <sl-dropdown v-if="isStaff" @sl-select="(e: Event) => router.push((e as CustomEvent).detail.item.value)">
+          <sl-icon-button slot="trigger" name="list" label="Menu"></sl-icon-button>
+          <sl-menu>
+            <sl-menu-item value="/admin">
+              <sl-icon slot="prefix" name="shield-lock"></sl-icon>
+              Admin
             </sl-menu-item>
           </sl-menu>
         </sl-dropdown>
@@ -116,7 +116,7 @@ nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.1rem 1rem 0.5rem 0.25rem;
+  padding: 0.1rem 1rem 0.5rem 0;
   height: 100%;
 }
 

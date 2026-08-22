@@ -258,7 +258,7 @@ const openSegments = ref<Record<number, boolean>>({});
 const paragraphFoldTrigger = ref<FoldTrigger>({ command: 'expand-all', count: 0 });
 
 const showTableOfContents = ref(true);
-const showSummary = ref(false);
+const showSummary = ref(true);
 const showSegmentsOverview = ref(false);
 const showEntities = ref(false);
 
