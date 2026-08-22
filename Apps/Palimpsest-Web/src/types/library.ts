@@ -162,7 +162,6 @@ export interface FoldTrigger {
 }
 
 export interface Highlight {
-    id: string;
     start: number;
     end: number;
     color: string;

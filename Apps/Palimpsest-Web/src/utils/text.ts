@@ -1,3 +1,4 @@
+import { fuzzySearch } from 'levenshtein-search';
 import type { Highlight, TextSegment } from '../types/library';
 
 /**
@@ -80,4 +81,40 @@ export function computeSegments(text: string, highlights: Highlight[]): TextSegm
   }
   
   return segments;
+}
+
+/**
+ * Searches for a fragment in a text, potentially split by ellipsis (... or …).
+ * Returns an array of highlights, one for each part of the split fragment.
+ */
+export function searchForFragments(text: string, fragment: string, color: string): Highlight[] {
+  // Split the fragment by ... or unicode …
+  const parts = fragment.split(/\.\.\.|\u2026/).map(p => p.trim()).filter(p => p.length > 0);
+  const highlights: Highlight[] = [];
+  let lastIndex = 0;
+
+  for (const part of parts) {
+    // Search in the text starting from the end of the previous match
+    const searchArea = text.slice(lastIndex);
+    // Use a fuzzy distance of 3, but capped at half the length for very short parts
+    const maxDist = Math.min(3, Math.floor(part.length / 2));
+    const matches = [...fuzzySearch(part, searchArea, maxDist)];
+
+    if (matches.length > 0) {
+      // Find the best match (lowest distance) in the current search area
+      const best = matches.sort((a, b) => a.dist - b.dist)[0];
+      
+      highlights.push({
+        start: lastIndex + best.start,
+        end: lastIndex + best.end,
+        color: color,
+        distance: best.dist
+      });
+      
+      // Update lastIndex to ensure sequential searching
+      lastIndex += best.end;
+    }
+  }
+
+  return highlights;
 }

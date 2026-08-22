@@ -62,9 +62,8 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { fuzzySearch } from 'levenshtein-search';
 import type { ContentBlock, ContentSummary, ContentEntities, FoldTrigger, Highlight, ContentEmphasis } from '../types/library';
-import { computeSegments } from '../utils/text';
+import { computeSegments, searchForFragments } from '../utils/text';
 
 const props = defineProps<{
   block: ContentBlock;
@@ -113,20 +112,8 @@ const allHighlights = computed(() => {
     .flatMap(r => {
       const content = r.content_js as ContentEmphasis;
       if (!content.fragment) return [];
-      
-      const matches = [...fuzzySearch(content.fragment, props.block.content_text, 10)];
-      console.log('matches', matches, ' for ... ', content.fragment);
-      if (matches.length > 0) {
-        const best = matches.sort((a, b) => a.dist - b.dist)[0];
-        return [{
-          id: `emphasis-${r.id}`,
-          start: best.start,
-          end: best.end,
-          color: content.color || 'yellow',
-          distance: best.dist
-        } as Highlight];
-      }
-      return [];
+
+      return searchForFragments(props.block.content_text, content.fragment, content.color || 'green');
     });
 
   const entityQuoteHighlights: Highlight[] = []; // Placeholder
