@@ -30,15 +30,11 @@
 
       <!-- Center: Content -->
       <div class="block-content">
-        <div>
-          <sl-input ref="inputQuote1" size="small" placeholder="Quote 1" @sl-input="handleSearch(($event.target as any).value, 1)"></sl-input>
-          <sl-input ref="inputQuote2" size="small" placeholder="Quote 2" @sl-input="handleSearch(($event.target as any).value, 2)"></sl-input>
-        </div>
         <div class="content-text">
           <span
               v-for="segment in segments"
               :key="`${segment.start}-${segment.end}`"
-              :style="{ backgroundColor: segment.highlights.length > 0 ? 'yellow' : 'transparent' }"
+              :style="{ backgroundImage: segment.mixedColor }"
           >
             {{ block.content_text.slice(segment.start, segment.end) }}
           </span>
@@ -67,7 +63,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { fuzzySearch } from 'levenshtein-search';
-import type { ContentBlock, ContentSummary, ContentEntities, FoldTrigger, Highlight } from '../types/library';
+import type { ContentBlock, ContentSummary, ContentEntities, FoldTrigger, Highlight, ContentEmphasis } from '../types/library';
 import { computeSegments } from '../utils/text';
 
 const props = defineProps<{
@@ -111,10 +107,36 @@ const lastPage = computed(() => {
   return props.block.content_json?.last_page?.page_number || props.block.content_json?.last_block;
 });
 
-const activeHighlights = ref<Record<number, Highlight>>({});
+const allHighlights = computed(() => {
+  const emphasisHighlights = props.block.inforecords
+    .filter(r => r.kind === 'emphasis')
+    .flatMap(r => {
+      const content = r.content_js as ContentEmphasis;
+      if (!content.fragment) return [];
+      
+      const matches = [...fuzzySearch(content.fragment, props.block.content_text, 10)];
+      console.log('matches', matches, ' for ... ', content.fragment);
+      if (matches.length > 0) {
+        const best = matches.sort((a, b) => a.dist - b.dist)[0];
+        return [{
+          id: `emphasis-${r.id}`,
+          start: best.start,
+          end: best.end,
+          color: content.color || 'yellow',
+          distance: best.dist
+        } as Highlight];
+      }
+      return [];
+    });
+
+  const entityQuoteHighlights: Highlight[] = []; // Placeholder
+  const studyAnnotations: Highlight[] = []; // Placeholder
+
+  return [...emphasisHighlights, ...entityQuoteHighlights, ...studyAnnotations];
+});
 
 const segments = computed(() => {
-  return computeSegments(props.block.content_text, Object.values(activeHighlights.value));
+  return computeSegments(props.block.content_text, allHighlights.value);
 });
 
 watch(
@@ -126,35 +148,7 @@ watch(
 );
 
 
-function handleSearch(query: string, quoteIndex: number) {
 
-  if (!query || query.length < 3) {
-    if (activeHighlights.value[quoteIndex]) {
-      delete activeHighlights.value[quoteIndex];
-    }
-    return;
-  }
-
-  const maxDist = 2;
-  let matches = [...fuzzySearch(query, props.block.content_text, maxDist)];
-
-  if (matches.length > 0) {
-    let ranked = [...matches].sort((a, b) => a.dist - b.dist);
-    let best = ranked[0];
-    
-    activeHighlights.value[quoteIndex] = {
-      id: `quote-${quoteIndex}`,
-      start: best.start,
-      end: best.end,
-      color: quoteIndex === 1 ? 'yellow' : 'lime',
-      distance: best.dist
-    };
-  } else if (activeHighlights.value[quoteIndex]) {
-    delete activeHighlights.value[quoteIndex];
-  }
-
-
-}
 </script>
 
 <style scoped>

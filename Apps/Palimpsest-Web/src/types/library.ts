@@ -173,6 +173,7 @@ export interface TextSegment {
     start: number;
     end: number;
     highlights: Highlight[];
+    mixedColor?: string;
 }
 
 
