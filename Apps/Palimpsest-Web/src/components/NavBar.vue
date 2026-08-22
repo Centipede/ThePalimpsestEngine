@@ -3,15 +3,12 @@
     <nav>
       <div class="nav-start">
         <RouterLink to="/study" custom v-slot="{ navigate, isActive }">
-          <sl-button :variant="isActive ? 'primary' : 'text'" @click="navigate">
-            Study
-          </sl-button>
-        </RouterLink>
-
-        <RouterLink to="/admin" custom v-slot="{ navigate, isActive }">
-          <sl-button :variant="isActive ? 'primary' : 'text'" @click="navigate">
-            Admin
-          </sl-button>
+          <sl-icon-button
+            :name="isActive ? 'house-fill' : 'house'"
+            label="Home"
+            style="font-size: 1.5rem;"
+            @click="navigate"
+          ></sl-icon-button>
         </RouterLink>
       </div>
 
@@ -20,7 +17,19 @@
       <div class="nav-end-tools-portal"></div>
 
       <div class="nav-end">
-        <sl-button @click="logout_and_redirect">Log out</sl-button>
+        <sl-icon-button
+          v-if="isAuthenticated"
+          name="box-arrow-right"
+          label="Log out"
+          @click="logout_and_redirect"
+        ></sl-icon-button>
+        <sl-icon-button
+          v-else
+          name="box-arrow-left"
+          label="Log in"
+          @click="router.push('/')"
+        ></sl-icon-button>
+
         <sl-dropdown @sl-select="(e: Event) => setTheme((e as CustomEvent).detail.item.value)">
           <sl-icon-button slot="trigger" :name="themeIcon" label="Theme"></sl-icon-button>
           <sl-menu>
@@ -38,6 +47,16 @@
             </sl-menu-item>
           </sl-menu>
         </sl-dropdown>
+
+        <sl-dropdown v-if="isStaff" @sl-select="(e: Event) => router.push((e as CustomEvent).detail.item.value)">
+          <sl-icon-button slot="trigger" name="list" label="Menu"></sl-icon-button>
+          <sl-menu>
+            <sl-menu-item value="/admin">
+              <sl-icon slot="prefix" name="shield-lock"></sl-icon>
+              Admin
+            </sl-menu-item>
+          </sl-menu>
+        </sl-dropdown>
       </div>
     </nav>
   </header>
@@ -49,7 +68,7 @@ import {RouterLink, useRouter} from 'vue-router';
 import {useAuth} from "../composables/useAuth.ts";
 
 const router = useRouter();
-const { logout } = useAuth();
+const { logout, isAuthenticated, isStaff } = useAuth();
 
 const ICONS: Record<string, string> = { light: 'sun', system: 'circle-half', dark: 'moon' };
 
@@ -97,7 +116,7 @@ nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem 1rem;
+  padding: 0.1rem 1rem 0.5rem 0;
   height: 100%;
 }
 
@@ -120,10 +139,15 @@ nav {
   gap: 0.25rem;
 }
 
-.nav-start,
+.nav-start {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .nav-end {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.5rem;
 }
 </style>

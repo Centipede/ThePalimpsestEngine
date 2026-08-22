@@ -1,9 +1,5 @@
 <template>
-  <sl-details
-      class="toc-wrapper toc-wrapper--details"
-      open
-  >
-    <div v-if="props.root_section_pf" slot="summary" class="toc-summary">Sections</div>
+  <div class="toc-wrapper">
     <div class="toc">
       <div
         v-for="entry in allEntries"
@@ -34,7 +30,7 @@
         <span class="toc__badge toc__badge--qa" title="Questions &amp; Answers">Q&A</span>
       </div>
     </div>
-  </sl-details>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -163,29 +159,14 @@ function isVisible(entry: TocEntry): boolean {
 </script>
 
 <style scoped>
-.toc-wrapper--details {
+.toc-wrapper {
   margin-bottom: 2rem;
-}
-
-sl-details::part(base) {
-  border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: 8px;
-  background: var(--color-bg, #ffffff);
-  overflow: hidden;
-}
-
-sl-details::part(header) {
-  padding: 0.75rem 1rem;
-}
-
-sl-details::part(content) {
-  padding: 0;
-  border-top: 1px solid var(--color-border, #e5e7eb);
 }
 
 .toc-summary {
   font-weight: 600;
   color: var(--color-text, #111827);
+  padding: 0.5rem 1rem;
 }
 
 .toc {
@@ -274,7 +255,6 @@ sl-details::part(content) {
   flex-shrink: 0;
   display: inline-block;
   padding: 0.1em 0.45em;
-  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
   border-radius: 999px;
   font-size: 0.6875rem;
   font-weight: 500;

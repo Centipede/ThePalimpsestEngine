@@ -1,37 +1,43 @@
 <template>
-  <div :id="'block-' + block.path_id" class="content-block">
-    <!-- Leftmost: Toggle -->
-    <div class="block-toggle">
-      <sl-icon-button
-        :name="isFolded ? 'chevron-right' : 'chevron-down'"
-        label="Toggle Content"
-        size="small"
-        @click="isFolded = !isFolded"
-      ></sl-icon-button>
-    </div>
+  <div :id="'block-' + block.path_id" class="content-block" :class="{ 'is-folded': isFolded }">
 
     <!-- Left outer: Block link -->
     <div class="block-info">
-      <div class="block-link">
-        Paragraph {{ index + 1 }}<br>
-        {{ block.path_id }}
+      <div class="block-link" title="{{ block.path_id }}">
+        ¶ {{ index + 1 }}
+        <sl-icon-button
+            :name="isFolded ? 'chevron-right' : 'chevron-down'"
+            label="Toggle Content"
+            size="small"
+            @click="isFolded = !isFolded"
+        ></sl-icon-button>
+
       </div>
     </div>
 
-    <!-- Left inner: Summary (caption) -->
-    <div class="block-summary">
-      <small v-if="summaryCaption"><i>{{ summaryCaption }}</i></small>
-    </div>
+    <template v-if="isFolded">
+      <!-- Center: Wide Summary (folded) -->
+      <div class="block-summary">
+        <span v-if="summaryText"><i>{{ summaryText }}</i></span>
+      </div>
+    </template>
 
-    <!-- Center: Content -->
-    <div v-show="!isFolded" class="block-content">
-      <div class="content-text">{{ block.content_text }}</div>
-    </div>
+    <template v-else>
+      <!-- Left inner: Summary (caption) -->
+      <div class="block-summary">
+        <small v-if="summaryCaption"><i>{{ summaryCaption }}</i></small>
+      </div>
 
-    <!-- Right inner: Entities -->
-    <div v-show="!isFolded" class="block-entities">
-      <small v-if="entitiesFuzzy"><i>{{ entitiesFuzzy }}</i></small>
-    </div>
+      <!-- Center: Content -->
+      <div class="block-content">
+        <div class="content-text">{{ block.content_text }}</div>
+      </div>
+
+      <!-- Right inner: Entities -->
+      <div class="block-entities">
+        <small v-if="entitiesFuzzy"><i>{{ entitiesFuzzy }}</i></small>
+      </div>
+    </template>
 
     <!-- Right outer: Page link -->
     <div class="block-pages">
@@ -43,25 +49,39 @@
       </template>
     </div>
 
-    <!-- Rightmost: Spacer -->
-    <div class="block-spacer"></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import type { ContentBlock, SummaryInfoContent, EntitiesInfoContent } from '../types/library';
+import { computed, ref, watch } from 'vue';
+import type { ContentBlock, SummaryInfoContent, EntitiesInfoContent, FoldTrigger } from '../types/library';
 
 const props = defineProps<{
   block: ContentBlock;
   index: number;
+  foldTrigger?: FoldTrigger;
 }>();
 
 const isFolded = ref(false);
 
+watch(() => props.foldTrigger?.count, () => {
+  if (props.foldTrigger) {
+    if (props.foldTrigger.command === 'expand-all') {
+      isFolded.value = false;
+    } else if (props.foldTrigger.command === 'collapse-all') {
+      isFolded.value = true;
+    }
+  }
+});
+
 const summaryCaption = computed(() => {
   const record = props.block.inforecords.find(r => r.kind === 'summary');
   return (record?.content_js as SummaryInfoContent)?.caption;
+});
+
+const summaryText = computed(() => {
+  const record = props.block.inforecords.find(r => r.kind === 'summary');
+  return (record?.content_js as SummaryInfoContent)?.summary;
 });
 
 const entitiesFuzzy = computed(() => {
@@ -81,47 +101,56 @@ const lastPage = computed(() => {
 <style scoped>
 .content-block {
   display: grid;
-  grid-template-columns: 30px 100px 1fr 4fr 1fr 70px 30px;
-  grid-gap: 1.5rem;
+  grid-template-columns: 80px 1fr 4fr 1fr 80px;
+  grid-template-areas: "infoleft summary content entities inforight";
+  grid-gap: 0.5rem;
   align-items: first baseline;
   width: 100%;
-  padding: 1rem 0;
-  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  padding: 0.5rem 0;
+}
+
+.content-block.is-folded {
+  grid-template-columns: 80px 1fr 80px;
+  grid-template-areas: "infoleft summary inforight";
 }
 
 .content-block:last-child {
   border-bottom: none;
 }
 
-.block-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .block-info {
-  font-size: 0.75rem;
+  grid-area: infoleft;
+  font-size: 0.85rem;
   line-height: 1.3;
+  font-weight: 300;
 }
 
 .block-link {
   color: var(--sl-color-success-700);
-  font-weight: 600;
   text-decoration: none;
 }
 
-.block-summary, .block-entities {
+.block-summary {
+  grid-area: summary;
+  color: var(--sl-color-neutral-500);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  word-break: break-word;
+  font-weight: 400;
+}
+
+.block-entities {
+  grid-area: entities;
   color: var(--sl-color-neutral-600);
   font-size: 0.875rem;
   line-height: 1.4;
   word-break: break-word;
-}
-
-.block-entities {
   white-space: pre-wrap;
+  font-weight: 400;
 }
 
 .block-content {
+  grid-area: content;
   width: 100%;
 }
 
@@ -134,15 +163,16 @@ const lastPage = computed(() => {
 }
 
 .block-pages {
-  grid-column: 6;
-  font-size: 0.75rem;
+  grid-area: inforight;
+  font-size: 0.85rem;
   color: var(--sl-color-neutral-500);
   text-align: right;
   white-space: nowrap;
+  font-weight: 300;
 }
 
 .block-spacer {
-  grid-column: 7;
+  grid-area: spacer;
 }
 
 @media (max-width: 1024px) {
@@ -151,6 +181,11 @@ const lastPage = computed(() => {
     grid-template-areas: 
       "toggle info content content pages spacer"
       ". . summary entities . .";
+  }
+
+  .content-block.is-folded {
+    grid-template-columns: 30px 80px 1fr 80px 30px;
+    grid-template-areas: "toggle info summary pages spacer";
   }
 }
 </style>

@@ -1,8 +1,5 @@
 <template>
   <div class="section-study">
-    <div class="section-study__nav">
-
-    </div>
 
     <p v-if="loading" class="section-study__status">Loading…</p>
     <p v-else-if="error" class="section-study__status section-study__status--error">{{ error }}</p>
@@ -14,43 +11,155 @@
               <router-link :to="crumb.path" class="breadcrumb-link">{{ crumb.title }}</router-link>
             </sl-breadcrumb-item>
           </sl-breadcrumb>
-
-          <sl-button-group v-if="data.section.info?.summary?.paragraph_segments?.length" class="organise-toggle">
-            <sl-button
-                size="small"
-                :variant="organiseMode === 'linear' ? 'primary' : 'default'"
-                @click="organiseMode = 'linear'"
-                title="Linear View"
-            >
-              <sl-icon name="list"></sl-icon>
-            </sl-button>
-            <sl-button
-                size="small"
-                :variant="organiseMode === 'segmented' ? 'primary' : 'default'"
-                @click="organiseMode = 'segmented'"
-                title="Segmented View"
-            >
-              <sl-icon name="layers-half"></sl-icon>
-            </sl-button>
-          </sl-button-group>
         </div>
       </Teleport>
+
       <header class="section-study__header">
         <h1 class="section-study__title">{{ data.section.title_text }}</h1>
       </header>
 
+      <div class="section-study__toolbar">
+
+        <div class="toolbar-infoleft" />
+
+        <div class="tools-left">
+          <sl-dropdown stay-open-on-select>
+            <sl-button slot="trigger" size="small" caret>Summaries</sl-button>
+            <sl-menu>
+              <sl-menu-item type="checkbox" size="small" checked>General</sl-menu-item>
+              <sl-menu-item type="checkbox" size="small" checked>Annotations (#3+#17)</sl-menu-item>
+              <sl-menu-item type="checkbox" size="small" checked>Notes (Study #10)</sl-menu-item>
+            </sl-menu>
+          </sl-dropdown>
+        </div>
+
+        <div class="tools-mid">
+          <sl-button-group>
+            <sl-button
+                size="small"
+                :variant="showTableOfContents ? 'primary' : 'default'"
+                @click="showTableOfContents = !showTableOfContents"
+                title="Toggle Table of Contents"
+            >
+              <sl-icon name="diagram-3"></sl-icon>
+            </sl-button>
+            <sl-button
+                size="small"
+                :variant="showSummary ? 'primary' : 'default'"
+                @click="showSummary = !showSummary"
+                title="Toggle Summary"
+            >
+              <sl-icon name="card-heading"></sl-icon>
+            </sl-button>
+            <sl-button
+                size="small"
+                :variant="showSegmentsOverview ? 'primary' : 'default'"
+                @click="showSegmentsOverview = !showSegmentsOverview"
+                title="Toggle Segments Overview"
+            >
+              <sl-icon name="hdd-stack"></sl-icon>
+            </sl-button>
+            <sl-button
+                size="small"
+                :variant="showEntities ? 'primary' : 'default'"
+                @click="showEntities = !showEntities"
+                title="Toggle Entities"
+            >
+              <sl-icon name="people"></sl-icon>
+            </sl-button>
+          </sl-button-group>
+
+          <sl-divider vertical></sl-divider>
+
+            <sl-button-group>
+              <sl-button
+                  size="small"
+                  :variant="organiseMode === 'linear' ? 'primary' : 'default'"
+                  @click="organiseMode = 'linear'"
+                  title="Linear View"
+              >
+                <sl-icon name="list"></sl-icon>
+              </sl-button>
+              <sl-button
+                  v-if="data.section.info?.summary?.paragraph_segments?.length"
+                  size="small"
+                  :variant="organiseMode === 'segmented' ? 'primary' : 'default'"
+                  @click="organiseMode = 'segmented'"
+                  title="Segmented View"
+              >
+                <sl-icon name="layers-half"></sl-icon>
+              </sl-button>
+            </sl-button-group>
+
+            <sl-button-group>
+              <sl-tooltip content="Expand All Segments">
+                <sl-icon-button
+                    name="plus-square"
+                    label="Expand All Segments"
+                    :disabled="organiseMode !== 'segmented'"
+                    @click="expandAllSegments"
+                ></sl-icon-button>
+              </sl-tooltip>
+              <sl-tooltip content="Collapse All Segments">
+                <sl-icon-button
+                    name="dash-square"
+                    label="Collapse All Segments"
+                    :disabled="organiseMode !== 'segmented'"
+                    @click="collapseAllSegments"
+                ></sl-icon-button>
+              </sl-tooltip>
+            </sl-button-group>
+
+          <sl-divider vertical></sl-divider>
+
+          <sl-button-group>
+            <sl-tooltip content="Expand All Paragraphs">
+              <sl-icon-button name="arrows-expand" label="Expand All Paragraphs" @click="expandAllParagraphs"></sl-icon-button>
+            </sl-tooltip>
+            <sl-tooltip content="Collapse All Paragraphs">
+              <sl-icon-button name="arrows-collapse" label="Collapse All Paragraphs" @click="collapseAllParagraphs"></sl-icon-button>
+            </sl-tooltip>
+          </sl-button-group>
+
+          <sl-dropdown stay-open-on-select>
+            <sl-button slot="trigger" size="small" caret>Highlights</sl-button>
+            <sl-menu>
+              <sl-menu-item type="checkbox" size="small" checked>General</sl-menu-item>
+              <sl-menu-item type="checkbox" size="small" checked>Study #3</sl-menu-item>
+              <sl-menu-item type="checkbox" size="small" checked>Study #17</sl-menu-item>
+            </sl-menu>
+          </sl-dropdown>
+
+        </div>
+
+        <div class="tools-right">
+          <sl-dropdown stay-open-on-select>
+            <sl-button slot="trigger" size="small" caret>Entities</sl-button>
+            <sl-menu>
+              <sl-menu-item type="checkbox" size="small" checked>People</sl-menu-item>
+              <sl-menu-item type="checkbox" size="small" checked>Times</sl-menu-item>
+              <sl-menu-item type="checkbox" size="small" checked>Places</sl-menu-item>
+              <sl-menu-item type="checkbox" size="small" checked>Works</sl-menu-item>
+            </sl-menu>
+          </sl-dropdown>
+        </div>
+
+        <div class="toolbar-inforight" />
+
+      </div>
+
       <TableOfContents
-          v-if="props.bookStructure"
+          v-if="showTableOfContents && props.bookStructure"
           :flows="props.bookStructure.flows"
           :machine-name="props.machineName"
           :root_section_pf="props.sectionPath"
       />
 
-      <SectionSummary v-if="data.section.info?.summary" :summary="data.section.info.summary"/>
-      <SectionEntities v-if="data.section.info?.entities" :entities="data.section.info.entities"/>
+      <SectionSummary v-if="showSummary && data.section.info?.summary" :summary="data.section.info.summary"/>
+      <SectionSegmentsOverview v-if="showSegmentsOverview && data.section.info?.summary?.paragraph_segments" :segments="data.section.info.summary.paragraph_segments"/>
+      <SectionEntities v-if="showEntities && data.section.info?.entities" :entities="data.section.info.entities"/>
 
       <article class="section-study__content">
-        <h2 class="section-study__content-title">Content</h2>
 
         <template v-if="organiseMode === 'linear'">
           <ContentBlockView
@@ -58,6 +167,7 @@
               :key="block.path_id"
               :block="block"
               :index="index"
+              :fold-trigger="paragraphFoldTrigger"
           />
         </template>
 
@@ -67,20 +177,22 @@
                 v-for="(seg, idx) in segmentedData.segments"
                 :key="idx"
                 class="segment-details"
+                :open="!!openSegments[idx]"
                 @sl-show="toggleSegment(idx, true)"
                 @sl-hide="toggleSegment(idx, false)"
             >
               <div slot="summary" class="segment-summary-header">
-                <sl-badge variant="success" pill class="segment-range-badge">{{ seg.ranges.join(', ') }}</sl-badge>
-                <span class="segment-caption">{{ seg.caption }}</span>
-                <span v-if="!openSegments[idx]" class="segment-description-preview">
-                  &nbsp; - <i>{{ seg.description }}</i>
-                </span>
+                <div class="segment-header">
+                  <sl-badge variant="success" pill class="segment-range-badge">{{ seg.ranges.join(', ') }}</sl-badge>
+                  <span class="segment-caption">{{ seg.caption }}</span>
+                </div>
+                <p v-if="seg.description" class="segment-description">{{ seg.description }}</p>
+                <div v-if="seg.keywords?.length" class="segment-keywords">
+                  <strong>Keywords:</strong> {{ seg.keywords.join(', ') }}
+                </div>
               </div>
 
               <div class="segment-content">
-                <p v-if="seg.description" class="segment-description-full">{{ seg.description }}</p>
-
                 <template
                     v-for="(entry, blockIdx) in seg.blocks"
                     :key="entry.block.path_id"
@@ -98,6 +210,7 @@
                   <ContentBlockView
                       :block="entry.block"
                       :index="entry.index"
+                      :fold-trigger="paragraphFoldTrigger"
                   />
                 </template>
               </div>
@@ -110,10 +223,12 @@
                   :key="entry.block.path_id"
                   :block="entry.block"
                   :index="entry.index"
+                  :fold-trigger="paragraphFoldTrigger"
               />
             </div>
           </div>
         </template>
+
       </article>
     </template>
   </div>
@@ -122,8 +237,9 @@
 <script setup lang="ts">
 import {computed, onMounted, ref, watch} from 'vue';
 import {apiFetch} from '../api';
-import type {SectionContentResponse, BookStructure, Section} from '../types/library';
+import type {SectionContentResponse, BookStructure, Section, FoldTrigger} from '../types/library';
 import SectionSummary from './SectionSummary.vue';
+import SectionSegmentsOverview from './SectionSegmentsOverview.vue';
 import SectionEntities from './SectionEntities.vue';
 import ContentBlockView from './ContentBlockView.vue';
 import TableOfContents from './TableOfContents.vue';
@@ -139,9 +255,35 @@ const loading = ref(true);
 const error = ref('');
 const organiseMode = ref<'linear' | 'segmented'>('linear');
 const openSegments = ref<Record<number, boolean>>({});
+const paragraphFoldTrigger = ref<FoldTrigger>({ command: 'expand-all', count: 0 });
+
+const showTableOfContents = ref(true);
+const showSummary = ref(true);
+const showSegmentsOverview = ref(false);
+const showEntities = ref(false);
 
 function toggleSegment(index: number, isOpen: boolean) {
   openSegments.value[index] = isOpen;
+}
+
+function expandAllParagraphs() {
+  paragraphFoldTrigger.value = { command: 'expand-all', count: paragraphFoldTrigger.value.count + 1 };
+}
+
+function collapseAllParagraphs() {
+  paragraphFoldTrigger.value = { command: 'collapse-all', count: paragraphFoldTrigger.value.count + 1 };
+}
+
+function expandAllSegments() {
+  segmentedData.value.segments.forEach((_, idx) => {
+    openSegments.value[idx] = true;
+  });
+}
+
+function collapseAllSegments() {
+  segmentedData.value.segments.forEach((_, idx) => {
+    openSegments.value[idx] = false;
+  });
 }
 
 function skippedBlockCount(currentIndex: number, previousIndex: number) {
@@ -255,12 +397,63 @@ watch(() => props.sectionPath, fetchSection);
   flex-direction: column;
   height: 100%;
   overflow: auto;
-  padding: 2rem;
+  padding: 0.5rem 1rem;
 }
 
-.section-study__nav {
-  margin-bottom: 2rem;
-  padding: 0.5rem 0;
+.section-study__toolbar {
+  position: sticky;
+  top: -0.5rem;
+  z-index: 100;
+  background: var(--color-bg);
+  padding: 0.25rem 0;
+  margin-bottom: 1rem;
+  display: grid;
+  grid-template-columns: 80px 1fr 4fr 1fr 80px;
+  grid-template-areas: "infoleft summary content entities inforight";
+  align-items: center;
+
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.section-study__toolbar sl-divider {
+  height: 1.5rem;
+  --spacing: 0.5rem;
+}
+
+.section-study__toolbar sl-icon-button {
+  font-size: 1.1rem;
+}
+
+.toolbar-infoleft {
+  grid-area: infoleft;
+}
+
+.section-study__toolbar .tools-left {
+  grid-area: summary;
+  justify-self: start;
+}
+
+.section-study__toolbar .tools-mid {
+  grid-area: content;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.section-study__toolbar .tools-right {
+  grid-area: entities;
+  justify-self: end;
+}
+
+.toolbar-inforight {
+  grid-area: inforight;
+}
+
+.section-study__toolbar sl-dropdown sl-menu::part(base),
+.section-study__toolbar sl-dropdown sl-menu-item::part(base) {
+  font-size: 0.85rem;
 }
 
 .breadcrumb-link {
@@ -277,9 +470,6 @@ watch(() => props.sectionPath, fetchSection);
   display: flex;
   align-items: center;
   gap: 1.5rem;
-}
-
-.organise-toggle {
   margin-left: 0.5rem;
 }
 
@@ -290,7 +480,7 @@ watch(() => props.sectionPath, fetchSection);
 }
 
 .segment-details::part(base) {
-  border: 1px solid var(--sl-color-neutral-200);
+  border: 0px solid var(--sl-color-neutral-200);
   border-radius: var(--sl-border-radius-medium);
   background-color: var(--sl-color-neutral-50);
   overflow: hidden;
@@ -298,34 +488,43 @@ watch(() => props.sectionPath, fetchSection);
 
 .segment-summary-header {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 0.5rem;
-  font-weight: 600;
+  text-align: left;
+}
+
+.segment-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .segment-range-badge {
   flex-shrink: 0;
 }
 
-.segment-description-preview {
-  font-weight: normal;
-  color: var(--sl-color-neutral-500);
-  font-size: 0.9rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.segment-caption {
+  font-weight: 200;
+  color: var(--sl-color-lime-800);
+}
+
+.segment-description {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.segment-keywords {
+  font-size: 0.85rem;
+  color: var(--sl-color-primary-600);
+  opacity: 0.8;
 }
 
 .segment-content {
-  padding: 1rem;
-  background-color: var(--sl-color-white);
-  border-top: 1px solid var(--sl-color-neutral-200);
-}
-
-.segment-description-full {
-  margin: 0 0 1.5rem 0;
-  font-style: italic;
-  color: var(--sl-color-neutral-700);
+  padding: 0.25rem;
+  background-color: var(--sl-color-neutral-0);
+  border-top: 0 solid var(--sl-color-neutral-200);
 }
 
 .orphans-section {
@@ -341,9 +540,9 @@ watch(() => props.sectionPath, fetchSection);
 }
 
 .section-study__header {
-  margin-bottom: 2.5rem;
+  margin-bottom: 0.1rem;
   border-bottom: 1px solid var(--color-border, #e5e7eb);
-  padding-bottom: 1rem;
+  padding-bottom: 0.1rem;
 }
 
 .section-study__title {
@@ -357,18 +556,9 @@ watch(() => props.sectionPath, fetchSection);
   display: flex;
   flex-direction: column;
   gap: 0;
-  max-width: 1200px;
+  max-width: initial;
   margin: 2rem auto;
   width: 100%;
-}
-
-.section-study__content-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 1.5rem;
-  color: var(--color-text, #111827);
-  border-bottom: 2px solid var(--sl-color-neutral-200);
-  padding-bottom: 0.5rem;
 }
 
 .section-study__status {
