@@ -30,8 +30,8 @@
           @click="router.push('/')"
         ></sl-icon-button>
 
-        <sl-dropdown @sl-select="(e: Event) => setTheme((e as CustomEvent).detail.item.value)">
-          <sl-icon-button slot="trigger" :name="themeIcon" label="Theme"></sl-icon-button>
+        <sl-dropdown @sl-select="(e: Event) => themeStore.setTheme((e as CustomEvent).detail.item.value)">
+          <sl-icon-button slot="trigger" :name="themeStore.themeIcon" label="Theme"></sl-icon-button>
           <sl-menu>
             <sl-menu-item value="light">
               <sl-icon slot="prefix" name="sun"></sl-icon>
@@ -63,45 +63,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import {RouterLink, useRouter} from 'vue-router';
-import {useAuth} from "../composables/useAuth.ts";
+import { RouterLink, useRouter } from 'vue-router';
+import { useAuth } from "../composables/useAuth.ts";
+import { useThemeStore } from '../stores/theme';
 
 const router = useRouter();
 const { logout, isAuthenticated, isStaff } = useAuth();
-
-const ICONS: Record<string, string> = { light: 'sun', system: 'circle-half', dark: 'moon' };
-
-const themeMode = ref(localStorage.getItem('theme') || 'system');
-const themeIcon = computed(() => ICONS[themeMode.value] ?? 'circle-half');
-
-function setTheme(mode: string) {
-  const dark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-  document.documentElement.classList.toggle('sl-theme-dark', dark);
-  themeMode.value = mode;
-  localStorage.setItem('theme', mode);
-}
-
-function onSystemThemeChange() {
-  if (themeMode.value === 'system') setTheme('system');
-}
-
-const mql = window.matchMedia('(prefers-color-scheme: dark)');
+const themeStore = useThemeStore();
 
 function logout_and_redirect() {
   logout();
   router.push('/');
 }
-
-onMounted(() => {
-  setTheme(themeMode.value);
-  mql.addEventListener('change', onSystemThemeChange);
-});
-
-onUnmounted(() => {
-  mql.removeEventListener('change', onSystemThemeChange);
-});
 </script>
 
 <style scoped>
