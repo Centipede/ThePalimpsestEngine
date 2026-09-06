@@ -64,6 +64,7 @@
 import { computed, ref, watch } from 'vue';
 import type { ContentBlock, ContentSummary, ContentEntities, FoldTrigger, Highlight, ContentEmphasis, ToolbarToggle } from '../types/library';
 import { computeSegments, searchForFragments } from '../utils/text';
+import { useThemeStore } from '../stores/theme';
 
 const props = defineProps<{
   block: ContentBlock;
@@ -71,6 +72,8 @@ const props = defineProps<{
   foldTrigger?: FoldTrigger;
   availableHighlights?: ToolbarToggle[];
 }>();
+
+const themeStore = useThemeStore();
 
 watch(
     () => props.availableHighlights,
@@ -134,7 +137,7 @@ const allHighlights = computed(() => {
 });
 
 const segments = computed(() => {
-  return computeSegments(props.block.content_text, allHighlights.value);
+  return computeSegments(props.block.content_text, allHighlights.value, themeStore.isDark);
 });
 
 watch(
