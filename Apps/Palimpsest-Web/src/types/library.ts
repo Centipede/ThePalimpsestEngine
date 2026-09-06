@@ -1,3 +1,5 @@
+ import type { ConversationRef, QuestionAnswerRef } from './study';
+
  export interface Author {
     id: number;
     full_name: string;
@@ -31,6 +33,8 @@ export interface Section {
     order_key: number;
     level_type: unknown | null;
     subsections: Section[] | null;
+    questions_answers?: QuestionAnswerRef[];
+    conversations?: ConversationRef[];
 }
 
 
@@ -154,6 +158,8 @@ export interface SectionContentResponse {
 export interface BookStructure {
     book: Book;
     flows: Flow[];
+    questions_answers?: QuestionAnswerRef[];
+    conversations?: ConversationRef[];
 }
 
 export interface FoldTrigger {
