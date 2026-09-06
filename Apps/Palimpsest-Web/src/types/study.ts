@@ -1,5 +1,20 @@
 export type ConversationGoal = 'C' | 'ST' | 'TWB';
 
+
+export interface BaseRef {
+  id: number;
+  is_pinned: boolean;
+  order_key: number;
+  title?: string;
+  in_book: number | null;
+  in_book_mn: string | null;
+  on_page: number | null;
+  in_section: number | null;
+  in_section_pf: string | null;
+  in_block: number | null;
+  in_block_pi: string | null;
+}
+
 export interface Conversation {
   id: number;
   owned_by: number | null;
@@ -22,19 +37,6 @@ export interface ConversationTurn {
   answer: string;
   created_at: string;
   updated_at: string;
-}
-
-export interface BaseRef {
-  id: number;
-  is_pinned: boolean;
-  order_key: number;
-  in_book: number | null;
-  in_book_mn: string | null;
-  on_page: number | null;
-  in_section: number | null;
-  in_section_pf: string | null;
-  in_block: number | null;
-  in_block_pi: string | null;
 }
 
 export interface ConversationRef extends BaseRef {

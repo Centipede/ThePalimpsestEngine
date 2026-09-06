@@ -33,7 +33,7 @@ export interface Section {
     order_key: number;
     level_type: unknown | null;
     subsections: Section[] | null;
-    questions_answers?: QuestionAnswerRef[];
+    question_answers?: QuestionAnswerRef[];
     conversations?: ConversationRef[];
 }
 
@@ -158,7 +158,7 @@ export interface SectionContentResponse {
 export interface BookStructure {
     book: Book;
     flows: Flow[];
-    questions_answers?: QuestionAnswerRef[];
+    question_answers?: QuestionAnswerRef[];
     conversations?: ConversationRef[];
 }
 

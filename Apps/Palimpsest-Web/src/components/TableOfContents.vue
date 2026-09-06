@@ -31,10 +31,26 @@
           </router-link>
 
           <span
+            v-for="ref in entry.section.conversations"
+            :key="'conv-' + ref.id"
+            class="toc__badge toc__badge--conversation"
+            :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
+            :title="ref.title || 'Conversation'"
+            @click.stop="showConversation(ref)"
+          >
+            {{ ref.is_pinned ? ref.title : '•' }}
+          </span>
+
+          <span
+            v-for="ref in entry.section.question_answers"
+            :key="'qa-' + ref.id"
             class="toc__badge toc__badge--qa"
-            title="Questions &amp; Answers"
-            @click.stop="toggleSummary(entry)"
-          >Q&A</span>
+            :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
+            :title="ref.title || 'Q&A'"
+            @click.stop="showQuestionAnswer(ref)"
+          >
+            {{ ref.is_pinned ? ref.title : '•' }}
+          </span>
         </div>
 
         <TocSummary
@@ -46,13 +62,61 @@
         />
       </template>
     </div>
+
+    <sl-dialog 
+      :label="activeItem.type === 'conversation' ? 'Conversation' : 'Q&A'"
+      :open="activeItem.open"
+      @sl-after-hide="activeItem.open = false"
+      style="--width: 80vw;"
+    >
+      <div v-if="activeItem.loading" class="dialog-status">
+        <sl-spinner></sl-spinner>
+        <span>Loading...</span>
+      </div>
+      <div v-else-if="activeItem.error" class="dialog-status error">
+        {{ activeItem.error }}
+      </div>
+      <div v-else-if="activeItem.data" class="dialog-content">
+        <template v-if="activeItem.type === 'question_answer'">
+          <div class="qa-details">
+            <h3 class="dialog-title">{{ (activeItem.data as QuestionAnswer).title }}</h3>
+            <div class="qa-item">
+              <div class="qa-label">Question</div>
+              <div class="markdown-content" v-html="marked.parse((activeItem.data as QuestionAnswer).question || '')"></div>
+            </div>
+            <div class="qa-item">
+              <div class="qa-label">Answer</div>
+              <div class="markdown-content" v-html="marked.parse((activeItem.data as QuestionAnswer).answer || '')"></div>
+            </div>
+          </div>
+        </template>
+        <template v-else-if="activeItem.type === 'conversation'">
+          <div class="conversation-details">
+            <h3 class="dialog-title">{{ (activeItem.data as Conversation).title || 'Conversation' }}</h3>
+            <div v-for="turn in (activeItem.data as Conversation).turns" :key="turn.id" class="conversation-turn">
+              <div class="turn-q">
+                <div class="turn-label">User Question</div>
+                <div class="markdown-content" v-html="marked.parse(turn.question)"></div>
+              </div>
+              <div class="turn-a">
+                <div class="turn-label">Assistant Answer</div>
+                <div class="markdown-content" v-html="marked.parse(turn.answer)"></div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+      <sl-button slot="footer" variant="primary" @click="activeItem.open = false">Close</sl-button>
+    </sl-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
+import { marked } from 'marked';
 import type { Flow, Section, SectionSummaryNew } from '../types/library';
+import type { Conversation, ConversationRef, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import { apiFetch } from '../api';
 import TocSummary from './TocSummary.vue';
 
@@ -77,6 +141,22 @@ interface SummaryState {
 }
 
 const expandedSummaries = ref<Record<string, SummaryState>>({});
+
+interface ActiveItem {
+  type: 'conversation' | 'question_answer' | null;
+  loading: boolean;
+  error: string | null;
+  data: Conversation | QuestionAnswer | null;
+  open: boolean;
+}
+
+const activeItem = ref<ActiveItem>({
+  type: null,
+  loading: false,
+  error: null,
+  data: null,
+  open: false
+});
 
 function walkTree(sections: Section[], depth: number, result: TocEntry[] = []): TocEntry[] {
   for (const s of sections) {
@@ -192,6 +272,38 @@ async function toggleSummary(entry: TocEntry) {
     }
   } else {
     expandedSummaries.value[path].expanded = !expandedSummaries.value[path].expanded;
+  }
+}
+
+async function showConversation(ref: ConversationRef) {
+  activeItem.value = { type: 'conversation', loading: true, error: null, data: null, open: true };
+  try {
+    const response = await apiFetch(`/teststudy/api/v1/conversation/${ref.of_conversation}/`);
+    if (response.ok) {
+      activeItem.value.data = await response.json();
+    } else {
+      activeItem.value.error = `Error: ${response.statusText}`;
+    }
+  } catch (e) {
+    activeItem.value.error = (e as Error).message;
+  } finally {
+    activeItem.value.loading = false;
+  }
+}
+
+async function showQuestionAnswer(ref: QuestionAnswerRef) {
+  activeItem.value = { type: 'question_answer', loading: true, error: null, data: null, open: true };
+  try {
+    const response = await apiFetch(`/teststudy/api/v1/question-answer/${ref.of_questionanswer}/`);
+    if (response.ok) {
+      activeItem.value.data = await response.json();
+    } else {
+      activeItem.value.error = `Error: ${response.statusText}`;
+    }
+  } catch (e) {
+    activeItem.value.error = (e as Error).message;
+  } finally {
+    activeItem.value.loading = false;
   }
 }
 
@@ -321,8 +433,75 @@ function isVisible(entry: TocEntry): boolean {
 }
 
 .toc__badge--qa {
-  background: var(--sl-color-success-100, #d1fae5);
-  color: var(--sl-color-success-700, #065f46);
-  min-width: 3rem;
+  background: var(--sl-color-success-100);
+  color: var(--sl-color-success-700);
+}
+
+.toc__badge--conversation {
+  background: var(--sl-color-primary-100);
+  color: var(--sl-color-primary-700);
+}
+
+.toc__badge--unpinned {
+  background: var(--color-bg-muted);
+  color: var(--color-text-dimmed);
+  min-width: 1.2rem;
+  padding: 0.1em 0.25em;
+}
+
+.dialog-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 3rem;
+  color: var(--color-text-muted);
+}
+
+.dialog-status.error {
+  color: var(--sl-color-danger-600);
+}
+
+.dialog-title {
+  margin-top: 0;
+  color: var(--sl-color-neutral-900);
+}
+
+.qa-item {
+  margin-top: 1.5rem;
+}
+
+.qa-label, .turn-label {
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.markdown-content :deep(p) {
+  margin: 0 0 1rem 0;
+}
+
+.markdown-content :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.conversation-turn {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--sl-color-neutral-200);
+}
+
+.conversation-turn:last-child {
+  border-bottom: none;
+}
+
+.turn-q {
+  margin-bottom: 1rem;
+}
+
+.turn-a {
+  padding-left: 1rem;
+  border-left: 3px solid var(--sl-color-primary-200);
 }
 </style>
