@@ -1,34 +1,50 @@
 <template>
   <div class="toc-wrapper">
     <div class="toc">
-      <div
-        v-for="entry in allEntries"
-        v-show="isVisible(entry)"
-        :key="entry.section.path_full"
-        class="toc__row"
-        :class="[`toc__row--depth-${entry.depth}`, { 'toc__row--ancestor': entry.isAncestor }]"
-      >
-        <span class="toc__badge toc__badge--id" :title="entry.section.path_full">
-          {{ entry.section.path_id }}
-        </span>
-
-        <sl-icon
-          v-if="entry.hasChildren && !entry.isAncestor"
-          :name="isCollapsed(entry.section.path_full) ? 'chevron-right' : 'chevron-down'"
-          class="toc__chevron"
-          @click.stop="toggle(entry.section.path_full)"
-        />
-        <span v-else class="toc__chevron-spacer" />
-
-        <router-link
-          class="toc__title"
-          :to="`/study/${props.machineName}/section/${entry.section.path_full}`"
+      <template v-for="entry in allEntries" :key="entry.section.path_full">
+        <div
+          v-show="isVisible(entry)"
+          class="toc__row"
+          :class="[`toc__row--depth-${entry.depth}`, { 'toc__row--ancestor': entry.isAncestor }]"
         >
-          {{ entry.section.title_text }}
-        </router-link>
+          <span
+            class="toc__badge toc__badge--id"
+            :title="entry.section.path_full"
+            @click.stop="toggleSummary(entry)"
+          >
+            {{ entry.section.path_id }}
+          </span>
 
-        <span class="toc__badge toc__badge--qa" title="Questions &amp; Answers">Q&A</span>
-      </div>
+          <sl-icon
+            v-if="entry.hasChildren && !entry.isAncestor"
+            :name="isCollapsed(entry.section.path_full) ? 'chevron-right' : 'chevron-down'"
+            class="toc__chevron"
+            @click.stop="toggle(entry.section.path_full)"
+          />
+          <span v-else class="toc__chevron-spacer" />
+
+          <router-link
+            class="toc__title"
+            :to="`/study/${props.machineName}/section/${entry.section.path_full}`"
+          >
+            {{ entry.section.title_text }}
+          </router-link>
+
+          <span
+            class="toc__badge toc__badge--qa"
+            title="Questions &amp; Answers"
+            @click.stop="toggleSummary(entry)"
+          >Q&A</span>
+        </div>
+
+        <TocSummary
+          v-if="isVisible(entry) && expandedSummaries[entry.section.path_full]?.expanded"
+          :data="expandedSummaries[entry.section.path_full]?.data"
+          :loading="expandedSummaries[entry.section.path_full]?.loading"
+          :error="expandedSummaries[entry.section.path_full]?.error"
+          :depth="entry.depth"
+        />
+      </template>
     </div>
   </div>
 </template>
@@ -36,7 +52,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
-import type { Flow, Section } from '../types/library';
+import type { Flow, Section, SectionSummaryNew } from '../types/library';
+import { apiFetch } from '../api';
+import TocSummary from './TocSummary.vue';
 
 const props = defineProps<{ 
   flows: Flow[],
@@ -50,6 +68,15 @@ interface TocEntry {
   hasChildren: boolean;
   isAncestor?: boolean;
 }
+
+interface SummaryState {
+  loading: boolean;
+  error?: string;
+  data?: SectionSummaryNew;
+  expanded: boolean;
+}
+
+const expandedSummaries = ref<Record<string, SummaryState>>({});
 
 function walkTree(sections: Section[], depth: number, result: TocEntry[] = []): TocEntry[] {
   for (const s of sections) {
@@ -144,6 +171,28 @@ function toggle(pathFull: string) {
   const idx = collapsed.value.indexOf(pathFull);
   if (idx >= 0) collapsed.value.splice(idx, 1);
   else collapsed.value.push(pathFull);
+}
+
+async function toggleSummary(entry: TocEntry) {
+  const path = entry.section.path_full;
+  
+  if (!expandedSummaries.value[path]) {
+    expandedSummaries.value[path] = { loading: true, expanded: true };
+    try {
+      const response = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${path}/summary/`);
+      if (response.ok) {
+        expandedSummaries.value[path].data = await response.json();
+      } else {
+        expandedSummaries.value[path].error = `Error: ${response.statusText}`;
+      }
+    } catch (e) {
+      expandedSummaries.value[path].error = (e as Error).message;
+    } finally {
+      expandedSummaries.value[path].loading = false;
+    }
+  } else {
+    expandedSummaries.value[path].expanded = !expandedSummaries.value[path].expanded;
+  }
 }
 
 function isVisible(entry: TocEntry): boolean {
@@ -262,6 +311,7 @@ function isVisible(entry: TocEntry): boolean {
   line-height: 1.35;
   white-space: nowrap;
   text-align: center;
+  cursor: pointer;
 }
 
 .toc__badge--id {

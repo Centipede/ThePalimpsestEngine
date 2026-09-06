@@ -18,6 +18,7 @@ import '@shoelace-style/shoelace/dist/components/breadcrumb-item/breadcrumb-item
 import '@shoelace-style/shoelace/dist/components/details/details.js';
 import '@shoelace-style/shoelace/dist/components/badge/badge.js';
 import '@shoelace-style/shoelace/dist/components/tag/tag.js';
+import '@shoelace-style/shoelace/dist/components/spinner/spinner.js';
 
 // Icons are SVGs loaded on demand — serve them from CDN to avoid
 // copying ~1400 files into the static directory.

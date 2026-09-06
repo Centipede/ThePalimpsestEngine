@@ -1,4 +1,4 @@
-export interface Author {
+ export interface Author {
     id: number;
     full_name: string;
     abbrev: string;
@@ -179,6 +179,21 @@ export interface ToolbarToggle {
     name: string;
     type: string;
     checked: boolean;
+}
+
+export interface SectionSummaryNew {
+    theme: string;
+    brief_summary: string;
+    tag_descriptors: {
+        people: string[];
+        events: string[];
+        institutions: string[];
+    };
+    prose_descriptors: {
+        time: SectionSummary['central_time_period'];
+        place: SectionSummary['central_geographical_area'];
+    };
+    summary?: string;
 }
 
 
