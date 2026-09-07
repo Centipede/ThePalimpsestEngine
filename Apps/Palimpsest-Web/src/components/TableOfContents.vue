@@ -63,62 +63,24 @@
       </template>
     </div>
 
-    <sl-dialog 
-      :label="activeItem.type === 'conversation' ? 'Conversation' : 'Q&A'"
-      :open="activeItem.open"
-      @sl-after-hide="activeItem.open = false"
-      style="--width: 80vw;"
-    >
-      <div v-if="activeItem.loading" class="dialog-status">
-        <sl-spinner></sl-spinner>
-        <span>Loading...</span>
-      </div>
-      <div v-else-if="activeItem.error" class="dialog-status error">
-        {{ activeItem.error }}
-      </div>
-      <div v-else-if="activeItem.data" class="dialog-content">
-        <template v-if="activeItem.type === 'question_answer'">
-          <div class="qa-details">
-            <h3 class="dialog-title">{{ (activeItem.data as QuestionAnswer).title }}</h3>
-            <div class="qa-item">
-              <div class="qa-label">Question</div>
-              <div class="markdown-content" v-html="marked.parse((activeItem.data as QuestionAnswer).question || '')"></div>
-            </div>
-            <div class="qa-item">
-              <div class="qa-label">Answer</div>
-              <div class="markdown-content" v-html="marked.parse((activeItem.data as QuestionAnswer).answer || '')"></div>
-            </div>
-          </div>
-        </template>
-        <template v-else-if="activeItem.type === 'conversation'">
-          <div class="conversation-details">
-            <h3 class="dialog-title">{{ (activeItem.data as Conversation).title || 'Conversation' }}</h3>
-            <div v-for="turn in (activeItem.data as Conversation).turns" :key="turn.id" class="conversation-turn">
-              <div class="turn-q">
-                <div class="turn-label">User Question</div>
-                <div class="markdown-content" v-html="marked.parse(turn.question)"></div>
-              </div>
-              <div class="turn-a">
-                <div class="turn-label">Assistant Answer</div>
-                <div class="markdown-content" v-html="marked.parse(turn.answer)"></div>
-              </div>
-            </div>
-          </div>
-        </template>
-      </div>
-      <sl-button slot="footer" variant="primary" @click="activeItem.open = false">Close</sl-button>
-    </sl-dialog>
+    <StudyItemDialog
+      v-model:open="activeItem.open"
+      :type="activeItem.type"
+      :loading="activeItem.loading"
+      :error="activeItem.error"
+      :data="activeItem.data"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
-import { marked } from 'marked';
 import type { Flow, Section, SectionSummaryNew } from '../types/library';
 import type { Conversation, ConversationRef, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import { apiFetch } from '../api';
 import TocSummary from './TocSummary.vue';
+import StudyItemDialog from './StudyItemDialog.vue';
 
 const props = defineProps<{ 
   flows: Flow[],
@@ -441,61 +403,5 @@ function isVisible(entry: TocEntry): boolean {
   color: var(--color-text-dimmed);
   min-width: 1.2rem;
   padding: 0.1em 0.25em;
-}
-
-.dialog-status {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  padding: 3rem;
-  color: var(--color-text-muted);
-}
-
-.dialog-status.error {
-  color: var(--sl-color-danger-600);
-}
-
-.dialog-title {
-  margin-top: 0;
-  color: var(--sl-color-neutral-900);
-}
-
-.qa-item {
-  margin-top: 1.5rem;
-}
-
-.qa-label, .turn-label {
-  font-weight: 600;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-  margin-bottom: 0.5rem;
-}
-
-.markdown-content :deep(p) {
-  margin: 0 0 1rem 0;
-}
-
-.markdown-content :deep(p:last-child) {
-  margin-bottom: 0;
-}
-
-.conversation-turn {
-  padding: 1.5rem 0;
-  border-bottom: 1px solid var(--sl-color-neutral-200);
-}
-
-.conversation-turn:last-child {
-  border-bottom: none;
-}
-
-.turn-q {
-  margin-bottom: 1rem;
-}
-
-.turn-a {
-  padding-left: 1rem;
-  border-left: 3px solid var(--sl-color-primary-200);
 }
 </style>
