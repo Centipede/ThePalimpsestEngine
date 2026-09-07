@@ -81,8 +81,7 @@ onMounted(() => {
 
 <style scoped>
 .book-list {
-  max-width: 900px;
-  padding: 2rem;
+  padding: 0;
 }
 
 .book-list__heading {
