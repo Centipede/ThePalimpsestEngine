@@ -191,9 +191,9 @@ export interface SectionSummaryNew {
     theme: string;
     brief_summary: string;
     tag_descriptors: {
-        people: string[];
-        events: string[];
-        institutions: string[];
+        people: { title: string }[];
+        events: { title: string }[];
+        institutions: { title: string }[];
     };
     prose_descriptors: {
         time: SectionSummary['central_time_period'];

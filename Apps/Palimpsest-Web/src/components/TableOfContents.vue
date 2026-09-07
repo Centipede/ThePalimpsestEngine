@@ -324,12 +324,6 @@ function isVisible(entry: TocEntry): boolean {
   margin-bottom: 2rem;
 }
 
-.toc-summary {
-  font-weight: 600;
-  color: var(--color-text, #111827);
-  padding: 0.5rem 1rem;
-}
-
 .toc {
   padding: 0.5rem 0;
 }
