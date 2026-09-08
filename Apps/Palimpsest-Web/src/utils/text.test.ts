@@ -11,13 +11,13 @@ describe('computeSegments color mixing', () => {
     ];
 
     const segments = computeSegments(text, highlights, false);
-    
+
     // Segment 1: "quick " [4, 10] - red adjusted for light mode
-    expect(segments[1].mixedColor).toBe('linear-gradient(rgba(255, 179, 179, 0.4), rgba(255, 179, 179, 0.4))');
+    expect(segments[1].mixedColor).toBe('linear-gradient(rgba(255, 77, 77, 0.6), rgba(255, 77, 77, 0.6))');
 
     // Segment 2: "brown" [10, 15] - red + blue adjusted for light mode
-    expect(segments[2].mixedColor).toContain('linear-gradient(rgba(255, 179, 179, 0.4), rgba(255, 179, 179, 0.4))');
-    expect(segments[2].mixedColor).toContain('linear-gradient(rgba(179, 179, 255, 0.4), rgba(179, 179, 255, 0.4))');
+    expect(segments[2].mixedColor).toContain('linear-gradient(rgba(255, 77, 77, 0.6), rgba(255, 77, 77, 0.6)), linear-gradient(rgba(77, 77, 255, 0.6), rgba(77, 77, 255, 0.6))');
+    expect(segments[2].mixedColor).toContain('linear-gradient(rgba(255, 77, 77, 0.6), rgba(255, 77, 77, 0.6)), linear-gradient(rgba(77, 77, 255, 0.6), rgba(77, 77, 255, 0.6))');
   });
 
   it('correctly calculates mixedColor for dark mode', () => {

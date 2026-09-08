@@ -18,21 +18,29 @@
           <div v-if="data.tag_descriptors.people?.length" class="toc-summary__tag-group">
             <span class="toc-summary__tag-label">People:</span>
             <div class="toc-summary__tag-list">
-              <sl-badge v-for="p in data.tag_descriptors.people" :key="p" variant="primary" pill>{{ p }}</sl-badge>
+              <sl-badge v-for="p in data.tag_descriptors.people" :key="p" variant="primary" pill>{{ p.title }}</sl-badge>
             </div>
           </div>
           <div v-if="data.tag_descriptors.events?.length" class="toc-summary__tag-group">
             <span class="toc-summary__tag-label">Events:</span>
             <div class="toc-summary__tag-list">
-              <sl-badge v-for="e in data.tag_descriptors.events" :key="e" variant="success" pill>{{ e }}</sl-badge>
+              <sl-badge v-for="e in data.tag_descriptors.events" :key="e" variant="success" pill>{{ e.title }}</sl-badge>
             </div>
           </div>
           <div v-if="data.tag_descriptors.institutions?.length" class="toc-summary__tag-group">
             <span class="toc-summary__tag-label">Institutions:</span>
             <div class="toc-summary__tag-list">
-              <sl-badge v-for="i in data.tag_descriptors.institutions" :key="i" variant="neutral" pill>{{ i }}</sl-badge>
+              <sl-badge v-for="i in data.tag_descriptors.institutions" :key="i" variant="neutral" pill>{{ i.title }}</sl-badge>
             </div>
           </div>
+          <SummaryTimeDescriptor
+            v-if="data.prose_descriptors?.time"
+            :data="data.prose_descriptors.time"
+          />
+          <SummaryPlaceDescriptor
+            v-if="data.prose_descriptors?.place"
+            :data="data.prose_descriptors.place"
+          />
         </div>
       </div>
     </div>
@@ -43,6 +51,8 @@
 import { computed } from 'vue';
 import { marked } from 'marked';
 import type { SectionSummaryNew } from '../types/library';
+import SummaryTimeDescriptor from './SummaryTimeDescriptor.vue';
+import SummaryPlaceDescriptor from './SummaryPlaceDescriptor.vue';
 
 const props = defineProps<{
   data?: SectionSummaryNew;
@@ -84,7 +94,7 @@ const renderedSummary = computed(() => {
   margin: 0 0 0.5rem 0;
   color: var(--sl-color-primary-700);
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .toc-summary__brief {
@@ -124,12 +134,12 @@ const renderedSummary = computed(() => {
   margin-bottom: 0;
 }
 
-.toc-summary--depth-0 { padding-left: 2rem; }
-.toc-summary--depth-1 { padding-left: 3.5rem; }
-.toc-summary--depth-2 { padding-left: 5rem; }
-.toc-summary--depth-3 { padding-left: 6.5rem; }
-.toc-summary--depth-4 { padding-left: 8rem; }
-.toc-summary--depth-5 { padding-left: 9.5rem; }
+div.toc-summary--depth-0 { padding-left: 2rem; }
+div.toc-summary--depth-1 { padding-left: 3.5rem; }
+div.toc-summary--depth-2 { padding-left: 5rem; }
+div.toc-summary--depth-3 { padding-left: 6.5rem; }
+div.toc-summary--depth-4 { padding-left: 8rem; }
+div.toc-summary--depth-5 { padding-left: 9.5rem; }
 
 @media (max-width: 768px) {
   .toc-summary__grid {

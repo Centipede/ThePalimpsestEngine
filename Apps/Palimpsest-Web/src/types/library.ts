@@ -1,3 +1,5 @@
+ import type { ConversationRef, QuestionAnswerRef } from './study';
+
  export interface Author {
     id: number;
     full_name: string;
@@ -31,6 +33,8 @@ export interface Section {
     order_key: number;
     level_type: unknown | null;
     subsections: Section[] | null;
+    question_answers?: QuestionAnswerRef[];
+    conversations?: ConversationRef[];
 }
 
 
@@ -140,6 +144,7 @@ export interface SectionDetail extends Section {
     };
     first_real_content: number;
     last_real_content: number;
+    full_path_coded?: string;
     info?: {
         summary?: SectionSummary;
         entities?: SectionEntities;
@@ -154,6 +159,8 @@ export interface SectionContentResponse {
 export interface BookStructure {
     book: Book;
     flows: Flow[];
+    question_answers?: QuestionAnswerRef[];
+    conversations?: ConversationRef[];
 }
 
 export interface FoldTrigger {
@@ -185,9 +192,9 @@ export interface SectionSummaryNew {
     theme: string;
     brief_summary: string;
     tag_descriptors: {
-        people: string[];
-        events: string[];
-        institutions: string[];
+        people: { title: string }[];
+        events: { title: string }[];
+        institutions: { title: string }[];
     };
     prose_descriptors: {
         time: SectionSummary['central_time_period'];

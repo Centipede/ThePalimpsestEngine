@@ -2,11 +2,11 @@
   <header class="vue-header">
     <nav>
       <div class="nav-start">
-        <RouterLink to="/study" custom v-slot="{ navigate, isActive }">
+        <RouterLink to="/study" custom v-slot="{ navigate }">
           <sl-icon-button
-            :name="isActive ? 'house-fill' : 'house'"
+            src="/logos/palimpsest-menu-icon.svg"
             label="Home"
-            style="font-size: 1.5rem;"
+            class="nav-link nav-logo-palimpsest"
             @click="navigate"
           ></sl-icon-button>
         </RouterLink>
@@ -123,4 +123,27 @@ nav {
   align-items: center;
   gap: 0.5rem;
 }
+
+.nav-link {
+  color: var(--color-text-muted)
+}
+
+*.nav-logo-palimpsest {
+  width: calc(var(--header-height, 56px) - 0.2rem);
+  height: calc(var(--header-height, 56px) - 0.2rem);
+  font-size: calc(var(--header-height, 56px) - 0.2rem);
+}
+
+*.nav-logo-palimpsest::part(base) {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+}
+
+*.nav-logo-palimpsest::part(icon) {
+  width: 100%;
+  height: 100%;
+}
+
+
 </style>

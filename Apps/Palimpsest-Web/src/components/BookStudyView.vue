@@ -50,7 +50,7 @@ onMounted(async () => {
     const authorsPromise = store.fetchAuthors();
 
     // Fetch book structure
-    const bookRes = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/structure/?tree_depth=5`);
+    const bookRes = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/structure/?tree_depth=5&qas=true&conversations=true&title=true`);
     if (!bookRes.ok) throw new Error(`Book: HTTP ${bookRes.status}`);
 
     const [_, bookData] = await Promise.all([authorsPromise, bookRes.json()]);

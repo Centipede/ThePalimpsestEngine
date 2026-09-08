@@ -31,10 +31,26 @@
           </router-link>
 
           <span
+            v-for="ref in entry.section.conversations"
+            :key="'conv-' + ref.id"
+            class="toc__badge toc__badge--conversation"
+            :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
+            :title="ref.title || 'Conversation'"
+            @click.stop="showConversation(ref)"
+          >
+            {{ ref.is_pinned ? ref.title : '•' }}
+          </span>
+
+          <span
+            v-for="ref in entry.section.question_answers"
+            :key="'qa-' + ref.id"
             class="toc__badge toc__badge--qa"
-            title="Questions &amp; Answers"
-            @click.stop="toggleSummary(entry)"
-          >Q&A</span>
+            :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
+            :title="ref.title || 'Q&A'"
+            @click.stop="showQuestionAnswer(ref)"
+          >
+            {{ ref.is_pinned ? ref.title : '•' }}
+          </span>
         </div>
 
         <TocSummary
@@ -46,6 +62,19 @@
         />
       </template>
     </div>
+
+    <StudyItemDialog
+      v-model:open="activeItem.open"
+      :type="activeItem.type"
+      :loading="activeItem.loading"
+      :error="activeItem.error"
+      :data="activeItem.data"
+      :linking-ref="activeItem.linkingRef"
+      @title-updated="handleTitleUpdated"
+      @pin-updated="handlePinUpdated"
+      @note-updated="handleNoteUpdated"
+      @turn-note-updated="handleTurnNoteUpdated"
+    />
   </div>
 </template>
 
@@ -53,8 +82,10 @@
 import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import type { Flow, Section, SectionSummaryNew } from '../types/library';
+import type { Conversation, ConversationRef, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import { apiFetch } from '../api';
 import TocSummary from './TocSummary.vue';
+import StudyItemDialog from './StudyItemDialog.vue';
 
 const props = defineProps<{ 
   flows: Flow[],
@@ -77,6 +108,24 @@ interface SummaryState {
 }
 
 const expandedSummaries = ref<Record<string, SummaryState>>({});
+
+interface ActiveItem {
+  type: 'conversation' | 'question_answer' | null;
+  loading: boolean;
+  error: string | null;
+  data: Conversation | QuestionAnswer | null;
+  linkingRef: ConversationRef | QuestionAnswerRef | null;
+  open: boolean;
+}
+
+const activeItem = ref<ActiveItem>({
+  type: null,
+  loading: false,
+  error: null,
+  data: null,
+  linkingRef: null,
+  open: false
+});
 
 function walkTree(sections: Section[], depth: number, result: TocEntry[] = []): TocEntry[] {
   for (const s of sections) {
@@ -195,6 +244,38 @@ async function toggleSummary(entry: TocEntry) {
   }
 }
 
+async function showConversation(ref: ConversationRef) {
+  activeItem.value = { type: 'conversation', loading: true, error: null, data: null, linkingRef: ref, open: true };
+  try {
+    const response = await apiFetch(`/teststudy/api/v1/conversation/${ref.of_conversation}/`);
+    if (response.ok) {
+      activeItem.value.data = await response.json();
+    } else {
+      activeItem.value.error = `Error: ${response.statusText}`;
+    }
+  } catch (e) {
+    activeItem.value.error = (e as Error).message;
+  } finally {
+    activeItem.value.loading = false;
+  }
+}
+
+async function showQuestionAnswer(ref: QuestionAnswerRef) {
+  activeItem.value = { type: 'question_answer', loading: true, error: null, data: null, linkingRef: ref, open: true };
+  try {
+    const response = await apiFetch(`/teststudy/api/v1/question-answer/${ref.of_questionanswer}/`);
+    if (response.ok) {
+      activeItem.value.data = await response.json();
+    } else {
+      activeItem.value.error = `Error: ${response.statusText}`;
+    }
+  } catch (e) {
+    activeItem.value.error = (e as Error).message;
+  } finally {
+    activeItem.value.loading = false;
+  }
+}
+
 function isVisible(entry: TocEntry): boolean {
   if (entry.isAncestor) return true;
   const parts = entry.section.path_full.split('.');
@@ -205,17 +286,95 @@ function isVisible(entry: TocEntry): boolean {
   }
   return true;
 }
+
+function handleTitleUpdated(newTitle: string) {
+  if (!activeItem.value.data || !activeItem.value.type) return;
+
+  // 1. Update the active item data so the dialog reflects the change immediately
+  activeItem.value.data.title = newTitle;
+
+  // 2. Find and update the title in the flows tree
+  const itemId = activeItem.value.data.id;
+  const itemType = activeItem.value.type;
+
+  const updateTitleInTree = (sections: Section[]) => {
+    for (const section of sections) {
+      if (itemType === 'conversation' && section.conversations) {
+        const ref = section.conversations.find(c => c.of_conversation === itemId);
+        if (ref) ref.title = newTitle;
+      } else if (itemType === 'question_answer' && section.question_answers) {
+        const ref = section.question_answers.find(qa => qa.of_questionanswer === itemId);
+        if (ref) ref.title = newTitle;
+      }
+      if (section.subsections?.length) {
+        updateTitleInTree(section.subsections);
+      }
+    }
+  };
+
+  props.flows.forEach(flow => {
+    if (flow.tree?.subsections) {
+      updateTitleInTree(flow.tree.subsections);
+    }
+  });
+}
+
+function handlePinUpdated(isPinned: boolean) {
+  if (!activeItem.value.data || !activeItem.value.type || !activeItem.value.linkingRef) return;
+
+  // 1. Update the linking ref status
+  activeItem.value.linkingRef.is_pinned = isPinned;
+
+  // 2. Update the reference inside the data object if it exists
+  const itemId = activeItem.value.data.id;
+  const itemType = activeItem.value.type;
+  const refId = activeItem.value.linkingRef.id;
+
+  if ((activeItem.value.data as any).references) {
+    const ref = (activeItem.value.data as any).references.find((r: any) => r.id === refId);
+    if (ref) ref.is_pinned = isPinned;
+  }
+
+  // 3. Find and update the pin status in the flows tree
+  const updatePinInTree = (sections: Section[]) => {
+    for (const section of sections) {
+      if (itemType === 'conversation' && section.conversations) {
+        const ref = section.conversations.find(c => c.id === refId);
+        if (ref) ref.is_pinned = isPinned;
+      } else if (itemType === 'question_answer' && section.question_answers) {
+        const ref = section.question_answers.find(qa => qa.id === refId);
+        if (ref) ref.is_pinned = isPinned;
+      }
+      if (section.subsections?.length) {
+        updatePinInTree(section.subsections);
+      }
+    }
+  };
+
+  props.flows.forEach(flow => {
+    if (flow.tree?.subsections) {
+      updatePinInTree(flow.tree.subsections);
+    }
+  });
+}
+
+function handleNoteUpdated(payload: { field: 'question_note' | 'answer_note', value: string | null }) {
+  if (!activeItem.value.data || activeItem.value.type !== 'question_answer') return;
+  (activeItem.value.data as QuestionAnswer)[payload.field] = payload.value;
+}
+
+function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note' | 'answer_note', value: string | null }) {
+  if (!activeItem.value.data || activeItem.value.type !== 'conversation') return;
+  const turn = (activeItem.value.data as Conversation).turns?.find(t => t.id === payload.turnId);
+  if (turn) {
+    turn[payload.field] = payload.value;
+  }
+}
 </script>
 
 <style scoped>
 .toc-wrapper {
   margin-bottom: 2rem;
-}
-
-.toc-summary {
-  font-weight: 600;
-  color: var(--color-text, #111827);
-  padding: 0.5rem 1rem;
 }
 
 .toc {
@@ -321,8 +480,19 @@ function isVisible(entry: TocEntry): boolean {
 }
 
 .toc__badge--qa {
-  background: var(--sl-color-success-100, #d1fae5);
-  color: var(--sl-color-success-700, #065f46);
-  min-width: 3rem;
+  background: var(--sl-color-success-100);
+  color: var(--sl-color-success-700);
+}
+
+.toc__badge--conversation {
+  background: var(--sl-color-primary-100);
+  color: var(--sl-color-primary-700);
+}
+
+.toc__badge--unpinned {
+  background: var(--color-bg-muted);
+  color: var(--color-text-dimmed);
+  min-width: 1.2rem;
+  padding: 0.1em 0.25em;
 }
 </style>
