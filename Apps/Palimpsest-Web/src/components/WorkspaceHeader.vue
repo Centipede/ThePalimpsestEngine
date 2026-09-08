@@ -55,13 +55,28 @@
         </li>
       </ul>
     </div>
+
+    <div v-if="metadata && metadata.sections && metadata.sections.length > 0" class="references-section search-scope-section">
+      <h4 class="references-title">Search Scope</h4>
+      <ul class="references-list">
+        <li v-for="sec in metadata.sections" :key="sec.id" class="reference-item">
+          <sl-icon name="file-text" class="ref-icon"></sl-icon>
+          <router-link
+            :to="`/study/${metadata.book_machine_name}/section/${sec.path_full}`"
+            class="ref-link"
+          >
+            [{{ sec.full_path_coded }}] {{ sec.title_text }}
+          </router-link>
+        </li>
+      </ul>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch } from 'vue';
 import { RouterLink } from 'vue-router';
-import type { BaseRef } from '../types/study';
+import type { BaseRef, SearchMetadata } from '../types/study';
 import type { SectionDetail } from '../types/library';
 import { apiFetch } from '../api';
 
@@ -71,6 +86,7 @@ const props = defineProps<{
   allRefs: BaseRef[];
   itemType: 'conversation' | 'question_answer';
   itemId: number;
+  metadata?: SearchMetadata | null;
 }>();
 
 const emit = defineEmits<{
@@ -245,6 +261,10 @@ watch(() => props.allRefs, fetchSectionTitles, { deep: true });
   background-color: var(--sl-color-neutral-50);
   padding: 1rem;
   border-radius: var(--sl-border-radius-medium);
+}
+
+.search-scope-section {
+  margin-top: 1rem;
 }
 
 .references-title {

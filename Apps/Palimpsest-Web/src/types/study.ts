@@ -15,6 +15,22 @@ export interface BaseRef {
   in_block_pi: string | null;
 }
 
+export interface SearchMetadataSection {
+  id: number;
+  path_full: string;
+  title_text: string;
+  full_path_coded: string;
+}
+
+export interface SearchMetadata {
+  book_id: number;
+  book_title: string;
+  book_machine_name: string;
+  sections: SearchMetadataSection[];
+  page_ranges?: string;
+  owner_section?: SearchMetadataSection;
+}
+
 export interface Conversation {
   id: number;
   owned_by: number | null;
@@ -24,7 +40,7 @@ export interface Conversation {
   system_prompt: string | null;
   model: string | null;
   conversation_history: Record<string, any>;
-  metadata: Record<string, any>;
+  metadata: SearchMetadata;
   created_at: string;
   updated_at: string;
   turns?: ConversationTurn[];
@@ -52,6 +68,7 @@ export interface QuestionAnswer {
   title: string;
   question: string | null;
   answer: string | null;
+  metadata?: SearchMetadata;
   references?: QuestionAnswerRef[];
 }
 

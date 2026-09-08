@@ -6,6 +6,7 @@
       :all-refs="data.references || []"
       item-type="conversation"
       :item-id="data.id"
+      :metadata="data.metadata"
       @title-updated="$emit('title-updated', $event)"
       @pin-updated="$emit('pin-updated', $event)"
     />
