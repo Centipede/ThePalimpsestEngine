@@ -52,6 +52,8 @@ export interface ConversationTurn {
   of_conversation: number;
   question: string;
   answer: string;
+  question_note: string | null;
+  answer_note: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -68,6 +70,8 @@ export interface QuestionAnswer {
   title: string;
   question: string | null;
   answer: string | null;
+  question_note: string | null;
+  answer_note: string | null;
   metadata?: SearchMetadata;
   references?: QuestionAnswerRef[];
 }

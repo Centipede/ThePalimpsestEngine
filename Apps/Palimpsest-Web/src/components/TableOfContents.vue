@@ -72,6 +72,8 @@
       :linking-ref="activeItem.linkingRef"
       @title-updated="handleTitleUpdated"
       @pin-updated="handlePinUpdated"
+      @note-updated="handleNoteUpdated"
+      @turn-note-updated="handleTurnNoteUpdated"
     />
   </div>
 </template>
@@ -354,6 +356,19 @@ function handlePinUpdated(isPinned: boolean) {
       updatePinInTree(flow.tree.subsections);
     }
   });
+}
+
+function handleNoteUpdated(payload: { field: 'question_note' | 'answer_note', value: string | null }) {
+  if (!activeItem.value.data || activeItem.value.type !== 'question_answer') return;
+  (activeItem.value.data as QuestionAnswer)[payload.field] = payload.value;
+}
+
+function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note' | 'answer_note', value: string | null }) {
+  if (!activeItem.value.data || activeItem.value.type !== 'conversation') return;
+  const turn = (activeItem.value.data as Conversation).turns?.find(t => t.id === payload.turnId);
+  if (turn) {
+    turn[payload.field] = payload.value;
+  }
 }
 </script>
 

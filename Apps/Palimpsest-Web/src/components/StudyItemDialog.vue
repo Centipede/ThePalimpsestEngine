@@ -2,7 +2,7 @@
   <sl-dialog
     :label="type === 'conversation' ? 'Conversation' : 'Q&A'"
     :open="open"
-    @sl-after-hide="$emit('update:open', false)"
+    @sl-after-hide.self="$emit('update:open', false)"
     style="--width: 80vw;"
   >
     <div v-if="loading" class="dialog-status">
@@ -19,6 +19,7 @@
         :linking-ref="(linkingRef as QuestionAnswerRef)"
         @title-updated="$emit('title-updated', $event)"
         @pin-updated="$emit('pin-updated', $event)"
+        @note-updated="$emit('note-updated', $event)"
       />
       <ConversationWorkspace
         v-else-if="type === 'conversation'"
@@ -26,6 +27,7 @@
         :linking-ref="(linkingRef as ConversationRef)"
         @title-updated="$emit('title-updated', $event)"
         @pin-updated="$emit('pin-updated', $event)"
+        @turn-note-updated="$emit('turn-note-updated', $event)"
       />
     </div>
     <sl-button slot="footer" variant="primary" @click="$emit('update:open', false)">Close</sl-button>
@@ -50,6 +52,8 @@ defineEmits<{
   (e: 'update:open', value: boolean): void;
   (e: 'title-updated', newTitle: string): void;
   (e: 'pin-updated', isPinned: boolean): void;
+  (e: 'note-updated', payload: { field: 'question_note' | 'answer_note', value: string | null }): void;
+  (e: 'turn-note-updated', payload: { turnId: number, field: 'question_note' | 'answer_note', value: string | null }): void;
 }>();
 </script>
 

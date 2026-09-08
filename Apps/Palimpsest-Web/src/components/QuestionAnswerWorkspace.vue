@@ -10,30 +10,43 @@
       @title-updated="$emit('title-updated', $event)"
       @pin-updated="$emit('pin-updated', $event)"
     />
-    <div class="qa-item">
-      <div class="qa-label">Question</div>
-      <div class="markdown-content" v-html="marked.parse(data.question || '')"></div>
-    </div>
-    <div class="qa-item">
-      <div class="qa-label">Answer</div>
-      <div class="markdown-content" v-html="marked.parse(data.answer || '')"></div>
+    <div class="qa-container">
+      <WorkspaceFoldableSection
+        label="Question"
+        :content="data.question"
+        :note="data.question_note"
+        item-type="question-answer"
+        :item-id="data.id"
+        note-field="question_note"
+        @note-updated="$emit('note-updated', { field: 'question_note', value: $event })"
+      />
+      <WorkspaceFoldableSection
+        label="Answer"
+        :content="data.answer"
+        :note="data.answer_note"
+        item-type="question-answer"
+        :item-id="data.id"
+        note-field="answer_note"
+        @note-updated="$emit('note-updated', { field: 'answer_note', value: $event })"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { marked } from 'marked';
 import type { QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import WorkspaceHeader from './WorkspaceHeader.vue';
+import WorkspaceFoldableSection from './WorkspaceFoldableSection.vue';
 
 defineProps<{
   data: QuestionAnswer;
   linkingRef: QuestionAnswerRef;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'title-updated', newTitle: string): void;
   (e: 'pin-updated', isPinned: boolean): void;
+  (e: 'note-updated', payload: { field: 'question_note' | 'answer_note', value: string | null }): void;
 }>();
 </script>
 
@@ -42,23 +55,10 @@ defineEmits<{
   padding: 0;
 }
 
-.qa-item {
-  margin-top: 1.5rem;
+.qa-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
-.qa-label {
-  font-weight: 600;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-  margin-bottom: 0.5rem;
-}
-
-.markdown-content :deep(p) {
-  margin: 0 0 1rem 0;
-}
-
-.markdown-content :deep(p:last-child) {
-  margin-bottom: 0;
-}
 </style>
