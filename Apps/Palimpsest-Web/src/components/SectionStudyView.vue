@@ -170,7 +170,7 @@
 
       <TableOfContents
           v-if="showTableOfContents && props.bookStructure"
-          :flows="props.bookStructure.flows"
+          :book-structure="props.bookStructure"
           :machine-name="props.machineName"
           :root_section_pf="props.sectionPath"
       />

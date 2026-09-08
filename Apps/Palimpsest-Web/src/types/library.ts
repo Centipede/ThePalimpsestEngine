@@ -22,6 +22,8 @@ export interface Book {
     by_author1: number | null;
     by_author2: number | null;
     by_author3: number | null;
+    question_answers?: QuestionAnswerRef[];
+    conversations?: ConversationRef[];
 }
 
 export interface Section {
@@ -159,8 +161,6 @@ export interface SectionContentResponse {
 export interface BookStructure {
     book: Book;
     flows: Flow[];
-    question_answers?: QuestionAnswerRef[];
-    conversations?: ConversationRef[];
 }
 
 export interface FoldTrigger {

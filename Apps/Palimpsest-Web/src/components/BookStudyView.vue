@@ -13,7 +13,7 @@
       </Teleport>
 
       <template v-if="!isSectionActive">
-        <TableOfContents :flows="book.flows" :machineName="machineName"/>
+        <TableOfContents :book-structure="book" :machineName="machineName"/>
       </template>
       <template v-else-if="isSectionActive">
         <router-view v-slot="{ Component }">

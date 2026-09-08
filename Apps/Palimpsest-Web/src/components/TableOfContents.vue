@@ -1,6 +1,36 @@
 <template>
   <div class="toc-wrapper">
     <div class="toc">
+      <div
+        v-if="!props.root_section_pf && (props.bookStructure.book.conversations?.length || props.bookStructure.book.question_answers?.length)"
+        class="toc__row toc__row--book-level"
+      >
+        <sl-icon name="book" class="toc__book-icon" />
+        <span class="toc__title">Book-wide discussions</span>
+
+        <span
+          v-for="ref in props.bookStructure.book.conversations"
+          :key="'conv-' + ref.id"
+          class="toc__badge toc__badge--conversation"
+          :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
+          :title="ref.title || 'Conversation'"
+          @click.stop="showConversation(ref)"
+        >
+          {{ ref.is_pinned ? ref.title : '•' }}
+        </span>
+
+        <span
+          v-for="ref in props.bookStructure.book.question_answers"
+          :key="'qa-' + ref.id"
+          class="toc__badge toc__badge--qa"
+          :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
+          :title="ref.title || 'Q&A'"
+          @click.stop="showQuestionAnswer(ref)"
+        >
+          {{ ref.is_pinned ? ref.title : '•' }}
+        </span>
+      </div>
+
       <template v-for="entry in allEntries" :key="entry.section.path_full">
         <div
           v-show="isVisible(entry)"
@@ -81,14 +111,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
-import type { Flow, Section, SectionSummaryNew } from '../types/library';
+import type { BookStructure, Section, SectionSummaryNew } from '../types/library';
 import type { Conversation, ConversationRef, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import { apiFetch } from '../api';
 import TocSummary from './TocSummary.vue';
 import StudyItemDialog from './StudyItemDialog.vue';
 
 const props = defineProps<{ 
-  flows: Flow[],
+  bookStructure: BookStructure,
   machineName: string,
   root_section_pf?: string
 }>();
@@ -150,7 +180,7 @@ function findPath(sections: Section[], targetPath: string): Section[] {
   return [];
 }
 
-const mainFlow = computed(() => props.flows.find(f => f.name === 'main'));
+const mainFlow = computed(() => props.bookStructure.flows.find(f => f.name === 'main'));
 
 const allEntries = computed<TocEntry[]>(() => {
   const root = mainFlow.value?.tree;
@@ -293,10 +323,20 @@ function handleTitleUpdated(newTitle: string) {
   // 1. Update the active item data so the dialog reflects the change immediately
   activeItem.value.data.title = newTitle;
 
-  // 2. Find and update the title in the flows tree
+  // 2. Find and update the title in the collections
   const itemId = activeItem.value.data.id;
   const itemType = activeItem.value.type;
 
+  // 2a. Update book-level items
+  if (itemType === 'conversation' && props.bookStructure.book.conversations) {
+    const ref = props.bookStructure.book.conversations.find(c => c.of_conversation === itemId);
+    if (ref) ref.title = newTitle;
+  } else if (itemType === 'question_answer' && props.bookStructure.book.question_answers) {
+    const ref = props.bookStructure.book.question_answers.find(qa => qa.of_questionanswer === itemId);
+    if (ref) ref.title = newTitle;
+  }
+
+  // 2b. Update section-level items in flows tree
   const updateTitleInTree = (sections: Section[]) => {
     for (const section of sections) {
       if (itemType === 'conversation' && section.conversations) {
@@ -312,9 +352,9 @@ function handleTitleUpdated(newTitle: string) {
     }
   };
 
-  props.flows.forEach(flow => {
-    if (flow.tree?.subsections) {
-      updateTitleInTree(flow.tree.subsections);
+  props.bookStructure.flows.forEach(flow => {
+    if (flow.tree) {
+      updateTitleInTree([flow.tree]);
     }
   });
 }
@@ -326,7 +366,6 @@ function handlePinUpdated(isPinned: boolean) {
   activeItem.value.linkingRef.is_pinned = isPinned;
 
   // 2. Update the reference inside the data object if it exists
-  const itemId = activeItem.value.data.id;
   const itemType = activeItem.value.type;
   const refId = activeItem.value.linkingRef.id;
 
@@ -335,7 +374,18 @@ function handlePinUpdated(isPinned: boolean) {
     if (ref) ref.is_pinned = isPinned;
   }
 
-  // 3. Find and update the pin status in the flows tree
+  // 3. Find and update the pin status in the collections
+
+  // 3a. Update book-level collections
+  if (itemType === 'conversation' && props.bookStructure.book.conversations) {
+    const ref = props.bookStructure.book.conversations.find(c => c.id === refId);
+    if (ref) ref.is_pinned = isPinned;
+  } else if (itemType === 'question_answer' && props.bookStructure.book.question_answers) {
+    const ref = props.bookStructure.book.question_answers.find(qa => qa.id === refId);
+    if (ref) ref.is_pinned = isPinned;
+  }
+
+  // 3b. Update section-level items in flows tree
   const updatePinInTree = (sections: Section[]) => {
     for (const section of sections) {
       if (itemType === 'conversation' && section.conversations) {
@@ -351,9 +401,9 @@ function handlePinUpdated(isPinned: boolean) {
     }
   };
 
-  props.flows.forEach(flow => {
-    if (flow.tree?.subsections) {
-      updatePinInTree(flow.tree.subsections);
+  props.bookStructure.flows.forEach(flow => {
+    if (flow.tree) {
+      updatePinInTree([flow.tree]);
     }
   });
 }
@@ -392,6 +442,18 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
 
 .toc__row:hover {
   background: var(--color-bg-muted);
+}
+
+.toc__row--book-level {
+  border-bottom: 1px solid var(--sl-color-neutral-200);
+  margin-bottom: 0.5rem;
+  background: var(--sl-color-neutral-50);
+}
+
+.toc__book-icon {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  font-size: 1rem;
 }
 
 .toc__row--ancestor {
