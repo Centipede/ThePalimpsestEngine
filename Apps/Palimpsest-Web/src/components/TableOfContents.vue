@@ -69,6 +69,7 @@
       :loading="activeItem.loading"
       :error="activeItem.error"
       :data="activeItem.data"
+      @title-updated="handleTitleUpdated"
     />
   </div>
 </template>
@@ -278,6 +279,38 @@ function isVisible(entry: TocEntry): boolean {
     if (isCollapsed(parentPath)) return false;
   }
   return true;
+}
+
+function handleTitleUpdated(newTitle: string) {
+  if (!activeItem.value.data || !activeItem.value.type) return;
+
+  // 1. Update the active item data so the dialog reflects the change immediately
+  activeItem.value.data.title = newTitle;
+
+  // 2. Find and update the title in the flows tree
+  const itemId = activeItem.value.data.id;
+  const itemType = activeItem.value.type;
+
+  const updateTitleInTree = (sections: Section[]) => {
+    for (const section of sections) {
+      if (itemType === 'conversation' && section.conversations) {
+        const ref = section.conversations.find(c => c.of_conversation === itemId);
+        if (ref) ref.title = newTitle;
+      } else if (itemType === 'question_answer' && section.question_answers) {
+        const ref = section.question_answers.find(qa => qa.of_questionanswer === itemId);
+        if (ref) ref.title = newTitle;
+      }
+      if (section.subsections?.length) {
+        updateTitleInTree(section.subsections);
+      }
+    }
+  };
+
+  props.flows.forEach(flow => {
+    if (flow.tree.subsections) {
+      updateTitleInTree(flow.tree.subsections);
+    }
+  });
 }
 </script>
 

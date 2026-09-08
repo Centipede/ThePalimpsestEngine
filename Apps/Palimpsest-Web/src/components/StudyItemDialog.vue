@@ -16,10 +16,12 @@
       <QuestionAnswerWorkspace
         v-if="type === 'question_answer'"
         :data="(data as QuestionAnswer)"
+        @title-updated="$emit('title-updated', $event)"
       />
       <ConversationWorkspace
         v-else-if="type === 'conversation'"
         :data="(data as Conversation)"
+        @title-updated="$emit('title-updated', $event)"
       />
     </div>
     <sl-button slot="footer" variant="primary" @click="$emit('update:open', false)">Close</sl-button>
@@ -41,6 +43,7 @@ defineProps<{
 
 defineEmits<{
   (e: 'update:open', value: boolean): void;
+  (e: 'title-updated', newTitle: string): void;
 }>();
 </script>
 
