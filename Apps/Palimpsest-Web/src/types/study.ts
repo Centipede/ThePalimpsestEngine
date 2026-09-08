@@ -28,6 +28,7 @@ export interface Conversation {
   created_at: string;
   updated_at: string;
   turns?: ConversationTurn[];
+  references?: ConversationRef[];
 }
 
 export interface ConversationTurn {
@@ -51,6 +52,7 @@ export interface QuestionAnswer {
   title: string;
   question: string | null;
   answer: string | null;
+  references?: QuestionAnswerRef[];
 }
 
 export interface QuestionAnswerRef extends BaseRef {

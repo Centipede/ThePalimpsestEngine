@@ -69,7 +69,9 @@
       :loading="activeItem.loading"
       :error="activeItem.error"
       :data="activeItem.data"
+      :linking-ref="activeItem.linkingRef"
       @title-updated="handleTitleUpdated"
+      @pin-updated="handlePinUpdated"
     />
   </div>
 </template>
@@ -110,6 +112,7 @@ interface ActiveItem {
   loading: boolean;
   error: string | null;
   data: Conversation | QuestionAnswer | null;
+  linkingRef: ConversationRef | QuestionAnswerRef | null;
   open: boolean;
 }
 
@@ -118,6 +121,7 @@ const activeItem = ref<ActiveItem>({
   loading: false,
   error: null,
   data: null,
+  linkingRef: null,
   open: false
 });
 
@@ -239,7 +243,7 @@ async function toggleSummary(entry: TocEntry) {
 }
 
 async function showConversation(ref: ConversationRef) {
-  activeItem.value = { type: 'conversation', loading: true, error: null, data: null, open: true };
+  activeItem.value = { type: 'conversation', loading: true, error: null, data: null, linkingRef: ref, open: true };
   try {
     const response = await apiFetch(`/teststudy/api/v1/conversation/${ref.of_conversation}/`);
     if (response.ok) {
@@ -255,7 +259,7 @@ async function showConversation(ref: ConversationRef) {
 }
 
 async function showQuestionAnswer(ref: QuestionAnswerRef) {
-  activeItem.value = { type: 'question_answer', loading: true, error: null, data: null, open: true };
+  activeItem.value = { type: 'question_answer', loading: true, error: null, data: null, linkingRef: ref, open: true };
   try {
     const response = await apiFetch(`/teststudy/api/v1/question-answer/${ref.of_questionanswer}/`);
     if (response.ok) {
@@ -307,8 +311,47 @@ function handleTitleUpdated(newTitle: string) {
   };
 
   props.flows.forEach(flow => {
-    if (flow.tree.subsections) {
+    if (flow.tree?.subsections) {
       updateTitleInTree(flow.tree.subsections);
+    }
+  });
+}
+
+function handlePinUpdated(isPinned: boolean) {
+  if (!activeItem.value.data || !activeItem.value.type || !activeItem.value.linkingRef) return;
+
+  // 1. Update the linking ref status
+  activeItem.value.linkingRef.is_pinned = isPinned;
+
+  // 2. Update the reference inside the data object if it exists
+  const itemId = activeItem.value.data.id;
+  const itemType = activeItem.value.type;
+  const refId = activeItem.value.linkingRef.id;
+
+  if ((activeItem.value.data as any).references) {
+    const ref = (activeItem.value.data as any).references.find((r: any) => r.id === refId);
+    if (ref) ref.is_pinned = isPinned;
+  }
+
+  // 3. Find and update the pin status in the flows tree
+  const updatePinInTree = (sections: Section[]) => {
+    for (const section of sections) {
+      if (itemType === 'conversation' && section.conversations) {
+        const ref = section.conversations.find(c => c.id === refId);
+        if (ref) ref.is_pinned = isPinned;
+      } else if (itemType === 'question_answer' && section.question_answers) {
+        const ref = section.question_answers.find(qa => qa.id === refId);
+        if (ref) ref.is_pinned = isPinned;
+      }
+      if (section.subsections?.length) {
+        updatePinInTree(section.subsections);
+      }
+    }
+  };
+
+  props.flows.forEach(flow => {
+    if (flow.tree?.subsections) {
+      updatePinInTree(flow.tree.subsections);
     }
   });
 }

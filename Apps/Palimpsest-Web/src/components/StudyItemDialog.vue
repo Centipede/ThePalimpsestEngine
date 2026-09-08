@@ -16,12 +16,16 @@
       <QuestionAnswerWorkspace
         v-if="type === 'question_answer'"
         :data="(data as QuestionAnswer)"
+        :linking-ref="(linkingRef as QuestionAnswerRef)"
         @title-updated="$emit('title-updated', $event)"
+        @pin-updated="$emit('pin-updated', $event)"
       />
       <ConversationWorkspace
         v-else-if="type === 'conversation'"
         :data="(data as Conversation)"
+        :linking-ref="(linkingRef as ConversationRef)"
         @title-updated="$emit('title-updated', $event)"
+        @pin-updated="$emit('pin-updated', $event)"
       />
     </div>
     <sl-button slot="footer" variant="primary" @click="$emit('update:open', false)">Close</sl-button>
@@ -29,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Conversation, QuestionAnswer } from '../types/study';
+import type { Conversation, ConversationRef, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import QuestionAnswerWorkspace from './QuestionAnswerWorkspace.vue';
 import ConversationWorkspace from './ConversationWorkspace.vue';
 
@@ -39,11 +43,13 @@ defineProps<{
   loading: boolean;
   error: string | null;
   data: Conversation | QuestionAnswer | null;
+  linkingRef: ConversationRef | QuestionAnswerRef | null;
 }>();
 
 defineEmits<{
   (e: 'update:open', value: boolean): void;
   (e: 'title-updated', newTitle: string): void;
+  (e: 'pin-updated', isPinned: boolean): void;
 }>();
 </script>
 

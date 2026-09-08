@@ -1,21 +1,14 @@
 <template>
   <div class="qa-workspace">
-    <div v-if="!isEditingTitle" class="title-container" @click="startEditing">
-      <h3 class="workspace-title">{{ data.title }}</h3>
-      <sl-icon name="pencil" class="edit-icon"></sl-icon>
-    </div>
-    <div v-else class="title-edit-container">
-      <sl-input
-        ref="titleInput"
-        v-model="editedTitle"
-        size="medium"
-        :loading="isSaving"
-        :disabled="isSaving"
-        @sl-blur="saveTitle"
-        @keydown.enter="saveTitle"
-        @keydown.esc="cancelEditing"
-      ></sl-input>
-    </div>
+    <WorkspaceHeader
+      :title="data.title"
+      :linking-ref="linkingRef"
+      :all-refs="data.references || []"
+      item-type="question_answer"
+      :item-id="data.id"
+      @title-updated="$emit('title-updated', $event)"
+      @pin-updated="$emit('pin-updated', $event)"
+    />
     <div class="qa-item">
       <div class="qa-label">Question</div>
       <div class="markdown-content" v-html="marked.parse(data.question || '')"></div>
@@ -28,102 +21,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue';
 import { marked } from 'marked';
-import type { QuestionAnswer } from '../types/study';
-import { apiFetch } from '../api';
+import type { QuestionAnswer, QuestionAnswerRef } from '../types/study';
+import WorkspaceHeader from './WorkspaceHeader.vue';
 
-const props = defineProps<{
+defineProps<{
   data: QuestionAnswer;
+  linkingRef: QuestionAnswerRef;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'title-updated', newTitle: string): void;
+  (e: 'pin-updated', isPinned: boolean): void;
 }>();
-
-const isEditingTitle = ref(false);
-const editedTitle = ref('');
-const isSaving = ref(false);
-const titleInput = ref<any>(null);
-
-function startEditing() {
-  editedTitle.value = props.data.title;
-  isEditingTitle.value = true;
-  nextTick(() => {
-    titleInput.value?.focus();
-  });
-}
-
-function cancelEditing() {
-  isEditingTitle.value = false;
-}
-
-async function saveTitle() {
-  if (!isEditingTitle.value || isSaving.value) return;
-  
-  if (editedTitle.value === props.data.title) {
-    isEditingTitle.value = false;
-    return;
-  }
-
-  isSaving.value = true;
-  try {
-    const response = await apiFetch(`/teststudy/api/v1/question-answer/${props.data.id}/`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ title: editedTitle.value }),
-    });
-
-    if (response.ok) {
-      emit('title-updated', editedTitle.value);
-      isEditingTitle.value = false;
-    } else {
-      console.error('Failed to save title:', response.statusText);
-    }
-  } catch (error) {
-    console.error('Error saving title:', error);
-  } finally {
-    isSaving.value = false;
-  }
-}
 </script>
 
 <style scoped>
-.workspace-title {
-  margin: 0;
-  color: var(--sl-color-neutral-900);
-}
-
-.title-container {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  padding: 0.25rem;
-  margin: -0.25rem;
-  border-radius: var(--sl-border-radius-medium);
-  transition: background-color var(--sl-transition-fast);
-}
-
-.title-container:hover {
-  background-color: var(--sl-color-neutral-100);
-}
-
-.edit-icon {
-  font-size: 1rem;
-  color: var(--sl-color-neutral-400);
-  opacity: 0;
-  transition: opacity var(--sl-transition-fast);
-}
-
-.title-container:hover .edit-icon {
-  opacity: 1;
-}
-
-.title-edit-container {
-  margin-bottom: 0.5rem;
+.qa-workspace {
+  padding: 0;
 }
 
 .qa-item {

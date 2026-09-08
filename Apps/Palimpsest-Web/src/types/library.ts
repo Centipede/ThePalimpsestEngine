@@ -144,6 +144,7 @@ export interface SectionDetail extends Section {
     };
     first_real_content: number;
     last_real_content: number;
+    full_path_coded?: string;
     info?: {
         summary?: SectionSummary;
         entities?: SectionEntities;
