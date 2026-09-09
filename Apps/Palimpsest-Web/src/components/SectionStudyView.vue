@@ -11,6 +11,7 @@
               <router-link :to="crumb.path" class="breadcrumb-link">{{ crumb.title }}</router-link>
             </sl-breadcrumb-item>
           </sl-breadcrumb>
+          <sl-badge variant="neutral" pill >{{ data.section.path_coded ?? data.section.path_full }}</sl-badge>
         </div>
       </Teleport>
 
@@ -207,10 +208,7 @@
                   <sl-badge variant="success" pill class="segment-range-badge">{{ seg.ranges.join(', ') }}</sl-badge>
                   <span class="segment-caption">{{ seg.caption }}</span>
                 </div>
-                <p v-if="seg.description" class="segment-description">{{ seg.description }}</p>
-                <div v-if="seg.keywords?.length" class="segment-keywords">
-                  <strong>Keywords:</strong> {{ seg.keywords.join(', ') }}
-                </div>
+                <p v-if="seg.description && !openSegments[idx]" class="segment-description">{{ seg.description }}</p>
               </div>
 
               <div class="segment-content">
@@ -579,8 +577,10 @@ watch(() => props.sectionPath, fetchSection);
 
 .segment-description {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.90rem;
   line-height: 1.5;
+  font-style: italic;
+  color: var(--sl-color-neutral-500);
 }
 
 .segment-keywords {

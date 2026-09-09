@@ -43,7 +43,7 @@ defineProps<{
 .toc-summary__descriptor-prose {
   font-size: 0.85rem;
   line-height: 1.4;
-  color: var(--color-text);
+  color: var(--color-text-muted);
 }
 
 .toc-summary__tag-list {

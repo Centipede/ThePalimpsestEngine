@@ -528,7 +528,7 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
   border-radius: 999px;
   font-size: 0.6875rem;
   font-weight: 500;
-  font-family: var(--sl-font-mono, monospace);
+  font-family: var(--sl-font-sans);
   line-height: 1.35;
   white-space: nowrap;
   text-align: center;

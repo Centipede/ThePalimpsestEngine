@@ -13,6 +13,15 @@
         <div class="toc-summary__main">
           <h4 class="toc-summary__theme">{{ data.theme }}</h4>
           <p class="toc-summary__brief">{{ data.brief_summary }}</p>
+          <br>
+          <SummaryTimeDescriptor
+              v-if="data.prose_descriptors?.time"
+              :data="data.prose_descriptors.time"
+          />
+          <SummaryPlaceDescriptor
+              v-if="data.prose_descriptors?.place"
+              :data="data.prose_descriptors.place"
+          />
         </div>
         <div class="toc-summary__tags">
           <div v-if="data.tag_descriptors.people?.length" class="toc-summary__tag-group">
@@ -30,17 +39,9 @@
           <div v-if="data.tag_descriptors.institutions?.length" class="toc-summary__tag-group">
             <span class="toc-summary__tag-label">Institutions:</span>
             <div class="toc-summary__tag-list">
-              <sl-badge v-for="i in data.tag_descriptors.institutions" :key="i" variant="neutral" pill>{{ i.title }}</sl-badge>
+              <sl-badge v-for="i in data.tag_descriptors.institutions" :key="i" variant="warning" pill>{{ i.title }}</sl-badge>
             </div>
           </div>
-          <SummaryTimeDescriptor
-            v-if="data.prose_descriptors?.time"
-            :data="data.prose_descriptors.time"
-          />
-          <SummaryPlaceDescriptor
-            v-if="data.prose_descriptors?.place"
-            :data="data.prose_descriptors.place"
-          />
         </div>
       </div>
     </div>
@@ -86,7 +87,7 @@ const renderedSummary = computed(() => {
 
 .toc-summary__grid {
   display: grid;
-  grid-template-columns: 1.5fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 2rem;
 }
 
