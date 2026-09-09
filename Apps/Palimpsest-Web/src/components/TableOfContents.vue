@@ -40,7 +40,7 @@
         <div
           v-show="isVisible(entry)"
           class="toc__row"
-          :class="[`toc__row--depth-${entry.depth}`, { 'toc__row--ancestor': entry.isAncestor }]"
+          :class="[`toc__row--depth-${entry.depth}`, { 'toc__row--ancestor': entry.isAncestor, 'toc__row--descendant': entry.isDescendant }]"
         >
           <span
             class="toc__badge toc__badge--id"
@@ -139,6 +139,7 @@ interface TocEntry {
   depth: number;
   hasChildren: boolean;
   isAncestor?: boolean;
+  isDescendant?: boolean;
 }
 
 interface SummaryState {
@@ -169,7 +170,7 @@ function walkTree(sections: Section[], depth: number, result: TocEntry[] = []): 
   for (const s of sections) {
     if (!s.level_type) continue;
     const hasChildren = !!(s.subsections?.length);
-    result.push({ section: s, depth, hasChildren });
+    result.push({ section: s, depth, hasChildren, isDescendant: true });
     if (s.subsections?.length) {
       walkTree(s.subsections, depth + 1, result);
     }
@@ -214,7 +215,7 @@ const allEntries = computed<TocEntry[]>(() => {
     entries.push({
       section: target,
       depth: path.length - 1,
-      hasChildren: !!target.subsections?.length
+      hasChildren: !!target.subsections?.length,
     });
 
     if (target.subsections?.length) {
@@ -465,7 +466,12 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
 }
 
 .toc__row--ancestor {
-  background: var(--color-bg-muted, #f9fafb);
+  color: var(--color-text-muted);
+  opacity: 0.8;
+}
+
+.toc__row--descendant {
+  color: var(--color-text-muted);
   opacity: 0.8;
 }
 
@@ -480,22 +486,19 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
 }
 
 .toc__row--depth-2 {
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
+  font-size: 0.85rem;
 }
 
 .toc__row--depth-3 {
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
+  font-size: 0.80rem;
 }
 
 .toc__row--depth-4 {
-  font-size: 0.825rem;
-  color: var(--color-text-muted);
+  font-size: 0.75rem;
 }
 
 .toc__row--depth-5 {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   color: var(--color-text-muted);
 }
 
