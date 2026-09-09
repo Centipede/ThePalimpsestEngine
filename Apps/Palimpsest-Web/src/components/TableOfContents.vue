@@ -60,6 +60,12 @@
             {{ entry.section.title_text }}
           </router-link>
 
+          <span class="toc__pages">
+            <template v-if="entry.section.pageinfo?.first_page">
+              {{ entry.section.pageinfo.first_page?.page_name }}{{ entry.section.pageinfo?.last_page ? ' - ' + entry.section.pageinfo?.last_page.page_name : '' }}
+            </template>
+          </span>
+
           <span
             v-for="ref in entry.section.conversations"
             :key="'conv-' + ref.id"
@@ -490,6 +496,15 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
 
 .toc__title:hover {
   text-decoration: underline;
+}
+
+.toc__pages {
+  flex-shrink: 0;
+  width: 5rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-align: right;
+  white-space: nowrap;
 }
 
 .toc__chevron {

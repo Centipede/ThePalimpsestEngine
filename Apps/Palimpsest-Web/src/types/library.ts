@@ -26,6 +26,25 @@ export interface Book {
     conversations?: ConversationRef[];
 }
 
+export interface PageInfo {
+    first_page: {
+        id: number;
+        page_name: string;
+        page_number?: number;
+    }
+    first_content: {
+        id: number;
+    }
+    last_page: {
+        id: number;
+        page_name: string;
+        page_number?: number;
+    }
+    last_content: {
+        id: number;
+    }
+}
+
 export interface Section {
     id: number;
     path_id: string;
@@ -37,6 +56,7 @@ export interface Section {
     subsections: Section[] | null;
     question_answers?: QuestionAnswerRef[];
     conversations?: ConversationRef[];
+    pageinfo?: PageInfo | null;
 }
 
 
