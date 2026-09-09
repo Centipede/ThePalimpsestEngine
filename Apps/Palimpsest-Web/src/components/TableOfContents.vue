@@ -83,11 +83,10 @@
           </span>
         </div>
 
-        <TocSummary
+        <SummaryInfoRecord
           v-if="isVisible(entry) && expandedSummaries[entry.section.path_full]?.expanded"
-          :data="expandedSummaries[entry.section.path_full]?.data"
-          :loading="expandedSummaries[entry.section.path_full]?.loading"
-          :error="expandedSummaries[entry.section.path_full]?.error"
+          :machine-name="props.machineName"
+          :section-path="entry.section.path_full"
           :depth="entry.depth"
         />
       </template>
@@ -114,7 +113,7 @@ import { RouterLink } from 'vue-router';
 import type { BookStructure, Section, SectionSummaryNew } from '../types/library';
 import type { Conversation, ConversationRef, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import { apiFetch } from '../api';
-import TocSummary from './TocSummary.vue';
+import SummaryInfoRecord from './SummaryInfoRecord.vue';
 import StudyItemDialog from './StudyItemDialog.vue';
 
 const props = defineProps<{ 
@@ -131,9 +130,6 @@ interface TocEntry {
 }
 
 interface SummaryState {
-  loading: boolean;
-  error?: string;
-  data?: SectionSummaryNew;
   expanded: boolean;
 }
 
@@ -252,23 +248,11 @@ function toggle(pathFull: string) {
   else collapsed.value.push(pathFull);
 }
 
-async function toggleSummary(entry: TocEntry) {
+function toggleSummary(entry: TocEntry) {
   const path = entry.section.path_full;
   
   if (!expandedSummaries.value[path]) {
-    expandedSummaries.value[path] = { loading: true, expanded: true };
-    try {
-      const response = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${path}/summary/`);
-      if (response.ok) {
-        expandedSummaries.value[path].data = await response.json();
-      } else {
-        expandedSummaries.value[path].error = `Error: ${response.statusText}`;
-      }
-    } catch (e) {
-      expandedSummaries.value[path].error = (e as Error).message;
-    } finally {
-      expandedSummaries.value[path].loading = false;
-    }
+    expandedSummaries.value[path] = { expanded: true };
   } else {
     expandedSummaries.value[path].expanded = !expandedSummaries.value[path].expanded;
   }

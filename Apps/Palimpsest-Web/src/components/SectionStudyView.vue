@@ -176,7 +176,7 @@
           :root_section_pf="props.sectionPath"
       />
 
-      <SectionSummary v-if="showSummary && data.section.info?.summary" :summary="data.section.info.summary"/>
+      <SummaryInfoRecord v-if="showSummary" :machine-name="props.machineName" :section-path="props.sectionPath"/>
       <SectionSegmentsOverview v-if="showSegmentsOverview && data.section.info?.summary?.paragraph_segments" :segments="data.section.info.summary.paragraph_segments"/>
       <SectionEntities v-if="showEntities && data.section.info?.entities" :entities="data.section.info.entities"/>
 
@@ -259,7 +259,7 @@
 import {computed, onMounted, ref, watch} from 'vue';
 import {apiFetch} from '../api';
 import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle} from '../types/library';
-import SectionSummary from './SectionSummary.vue';
+import SummaryInfoRecord from './SummaryInfoRecord.vue';
 import SectionSegmentsOverview from './SectionSegmentsOverview.vue';
 import SectionEntities from './SectionEntities.vue';
 import ContentBlockView from './ContentBlockView.vue';
@@ -324,7 +324,7 @@ function setToolbarToggle(
 }
 
 const showTableOfContents = ref(true);
-const showSummary = ref(true);
+const showSummary = ref(false);
 const showSegmentsOverview = ref(false);
 const showEntities = ref(false);
 
