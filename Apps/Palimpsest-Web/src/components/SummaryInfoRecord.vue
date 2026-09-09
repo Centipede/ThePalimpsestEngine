@@ -162,12 +162,12 @@ const renderedSummary = computed(() => {
   margin-bottom: 0;
 }
 
-div.summary-info-record--depth-0 { padding-left: 2rem; }
-div.summary-info-record--depth-1 { padding-left: 3.5rem; }
-div.summary-info-record--depth-2 { padding-left: 5rem; }
-div.summary-info-record--depth-3 { padding-left: 6.5rem; }
-div.summary-info-record--depth-4 { padding-left: 8rem; }
-div.summary-info-record--depth-5 { padding-left: 9.5rem; }
+div.summary-info-record--depth-0 { padding-left: 8rem; }
+div.summary-info-record--depth-1 { padding-left: 9.5rem; }
+div.summary-info-record--depth-2 { padding-left: 11rem; }
+div.summary-info-record--depth-3 { padding-left: 12.5rem; }
+div.summary-info-record--depth-4 { padding-left: 14rem; }
+div.summary-info-record--depth-5 { padding-left: 15.5rem; }
 
 @media (max-width: 768px) {
   .summary-info-record__grid {

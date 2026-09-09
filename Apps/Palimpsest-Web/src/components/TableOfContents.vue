@@ -470,38 +470,38 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
 .toc__row--depth-0 {
   font-size: 1rem;
   font-weight: 600;
-  padding-left: 1rem;
 }
 
 .toc__row--depth-1 {
   font-size: 0.9375rem;
   font-weight: 400;
-  padding-left: 2.5rem;
 }
 
 .toc__row--depth-2 {
   font-size: 0.875rem;
   color: var(--color-text-muted);
-  padding-left: 4rem;
 }
 
 .toc__row--depth-3 {
   font-size: 0.85rem;
   color: var(--color-text-muted);
-  padding-left: 5.5rem;
 }
 
 .toc__row--depth-4 {
   font-size: 0.825rem;
   color: var(--color-text-muted);
-  padding-left: 7rem;
 }
 
 .toc__row--depth-5 {
   font-size: 0.8rem;
   color: var(--color-text-muted);
-  padding-left: 8.5rem;
 }
+
+.toc__row--depth-1 .toc__title { padding-left: 1.5rem; }
+.toc__row--depth-2 .toc__title { padding-left: 3rem; }
+.toc__row--depth-3 .toc__title { padding-left: 4.5rem; }
+.toc__row--depth-4 .toc__title { padding-left: 6rem; }
+.toc__row--depth-5 .toc__title { padding-left: 7.5rem; }
 
 .toc__title {
   text-decoration: none;
