@@ -1,6 +1,8 @@
 <template>
   <div class="toc-wrapper">
     <div class="toc">
+
+      <!-- Book-wide discussion rows -->
       <div
         v-if="!props.root_section_pf && (props.bookStructure.book.conversations?.length || props.bookStructure.book.question_answers?.length)"
         class="toc__row toc__row--book-level"
@@ -33,6 +35,7 @@
         </div>
       </div>
 
+      <!-- Section rows -->
       <template v-for="entry in allEntries" :key="entry.section.path_full">
         <div
           v-show="isVisible(entry)"
@@ -41,10 +44,9 @@
         >
           <span
             class="toc__badge toc__badge--id"
-            :title="entry.section.path_full"
             @click.stop="toggleSummary(entry)"
           >
-            {{ entry.section.path_id }}
+            {{ entry.section.path_coded ?? entry.section.path_full }}
           </span>
 
           <sl-icon
@@ -120,7 +122,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
-import type { BookStructure, Section, SectionSummaryNew } from '../types/library';
+import type { BookStructure, Section } from '../types/library';
 import type { Conversation, ConversationRef, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import { apiFetch } from '../api';
 import SummaryInfoRecord from './SummaryInfoRecord.vue';
@@ -427,7 +429,7 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
 
 .toc__row {
   display: grid;
-  grid-template-columns: 4.5rem 1.5rem 3fr 5rem 2fr;
+  grid-template-columns: 4.5rem 1.5rem 2fr 5rem 2fr;
   align-items: center;
   column-gap: 0.5rem;
   padding: 0.375rem 1rem;
