@@ -8,27 +8,29 @@
         <sl-icon name="book" class="toc__book-icon" />
         <span class="toc__title">Book-wide discussions</span>
 
-        <span
-          v-for="ref in props.bookStructure.book.conversations"
-          :key="'conv-' + ref.id"
-          class="toc__badge toc__badge--conversation"
-          :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
-          :title="ref.title || 'Conversation'"
-          @click.stop="showConversation(ref)"
-        >
-          {{ ref.is_pinned ? ref.title : '•' }}
-        </span>
+        <div class="toc__badges">
+          <span
+            v-for="ref in props.bookStructure.book.conversations"
+            :key="'conv-' + ref.id"
+            class="toc__badge toc__badge--conversation"
+            :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
+            :title="ref.title || 'Conversation'"
+            @click.stop="showConversation(ref)"
+          >
+            {{ ref.is_pinned ? ref.title : '•' }}
+          </span>
 
-        <span
-          v-for="ref in props.bookStructure.book.question_answers"
-          :key="'qa-' + ref.id"
-          class="toc__badge toc__badge--qa"
-          :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
-          :title="ref.title || 'Q&A'"
-          @click.stop="showQuestionAnswer(ref)"
-        >
-          {{ ref.is_pinned ? ref.title : '•' }}
-        </span>
+          <span
+            v-for="ref in props.bookStructure.book.question_answers"
+            :key="'qa-' + ref.id"
+            class="toc__badge toc__badge--qa"
+            :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
+            :title="ref.title || 'Q&A'"
+            @click.stop="showQuestionAnswer(ref)"
+          >
+            {{ ref.is_pinned ? ref.title : '•' }}
+          </span>
+        </div>
       </div>
 
       <template v-for="entry in allEntries" :key="entry.section.path_full">
@@ -66,27 +68,29 @@
             </template>
           </span>
 
-          <span
-            v-for="ref in entry.section.conversations"
-            :key="'conv-' + ref.id"
-            class="toc__badge toc__badge--conversation"
-            :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
-            :title="ref.title || 'Conversation'"
-            @click.stop="showConversation(ref)"
-          >
-            {{ ref.is_pinned ? ref.title : '•' }}
-          </span>
+          <div class="toc__badges">
+            <span
+              v-for="ref in entry.section.conversations"
+              :key="'conv-' + ref.id"
+              class="toc__badge toc__badge--conversation"
+              :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
+              :title="ref.title || 'Conversation'"
+              @click.stop="showConversation(ref)"
+            >
+              {{ ref.is_pinned ? ref.title : '•' }}
+            </span>
 
-          <span
-            v-for="ref in entry.section.question_answers"
-            :key="'qa-' + ref.id"
-            class="toc__badge toc__badge--qa"
-            :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
-            :title="ref.title || 'Q&A'"
-            @click.stop="showQuestionAnswer(ref)"
-          >
-            {{ ref.is_pinned ? ref.title : '•' }}
-          </span>
+            <span
+              v-for="ref in entry.section.question_answers"
+              :key="'qa-' + ref.id"
+              class="toc__badge toc__badge--qa"
+              :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
+              :title="ref.title || 'Q&A'"
+              @click.stop="showQuestionAnswer(ref)"
+            >
+              {{ ref.is_pinned ? ref.title : '•' }}
+            </span>
+          </div>
         </div>
 
         <SummaryInfoRecord
@@ -422,9 +426,10 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
 }
 
 .toc__row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 4.5rem 1.5rem 3fr 5rem 2fr;
   align-items: center;
-  gap: 0.5rem;
+  column-gap: 0.5rem;
   padding: 0.375rem 1rem;
   transition: background 0.1s;
   user-select: none;
@@ -440,8 +445,19 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
   background: var(--sl-color-neutral-50);
 }
 
+.toc__row--book-level .toc__book-icon {
+  grid-column: 2;
+}
+
+.toc__row--book-level .toc__title {
+  grid-column: 3;
+}
+
+.toc__row--book-level .toc__badges {
+  grid-column: 5;
+}
+
 .toc__book-icon {
-  flex-shrink: 0;
   color: var(--color-text-muted);
   font-size: 1rem;
 }
@@ -488,7 +504,6 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
 }
 
 .toc__title {
-  flex: 1;
   text-decoration: none;
   color: inherit;
   min-width: 0;
@@ -499,8 +514,6 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
 }
 
 .toc__pages {
-  flex-shrink: 0;
-  width: 5rem;
   font-size: 0.75rem;
   color: var(--color-text-muted);
   text-align: right;
@@ -508,7 +521,6 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
 }
 
 .toc__chevron {
-  flex-shrink: 0;
   font-size: 0.75em;
   color: var(--color-text-dimmed);
   cursor: pointer;
@@ -517,11 +529,9 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
 .toc__chevron-spacer {
   display: inline-block;
   width: 0.75em;
-  flex-shrink: 0;
 }
 
 .toc__badge {
-  flex-shrink: 0;
   display: inline-block;
   padding: 0.1em 0.45em;
   border-radius: 999px;
@@ -537,7 +547,6 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
 .toc__badge--id {
   background: var(--color-bg-muted);
   color: var(--color-text-muted);
-  min-width: 4rem;
 }
 
 .toc__badge--qa {
@@ -553,7 +562,12 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
 .toc__badge--unpinned {
   background: var(--color-bg-muted);
   color: var(--color-text-dimmed);
-  min-width: 1.2rem;
   padding: 0.1em 0.25em;
+}
+
+.toc__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
 }
 </style>
