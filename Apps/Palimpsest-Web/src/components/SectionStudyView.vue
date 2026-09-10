@@ -15,10 +15,6 @@
         </div>
       </Teleport>
 
-      <header class="section-study__header">
-        <h1 class="section-study__title">{{ data.section.title_text }}</h1>
-      </header>
-
       <div class="section-study__toolbar">
 
         <div class="toolbar-infoleft" />
@@ -179,6 +175,10 @@
       <SummaryInfoRecord v-if="showSummary" :machine-name="props.machineName" :section-path="props.sectionPath"/>
       <SectionSegmentsOverview v-if="showSegmentsOverview && data.section.info?.summary?.paragraph_segments" :segments="data.section.info.summary.paragraph_segments"/>
       <SectionEntities v-if="showEntities && data.section.info?.entities" :entities="data.section.info.entities"/>
+
+      <header v-if="data.contents.length>0" class="section-study__header">
+        <h1 class="section-study__title">{{ data.section.title_text }}</h1>
+      </header>
 
       <article class="section-study__content">
 
@@ -609,11 +609,14 @@ watch(() => props.sectionPath, fetchSection);
 
 .section-study__header {
   margin-bottom: 0.1rem;
-  border-bottom: 1px solid var(--color-border, #e5e7eb);
   padding-bottom: 0.1rem;
+  display: grid;
+  grid-template-columns: 80px 1fr 4fr 1fr 80px;
+  grid-template-areas: "infoleft summary content entities inforight";
 }
 
 .section-study__title {
+  grid-area: content;
   margin: 0;
   font-size: 2rem;
   font-weight: 800;
