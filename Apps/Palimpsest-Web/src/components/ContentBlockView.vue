@@ -112,11 +112,11 @@ const entitiesFuzzy = computed(() => {
 });
 
 const firstPage = computed(() => {
-  return props.block.content_json?.first_page?.page_number || props.block.content_json?.first_block;
+  return props.block.pageinfo?.first_page?.page_name || props.block.content_json?.first_page?.page_number || props.block.content_json?.first_block;
 });
 
 const lastPage = computed(() => {
-  return props.block.content_json?.last_page?.page_number || props.block.content_json?.last_block;
+  return props.block.pageinfo?.last_page?.page_name || props.block.content_json?.last_page?.page_number || props.block.content_json?.last_block;
 });
 
 const allHighlights = computed(() => {

@@ -76,6 +76,7 @@ export interface ContentBlock {
     content_text: string;
     content_json: any;
     inforecords: InfoRecord[];
+    pageinfo?: PageInfo | null;
 }
 
 export interface InfoRecord {

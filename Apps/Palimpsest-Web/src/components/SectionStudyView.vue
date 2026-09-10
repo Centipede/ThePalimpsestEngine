@@ -178,6 +178,11 @@
 
       <header v-if="data.contents.length>0" class="section-study__header">
         <h1 class="section-study__title">{{ data.section.title_text }}</h1>
+        <div class="section-pages">
+          <template v-if="data.section.pageinfo?.first_page">
+            p. {{ data.section.pageinfo.first_page?.page_name }}{{ data.section.pageinfo?.last_page && data.section.pageinfo.last_page.page_name !== data.section.pageinfo.first_page.page_name ? ' - ' + data.section.pageinfo?.last_page.page_name : '' }}
+          </template>
+        </div>
       </header>
 
       <article class="section-study__content">
@@ -443,7 +448,7 @@ async function fetchSection() {
   loading.value = true;
   error.value = '';
   try {
-    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=sum,ents&cont_info=sum,ents`);
+    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=sum,ents&cont_info=sum,ents&pageinfo=1`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data.value = await res.json();
   } catch (e) {
@@ -621,6 +626,16 @@ watch(() => props.sectionPath, fetchSection);
   font-size: 2rem;
   font-weight: 800;
   color: var(--color-text, #111827);
+}
+
+.section-pages {
+  grid-area: inforight;
+  align-self: end;
+  text-align: right;
+  font-size: 0.9rem;
+  color: var(--color-text-muted, #6b7280);
+  font-weight: 300;
+  padding-bottom: 0.5rem;
 }
 
 .section-study__content {
