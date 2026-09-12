@@ -1,5 +1,5 @@
 <template>
-  <sl-details class="workspace-section">
+  <sl-details class="workspace-section" :open="initiallyOpen ?? false">
     <div slot="summary" class="section-summary">
       <span class="section-label">{{ label }}</span>
       <span v-if="note && !isEditing" class="note-preview">
@@ -48,6 +48,7 @@ const props = defineProps<{
   itemType: 'conversation-turn' | 'question-answer';
   itemId: number;
   noteField: 'question_note' | 'answer_note';
+  initiallyOpen?: boolean;
 }>();
 
 const emit = defineEmits<{

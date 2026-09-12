@@ -2,12 +2,12 @@
   <header class="vue-header">
     <nav>
       <div class="nav-start">
-        <RouterLink to="/study" custom v-slot="{ navigate }">
+        <RouterLink to="/study" custom>
           <sl-icon-button
             src="/logos/palimpsest-menu-icon.svg"
             label="Home"
             class="nav-link nav-logo-palimpsest"
-            @click="navigate"
+            href="/study"
           ></sl-icon-button>
         </RouterLink>
       </div>

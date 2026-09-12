@@ -19,6 +19,7 @@
         :item-id="data.id"
         note-field="question_note"
         @note-updated="$emit('note-updated', { field: 'question_note', value: $event })"
+        :initially-open="true"
       />
       <WorkspaceFoldableSection
         label="Answer"
@@ -28,6 +29,7 @@
         :item-id="data.id"
         note-field="answer_note"
         @note-updated="$emit('note-updated', { field: 'answer_note', value: $event })"
+        :initially-open="true"
       />
     </div>
   </div>

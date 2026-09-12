@@ -13,7 +13,7 @@
       </Teleport>
 
       <template v-if="!isSectionActive">
-        <TableOfContents :flows="book.flows" :machineName="machineName"/>
+        <TableOfContents :book-structure="book" :machineName="machineName"/>
       </template>
       <template v-else-if="isSectionActive">
         <router-view v-slot="{ Component }">
@@ -50,7 +50,7 @@ onMounted(async () => {
     const authorsPromise = store.fetchAuthors();
 
     // Fetch book structure
-    const bookRes = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/structure/?tree_depth=5&qas=true&conversations=true&title=true`);
+    const bookRes = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/structure/?tree_depth=5&qas=1&conversations=1&ref_title=1&pageinfo=1&path_coded=1`);
     if (!bookRes.ok) throw new Error(`Book: HTTP ${bookRes.status}`);
 
     const [_, bookData] = await Promise.all([authorsPromise, bookRes.json()]);
@@ -72,6 +72,8 @@ onMounted(async () => {
 }
 
 .book-study__header {
+  max-width: 18rem;
+  overflow: hidden;
   padding: 0.1rem 1rem 0.1rem;
   display: flex;
   flex-direction: column;

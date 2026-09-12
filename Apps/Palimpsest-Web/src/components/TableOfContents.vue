@@ -1,18 +1,52 @@
 <template>
   <div class="toc-wrapper">
     <div class="toc">
+
+      <!-- Book-wide discussion rows -->
+      <div
+        v-if="!props.root_section_pf && (props.bookStructure.book.conversations?.length || props.bookStructure.book.question_answers?.length)"
+        class="toc__row toc__row--book-level"
+      >
+        <sl-icon name="book" class="toc__book-icon" />
+        <span class="toc__title">Book-wide discussions</span>
+
+        <div class="toc__badges">
+          <span
+            v-for="ref in props.bookStructure.book.conversations"
+            :key="'conv-' + ref.id"
+            class="toc__badge toc__badge--conversation"
+            :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
+            :title="ref.title || 'Conversation'"
+            @click.stop="showConversation(ref)"
+          >
+            {{ ref.is_pinned ? ref.title : '•' }}
+          </span>
+
+          <span
+            v-for="ref in props.bookStructure.book.question_answers"
+            :key="'qa-' + ref.id"
+            class="toc__badge toc__badge--qa"
+            :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
+            :title="ref.title || 'Q&A'"
+            @click.stop="showQuestionAnswer(ref)"
+          >
+            {{ ref.is_pinned ? ref.title : '•' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Section rows -->
       <template v-for="entry in allEntries" :key="entry.section.path_full">
         <div
           v-show="isVisible(entry)"
           class="toc__row"
-          :class="[`toc__row--depth-${entry.depth}`, { 'toc__row--ancestor': entry.isAncestor }]"
+          :class="[`toc__row--depth-${entry.depth}`, { 'toc__row--ancestor': entry.isAncestor, 'toc__row--descendant': entry.isDescendant }]"
         >
           <span
             class="toc__badge toc__badge--id"
-            :title="entry.section.path_full"
             @click.stop="toggleSummary(entry)"
           >
-            {{ entry.section.path_id }}
+            {{ entry.section.path_coded ?? entry.section.path_full }}
           </span>
 
           <sl-icon
@@ -30,34 +64,41 @@
             {{ entry.section.title_text }}
           </router-link>
 
-          <span
-            v-for="ref in entry.section.conversations"
-            :key="'conv-' + ref.id"
-            class="toc__badge toc__badge--conversation"
-            :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
-            :title="ref.title || 'Conversation'"
-            @click.stop="showConversation(ref)"
-          >
-            {{ ref.is_pinned ? ref.title : '•' }}
+          <span class="toc__pages">
+            <template v-if="entry.section.pageinfo?.first_page">
+              {{ entry.section.pageinfo.first_page?.page_name }}{{ entry.section.pageinfo?.last_page ? ' - ' + entry.section.pageinfo?.last_page.page_name : '' }}
+            </template>
           </span>
 
-          <span
-            v-for="ref in entry.section.question_answers"
-            :key="'qa-' + ref.id"
-            class="toc__badge toc__badge--qa"
-            :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
-            :title="ref.title || 'Q&A'"
-            @click.stop="showQuestionAnswer(ref)"
-          >
-            {{ ref.is_pinned ? ref.title : '•' }}
-          </span>
+          <div class="toc__badges">
+            <span
+              v-for="ref in entry.section.conversations"
+              :key="'conv-' + ref.id"
+              class="toc__badge toc__badge--conversation"
+              :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
+              :title="ref.title || 'Conversation'"
+              @click.stop="showConversation(ref)"
+            >
+              {{ ref.is_pinned ? ref.title : '•' }}
+            </span>
+
+            <span
+              v-for="ref in entry.section.question_answers"
+              :key="'qa-' + ref.id"
+              class="toc__badge toc__badge--qa"
+              :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
+              :title="ref.title || 'Q&A'"
+              @click.stop="showQuestionAnswer(ref)"
+            >
+              {{ ref.is_pinned ? ref.title : '•' }}
+            </span>
+          </div>
         </div>
 
-        <TocSummary
+        <SummaryInfoRecord
           v-if="isVisible(entry) && expandedSummaries[entry.section.path_full]?.expanded"
-          :data="expandedSummaries[entry.section.path_full]?.data"
-          :loading="expandedSummaries[entry.section.path_full]?.loading"
-          :error="expandedSummaries[entry.section.path_full]?.error"
+          :machine-name="props.machineName"
+          :section-path="entry.section.path_full"
           :depth="entry.depth"
         />
       </template>
@@ -81,14 +122,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
-import type { Flow, Section, SectionSummaryNew } from '../types/library';
+import type { BookStructure, Section } from '../types/library';
 import type { Conversation, ConversationRef, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import { apiFetch } from '../api';
-import TocSummary from './TocSummary.vue';
+import SummaryInfoRecord from './SummaryInfoRecord.vue';
 import StudyItemDialog from './StudyItemDialog.vue';
 
 const props = defineProps<{ 
-  flows: Flow[],
+  bookStructure: BookStructure,
   machineName: string,
   root_section_pf?: string
 }>();
@@ -98,12 +139,10 @@ interface TocEntry {
   depth: number;
   hasChildren: boolean;
   isAncestor?: boolean;
+  isDescendant?: boolean;
 }
 
 interface SummaryState {
-  loading: boolean;
-  error?: string;
-  data?: SectionSummaryNew;
   expanded: boolean;
 }
 
@@ -131,7 +170,7 @@ function walkTree(sections: Section[], depth: number, result: TocEntry[] = []): 
   for (const s of sections) {
     if (!s.level_type) continue;
     const hasChildren = !!(s.subsections?.length);
-    result.push({ section: s, depth, hasChildren });
+    result.push({ section: s, depth, hasChildren, isDescendant: true });
     if (s.subsections?.length) {
       walkTree(s.subsections, depth + 1, result);
     }
@@ -150,7 +189,7 @@ function findPath(sections: Section[], targetPath: string): Section[] {
   return [];
 }
 
-const mainFlow = computed(() => props.flows.find(f => f.name === 'main'));
+const mainFlow = computed(() => props.bookStructure.flows.find(f => f.name === 'main'));
 
 const allEntries = computed<TocEntry[]>(() => {
   const root = mainFlow.value?.tree;
@@ -176,7 +215,7 @@ const allEntries = computed<TocEntry[]>(() => {
     entries.push({
       section: target,
       depth: path.length - 1,
-      hasChildren: !!target.subsections?.length
+      hasChildren: !!target.subsections?.length,
     });
 
     if (target.subsections?.length) {
@@ -222,23 +261,11 @@ function toggle(pathFull: string) {
   else collapsed.value.push(pathFull);
 }
 
-async function toggleSummary(entry: TocEntry) {
+function toggleSummary(entry: TocEntry) {
   const path = entry.section.path_full;
   
   if (!expandedSummaries.value[path]) {
-    expandedSummaries.value[path] = { loading: true, expanded: true };
-    try {
-      const response = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${path}/summary/`);
-      if (response.ok) {
-        expandedSummaries.value[path].data = await response.json();
-      } else {
-        expandedSummaries.value[path].error = `Error: ${response.statusText}`;
-      }
-    } catch (e) {
-      expandedSummaries.value[path].error = (e as Error).message;
-    } finally {
-      expandedSummaries.value[path].loading = false;
-    }
+    expandedSummaries.value[path] = { expanded: true };
   } else {
     expandedSummaries.value[path].expanded = !expandedSummaries.value[path].expanded;
   }
@@ -293,10 +320,20 @@ function handleTitleUpdated(newTitle: string) {
   // 1. Update the active item data so the dialog reflects the change immediately
   activeItem.value.data.title = newTitle;
 
-  // 2. Find and update the title in the flows tree
+  // 2. Find and update the title in the collections
   const itemId = activeItem.value.data.id;
   const itemType = activeItem.value.type;
 
+  // 2a. Update book-level items
+  if (itemType === 'conversation' && props.bookStructure.book.conversations) {
+    const ref = props.bookStructure.book.conversations.find(c => c.of_conversation === itemId);
+    if (ref) ref.title = newTitle;
+  } else if (itemType === 'question_answer' && props.bookStructure.book.question_answers) {
+    const ref = props.bookStructure.book.question_answers.find(qa => qa.of_questionanswer === itemId);
+    if (ref) ref.title = newTitle;
+  }
+
+  // 2b. Update section-level items in flows tree
   const updateTitleInTree = (sections: Section[]) => {
     for (const section of sections) {
       if (itemType === 'conversation' && section.conversations) {
@@ -312,9 +349,9 @@ function handleTitleUpdated(newTitle: string) {
     }
   };
 
-  props.flows.forEach(flow => {
-    if (flow.tree?.subsections) {
-      updateTitleInTree(flow.tree.subsections);
+  props.bookStructure.flows.forEach(flow => {
+    if (flow.tree) {
+      updateTitleInTree([flow.tree]);
     }
   });
 }
@@ -326,7 +363,6 @@ function handlePinUpdated(isPinned: boolean) {
   activeItem.value.linkingRef.is_pinned = isPinned;
 
   // 2. Update the reference inside the data object if it exists
-  const itemId = activeItem.value.data.id;
   const itemType = activeItem.value.type;
   const refId = activeItem.value.linkingRef.id;
 
@@ -335,7 +371,18 @@ function handlePinUpdated(isPinned: boolean) {
     if (ref) ref.is_pinned = isPinned;
   }
 
-  // 3. Find and update the pin status in the flows tree
+  // 3. Find and update the pin status in the collections
+
+  // 3a. Update book-level collections
+  if (itemType === 'conversation' && props.bookStructure.book.conversations) {
+    const ref = props.bookStructure.book.conversations.find(c => c.id === refId);
+    if (ref) ref.is_pinned = isPinned;
+  } else if (itemType === 'question_answer' && props.bookStructure.book.question_answers) {
+    const ref = props.bookStructure.book.question_answers.find(qa => qa.id === refId);
+    if (ref) ref.is_pinned = isPinned;
+  }
+
+  // 3b. Update section-level items in flows tree
   const updatePinInTree = (sections: Section[]) => {
     for (const section of sections) {
       if (itemType === 'conversation' && section.conversations) {
@@ -351,9 +398,9 @@ function handlePinUpdated(isPinned: boolean) {
     }
   };
 
-  props.flows.forEach(flow => {
-    if (flow.tree?.subsections) {
-      updatePinInTree(flow.tree.subsections);
+  props.bookStructure.flows.forEach(flow => {
+    if (flow.tree) {
+      updatePinInTree([flow.tree]);
     }
   });
 }
@@ -382,9 +429,10 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
 }
 
 .toc__row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 4.5rem 1.5rem 2fr 5rem 2fr;
   align-items: center;
-  gap: 0.5rem;
+  column-gap: 0.5rem;
   padding: 0.375rem 1rem;
   transition: background 0.1s;
   user-select: none;
@@ -394,49 +442,73 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
   background: var(--color-bg-muted);
 }
 
+.toc__row--book-level {
+  border-bottom: 1px solid var(--sl-color-neutral-200);
+  margin-bottom: 0.5rem;
+  background: var(--sl-color-neutral-50);
+}
+
+.toc__row--book-level .toc__book-icon {
+  grid-column: 2;
+}
+
+.toc__row--book-level .toc__title {
+  grid-column: 3;
+}
+
+.toc__row--book-level .toc__badges {
+  grid-column: 5;
+}
+
+.toc__book-icon {
+  color: var(--color-text-muted);
+  font-size: 1rem;
+}
+
 .toc__row--ancestor {
-  background: var(--color-bg-muted, #f9fafb);
+  color: var(--color-text-muted);
+  opacity: 0.8;
+}
+
+.toc__row--descendant {
+  color: var(--color-text-muted);
   opacity: 0.8;
 }
 
 .toc__row--depth-0 {
   font-size: 1rem;
   font-weight: 600;
-  padding-left: 1rem;
 }
 
 .toc__row--depth-1 {
   font-size: 0.9375rem;
   font-weight: 400;
-  padding-left: 2.5rem;
 }
 
 .toc__row--depth-2 {
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
-  padding-left: 4rem;
+  font-size: 0.85rem;
 }
 
 .toc__row--depth-3 {
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
-  padding-left: 5.5rem;
+  font-size: 0.80rem;
 }
 
 .toc__row--depth-4 {
-  font-size: 0.825rem;
-  color: var(--color-text-muted);
-  padding-left: 7rem;
+  font-size: 0.75rem;
 }
 
 .toc__row--depth-5 {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   color: var(--color-text-muted);
-  padding-left: 8.5rem;
 }
 
+.toc__row--depth-1 .toc__title { padding-left: 1.5rem; }
+.toc__row--depth-2 .toc__title { padding-left: 3rem; }
+.toc__row--depth-3 .toc__title { padding-left: 4.5rem; }
+.toc__row--depth-4 .toc__title { padding-left: 6rem; }
+.toc__row--depth-5 .toc__title { padding-left: 7.5rem; }
+
 .toc__title {
-  flex: 1;
   text-decoration: none;
   color: inherit;
   min-width: 0;
@@ -446,8 +518,14 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
   text-decoration: underline;
 }
 
+.toc__pages {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-align: right;
+  white-space: nowrap;
+}
+
 .toc__chevron {
-  flex-shrink: 0;
   font-size: 0.75em;
   color: var(--color-text-dimmed);
   cursor: pointer;
@@ -456,17 +534,15 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
 .toc__chevron-spacer {
   display: inline-block;
   width: 0.75em;
-  flex-shrink: 0;
 }
 
 .toc__badge {
-  flex-shrink: 0;
   display: inline-block;
   padding: 0.1em 0.45em;
   border-radius: 999px;
   font-size: 0.6875rem;
   font-weight: 500;
-  font-family: var(--sl-font-mono, monospace);
+  font-family: var(--sl-font-sans);
   line-height: 1.35;
   white-space: nowrap;
   text-align: center;
@@ -476,7 +552,6 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
 .toc__badge--id {
   background: var(--color-bg-muted);
   color: var(--color-text-muted);
-  min-width: 4rem;
 }
 
 .toc__badge--qa {
@@ -492,7 +567,12 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
 .toc__badge--unpinned {
   background: var(--color-bg-muted);
   color: var(--color-text-dimmed);
-  min-width: 1.2rem;
   padding: 0.1em 0.25em;
+}
+
+.toc__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
 }
 </style>

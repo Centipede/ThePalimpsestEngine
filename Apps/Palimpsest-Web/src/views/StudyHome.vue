@@ -1,5 +1,17 @@
 <script setup lang="ts">
+import { useHead } from '@unhead/vue';
 import BookListView from '../components/BookListView.vue';
+
+useHead({
+  title: 'Study Home | Palimpsest Engine',
+  link: [
+    {
+      rel: 'icon',
+      type: 'image/svg+xml',
+      href: '/logos/palimpsest-menu-icon.svg',
+    },
+  ],
+});
 </script>
 
 <template>

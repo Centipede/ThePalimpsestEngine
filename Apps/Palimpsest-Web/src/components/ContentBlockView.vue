@@ -18,14 +18,15 @@
     <template v-if="isFolded">
       <!-- Center: Wide Summary (folded) -->
       <div class="block-summary">
-        <span v-if="summaryText"><i>{{ summaryText }}</i></span>
+        <div class="block-summary__caption" v-if="summaryCaption"><i>{{ summaryCaption }}</i></div>
+        <div class="block-summary__text" v-if="summaryText"><i>{{ summaryText }}</i></div>
       </div>
     </template>
 
     <template v-else>
       <!-- Left inner: Summary (caption) -->
       <div class="block-summary">
-        <small v-if="summaryCaption"><i>{{ summaryCaption }}</i></small>
+        <div class="block-summary__text" v-if="summaryCaption"><i>{{ summaryCaption }}</i></div>
       </div>
 
       <!-- Center: Content -->
@@ -111,11 +112,11 @@ const entitiesFuzzy = computed(() => {
 });
 
 const firstPage = computed(() => {
-  return props.block.content_json?.first_page?.page_number || props.block.content_json?.first_block;
+  return props.block.pageinfo?.first_page?.page_name || props.block.content_json?.first_page?.page_number || props.block.content_json?.first_block;
 });
 
 const lastPage = computed(() => {
-  return props.block.content_json?.last_page?.page_number || props.block.content_json?.last_block;
+  return props.block.pageinfo?.last_page?.page_name || props.block.content_json?.last_page?.page_number || props.block.content_json?.last_block;
 });
 
 const allHighlights = computed(() => {
@@ -186,11 +187,18 @@ watch(
 
 .block-summary {
   grid-area: summary;
-  color: var(--sl-color-neutral-500);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   line-height: 1.4;
   word-break: break-word;
   font-weight: 400;
+}
+
+.block-summary__caption {
+  color: var(--sl-color-cyan-700);
+}
+
+.block-summary__text {
+  color: var(--sl-color-neutral-400);
 }
 
 .block-entities {

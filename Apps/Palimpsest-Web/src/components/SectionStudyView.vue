@@ -11,12 +11,9 @@
               <router-link :to="crumb.path" class="breadcrumb-link">{{ crumb.title }}</router-link>
             </sl-breadcrumb-item>
           </sl-breadcrumb>
+          <sl-badge variant="neutral" pill >{{ data.section.path_coded ?? data.section.path_full }}</sl-badge>
         </div>
       </Teleport>
-
-      <header class="section-study__header">
-        <h1 class="section-study__title">{{ data.section.title_text }}</h1>
-      </header>
 
       <div class="section-study__toolbar">
 
@@ -170,14 +167,23 @@
 
       <TableOfContents
           v-if="showTableOfContents && props.bookStructure"
-          :flows="props.bookStructure.flows"
+          :book-structure="props.bookStructure"
           :machine-name="props.machineName"
           :root_section_pf="props.sectionPath"
       />
 
-      <SectionSummary v-if="showSummary && data.section.info?.summary" :summary="data.section.info.summary"/>
+      <SummaryInfoRecord v-if="showSummary" :machine-name="props.machineName" :section-path="props.sectionPath"/>
       <SectionSegmentsOverview v-if="showSegmentsOverview && data.section.info?.summary?.paragraph_segments" :segments="data.section.info.summary.paragraph_segments"/>
       <SectionEntities v-if="showEntities && data.section.info?.entities" :entities="data.section.info.entities"/>
+
+      <header v-if="data.contents.length>0" class="section-study__header">
+        <h1 class="section-study__title">{{ data.section.title_text }}</h1>
+        <div class="section-pages">
+          <template v-if="data.section.pageinfo?.first_page">
+            p. {{ data.section.pageinfo.first_page?.page_name }}{{ data.section.pageinfo?.last_page && data.section.pageinfo.last_page.page_name !== data.section.pageinfo.first_page.page_name ? ' - ' + data.section.pageinfo?.last_page.page_name : '' }}
+          </template>
+        </div>
+      </header>
 
       <article class="section-study__content">
 
@@ -207,10 +213,7 @@
                   <sl-badge variant="success" pill class="segment-range-badge">{{ seg.ranges.join(', ') }}</sl-badge>
                   <span class="segment-caption">{{ seg.caption }}</span>
                 </div>
-                <p v-if="seg.description" class="segment-description">{{ seg.description }}</p>
-                <div v-if="seg.keywords?.length" class="segment-keywords">
-                  <strong>Keywords:</strong> {{ seg.keywords.join(', ') }}
-                </div>
+                <p v-if="seg.description && !openSegments[idx]" class="segment-description">{{ seg.description }}</p>
               </div>
 
               <div class="segment-content">
@@ -261,7 +264,7 @@
 import {computed, onMounted, ref, watch} from 'vue';
 import {apiFetch} from '../api';
 import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle} from '../types/library';
-import SectionSummary from './SectionSummary.vue';
+import SummaryInfoRecord from './SummaryInfoRecord.vue';
 import SectionSegmentsOverview from './SectionSegmentsOverview.vue';
 import SectionEntities from './SectionEntities.vue';
 import ContentBlockView from './ContentBlockView.vue';
@@ -326,7 +329,7 @@ function setToolbarToggle(
 }
 
 const showTableOfContents = ref(true);
-const showSummary = ref(true);
+const showSummary = ref(false);
 const showSegmentsOverview = ref(false);
 const showEntities = ref(false);
 
@@ -445,7 +448,7 @@ async function fetchSection() {
   loading.value = true;
   error.value = '';
   try {
-    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=sum,ents&cont_info=sum,ents`);
+    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=sum,ents&cont_info=sum,ents&pageinfo=1`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data.value = await res.json();
   } catch (e) {
@@ -579,8 +582,10 @@ watch(() => props.sectionPath, fetchSection);
 
 .segment-description {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.90rem;
   line-height: 1.5;
+  font-style: italic;
+  color: var(--sl-color-neutral-500);
 }
 
 .segment-keywords {
@@ -609,15 +614,28 @@ watch(() => props.sectionPath, fetchSection);
 
 .section-study__header {
   margin-bottom: 0.1rem;
-  border-bottom: 1px solid var(--color-border, #e5e7eb);
   padding-bottom: 0.1rem;
+  display: grid;
+  grid-template-columns: 80px 1fr 4fr 1fr 80px;
+  grid-template-areas: "infoleft summary content entities inforight";
 }
 
 .section-study__title {
+  grid-area: content;
   margin: 0;
   font-size: 2rem;
   font-weight: 800;
   color: var(--color-text, #111827);
+}
+
+.section-pages {
+  grid-area: inforight;
+  align-self: end;
+  text-align: right;
+  font-size: 0.9rem;
+  color: var(--color-text-muted, #6b7280);
+  font-weight: 300;
+  padding-bottom: 0.5rem;
 }
 
 .section-study__content {

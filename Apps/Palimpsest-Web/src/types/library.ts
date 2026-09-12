@@ -22,6 +22,27 @@ export interface Book {
     by_author1: number | null;
     by_author2: number | null;
     by_author3: number | null;
+    question_answers?: QuestionAnswerRef[];
+    conversations?: ConversationRef[];
+}
+
+export interface PageInfo {
+    first_page: {
+        id: number;
+        page_name: string;
+        page_number?: number;
+    }
+    first_content: {
+        id: number;
+    }
+    last_page: {
+        id: number;
+        page_name: string;
+        page_number?: number;
+    }
+    last_content: {
+        id: number;
+    }
 }
 
 export interface Section {
@@ -35,6 +56,7 @@ export interface Section {
     subsections: Section[] | null;
     question_answers?: QuestionAnswerRef[];
     conversations?: ConversationRef[];
+    pageinfo?: PageInfo | null;
 }
 
 
@@ -54,6 +76,7 @@ export interface ContentBlock {
     content_text: string;
     content_json: any;
     inforecords: InfoRecord[];
+    pageinfo?: PageInfo | null;
 }
 
 export interface InfoRecord {
@@ -159,8 +182,6 @@ export interface SectionContentResponse {
 export interface BookStructure {
     book: Book;
     flows: Flow[];
-    question_answers?: QuestionAnswerRef[];
-    conversations?: ConversationRef[];
 }
 
 export interface FoldTrigger {
