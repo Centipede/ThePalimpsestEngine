@@ -1,10 +1,10 @@
 <template>
   <div class="toc-wrapper">
-    <div class="toc">
+    <div class="toc" :class="{ 'toc--hide-discussions': !props.showDiscussions }">
 
       <!-- Book-wide discussion rows -->
       <div
-        v-if="!props.root_section_pf && (props.bookStructure.book.conversations?.length || props.bookStructure.book.question_answers?.length)"
+        v-if="props.showDiscussions && !props.root_section_pf && (props.bookStructure.book.conversations?.length || props.bookStructure.book.question_answers?.length)"
         class="toc__row toc__row--book-level"
       >
         <sl-icon name="book" class="toc__book-icon" />
@@ -58,11 +58,19 @@
           <span v-else class="toc__chevron-spacer" />
 
           <router-link
+            v-if="props.mode === 'nav'"
             class="toc__title"
             :to="`/study/${props.machineName}/section/${entry.section.path_full}`"
           >
             {{ entry.section.title_text }}
           </router-link>
+          <span
+            v-else
+            class="toc__title toc__title--selectable"
+            @click.stop="emit('select', entry.section.path_full)"
+          >
+            {{ entry.section.title_text }}
+          </span>
 
           <span class="toc__pages">
             <template v-if="entry.section.pageinfo?.first_page">
@@ -70,7 +78,7 @@
             </template>
           </span>
 
-          <div class="toc__badges">
+          <div v-if="props.showDiscussions" class="toc__badges">
             <span
               v-for="ref in entry.section.conversations"
               :key="'conv-' + ref.id"
@@ -128,10 +136,19 @@ import { apiFetch } from '../api';
 import SummaryInfoRecord from './SummaryInfoRecord.vue';
 import StudyItemDialog from './StudyItemDialog.vue';
 
-const props = defineProps<{ 
+const props = withDefaults(defineProps<{
   bookStructure: BookStructure,
   machineName: string,
-  root_section_pf?: string
+  root_section_pf?: string,
+  mode?: 'nav' | 'select',
+  showDiscussions?: boolean
+}>(), {
+  mode: 'nav',
+  showDiscussions: true
+});
+
+const emit = defineEmits<{
+  (e: 'select', path: string): void;
 }>();
 
 interface TocEntry {
@@ -438,6 +455,10 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
   user-select: none;
 }
 
+.toc--hide-discussions .toc__row {
+  grid-template-columns: 4.5rem 1.5rem 2fr 5rem;
+}
+
 .toc__row:hover {
   background: var(--color-bg-muted);
 }
@@ -473,6 +494,15 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
 .toc__row--descendant {
   color: var(--color-text-muted);
   opacity: 0.8;
+}
+
+.toc__title--selectable {
+  cursor: pointer;
+}
+
+.toc__title--selectable:hover {
+  color: var(--sl-color-primary-600);
+  text-decoration: underline;
 }
 
 .toc__row--depth-0 {

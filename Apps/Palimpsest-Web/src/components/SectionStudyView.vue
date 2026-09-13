@@ -144,6 +144,19 @@
         </div>
 
         <div class="tools-right">
+          <sl-button-group>
+            <sl-button size="small" @click="openCorpusDialog('ask')">
+              <sl-icon slot="prefix" name="chat-dots"></sl-icon>
+              Ask book...
+            </sl-button>
+            <sl-button size="small" @click="openCorpusDialog('talk')">
+              <sl-icon slot="prefix" name="chat-quote"></sl-icon>
+              Talk with book...
+            </sl-button>
+          </sl-button-group>
+
+          <sl-divider vertical></sl-divider>
+
           <sl-dropdown stay-open-on-select>
             <sl-button slot="trigger" size="small" caret>Entities</sl-button>
             <sl-menu @sl-select="handleToolbarSelect('info-right', $event)">
@@ -175,6 +188,11 @@
       <SummaryInfoRecord v-if="showSummary" :machine-name="props.machineName" :section-path="props.sectionPath"/>
       <SectionSegmentsOverview v-if="showSegmentsOverview && data.section.info?.summary?.paragraph_segments" :segments="data.section.info.summary.paragraph_segments"/>
       <SectionEntities v-if="showEntities && data.section.info?.entities" :entities="data.section.info.entities"/>
+
+      <CorpusStudyDialog
+          v-model:open="corpusDialog.open"
+          :type="corpusDialog.type"
+      />
 
       <header v-if="data.contents.length>0" class="section-study__header">
         <h1 class="section-study__title">{{ data.section.title_text }}</h1>
@@ -269,6 +287,7 @@ import SectionSegmentsOverview from './SectionSegmentsOverview.vue';
 import SectionEntities from './SectionEntities.vue';
 import ContentBlockView from './ContentBlockView.vue';
 import TableOfContents from './TableOfContents.vue';
+import CorpusStudyDialog from './corpus/CorpusStudyDialog.vue';
 
 const props = defineProps<{
   machineName: string;
@@ -332,6 +351,16 @@ const showTableOfContents = ref(true);
 const showSummary = ref(false);
 const showSegmentsOverview = ref(false);
 const showEntities = ref(false);
+
+const corpusDialog = ref({
+  open: false,
+  type: 'ask' as 'ask' | 'talk'
+});
+
+function openCorpusDialog(type: 'ask' | 'talk') {
+  corpusDialog.value.type = type;
+  corpusDialog.value.open = true;
+}
 
 function toggleSegment(index: number, isOpen: boolean) {
   openSegments.value[index] = isOpen;
