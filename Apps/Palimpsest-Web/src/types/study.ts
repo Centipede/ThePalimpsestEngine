@@ -1,3 +1,6 @@
+import type { ConversationRef, QuestionAnswerRef } from './study';
+import type { CorpusMaterial } from './library';
+
 export type ConversationGoal = 'C' | 'ST' | 'TWB';
 
 
@@ -78,4 +81,30 @@ export interface QuestionAnswer {
 
 export interface QuestionAnswerRef extends BaseRef {
   of_questionanswer: number;
+}
+
+export interface AskCorpusRequest {
+  expression: string;
+  style: string;
+  question: string;
+  system_prompt: string;
+  num_results: number;
+  corpus: CorpusMaterial;
+}
+
+export interface AskCorpusHit {
+  in_book: number | null;
+  by_author: number | null;
+  on_page: number;
+  published: string | null;
+  book_thumbnail_url: string | null;
+  html_highlighted: string;
+  rank: number;
+}
+
+export interface AskCorpusResponse {
+  answer: string;
+  answer_html: string;
+  hits: AskCorpusHit[];
+  qa_id: number;
 }
