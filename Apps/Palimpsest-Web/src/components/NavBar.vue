@@ -17,6 +17,13 @@
       <div class="nav-end-tools-portal"></div>
 
       <div class="nav-end">
+        <RouterLink v-if="isAuthenticated" to="/search" custom>
+          <sl-icon-button
+            name="search"
+            label="Search"
+            href="/search"
+          ></sl-icon-button>
+        </RouterLink>
         <sl-icon-button
           v-if="isAuthenticated"
           name="box-arrow-right"

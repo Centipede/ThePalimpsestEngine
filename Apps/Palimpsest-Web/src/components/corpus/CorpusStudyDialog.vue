@@ -48,8 +48,23 @@
             </div>
 
             <div class="material-list">
-              <div class="empty-material">
+              <div v-if="materials.length === 0" class="empty-material">
                 No material added yet. Use the buttons above to scope your study.
+              </div>
+              <div v-else class="material-items">
+                <div 
+                  v-for="(item, index) in materials" 
+                  :key="index"
+                  :class="['material-item', `material-item--${item.strategy}`]"
+                >
+                  <div class="item-content">
+                    <sl-icon :name="getItemIcon(item)" class="item-icon"></sl-icon>
+                    <span class="item-label">{{ getItemLabel(item) }}</span>
+                  </div>
+                  <sl-button variant="text" size="small" @click="removeMaterial(index)">
+                    <sl-icon name="x-lg" slot="prefix"></sl-icon>
+                  </sl-button>
+                </div>
               </div>
             </div>
           </div>
@@ -57,7 +72,7 @@
 
         <div v-if="showScopeSelector" class="scope-selector-panel">
           <sl-divider></sl-divider>
-          <CorpusScopeSelector />
+          <CorpusScopeSelector @add-materials="handleAddMaterials" />
         </div>
       </div>
     </div>
@@ -72,20 +87,53 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import CorpusScopeSelector from './CorpusScopeSelector.vue';
+import type { CorpusMaterialItem } from '../../types/library';
 
 defineProps<{
   open: boolean;
   type: 'talk' | 'ask';
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'update:open', value: boolean): void;
 }>();
 
 const showScopeSelector = ref(false);
+const materials = ref<CorpusMaterialItem[]>([]);
 
 function handleRequestClose(event: Event) {
   event.preventDefault();
+}
+
+function handleAddMaterials(newItems: CorpusMaterialItem[]) {
+  materials.value.push(...newItems);
+}
+
+function removeMaterial(index: number) {
+  materials.value.splice(index, 1);
+}
+
+function getItemIcon(item: CorpusMaterialItem) {
+  switch (item.type) {
+    case 'author': return 'person';
+    case 'book': return 'book';
+    case 'section': return 'hash';
+    default: return 'dot';
+  }
+}
+
+function getItemLabel(item: CorpusMaterialItem) {
+  if (item.type === 'author' && item.author) {
+    return `Author: ${item.author.abbrev}`;
+  }
+  if (item.type === 'book' && item.book) {
+    return `Book: ${item.book.abbrev} (${item.book.author_abbrev})`;
+  }
+  if (item.type === 'section' && item.section) {
+    const subtree = item.section.subtree_strategy === 'tree' ? ' (and subchapters)' : '';
+    return `Chapter: ${item.section.path_coded} in ${item.section.book_abbrev} (${item.section.author_abbrev})${subtree}`;
+  }
+  return 'Unknown item';
 }
 </script>
 
@@ -151,17 +199,61 @@ function handleRequestClose(event: Event) {
   flex: 1;
   min-height: 100px;
   background-color: white;
-  border: 1px dashed var(--sl-color-neutral-300);
+  border: 1px solid var(--sl-color-neutral-200);
   border-radius: var(--sl-border-radius-small);
   display: flex;
+  flex-direction: column;
+}
+
+.material-items {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.material-item {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--sl-border-radius-small);
+  font-size: 0.85rem;
+}
+
+.material-item--include {
+  background-color: var(--sl-color-success-50);
+  border-left: 4px solid var(--sl-color-success-600);
+  color: var(--sl-color-success-900);
+}
+
+.material-item--exclude {
+  background-color: var(--sl-color-warning-50);
+  border-left: 4px solid var(--sl-color-warning-600);
+  color: var(--sl-color-warning-900);
+}
+
+.item-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.item-icon {
+  font-size: 1rem;
+  opacity: 0.7;
 }
 
 .empty-material {
+  padding: 2rem;
   font-size: 0.85rem;
   color: var(--sl-color-neutral-400);
   font-style: italic;
+  text-align: center;
+  align-self: center;
 }
 
 .scope-selector-panel {

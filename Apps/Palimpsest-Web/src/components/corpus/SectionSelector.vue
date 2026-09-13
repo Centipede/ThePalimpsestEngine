@@ -24,8 +24,11 @@
       <sl-dropdown ref="dropdown">
         <div slot="trigger" class="context-menu-anchor"></div>
         <sl-menu @sl-select="handleMenuSelect">
-          <sl-menu-item value="single">Add only this chapter</sl-menu-item>
-          <sl-menu-item value="tree">Add chapter and all subchapters</sl-menu-item>
+          <sl-menu-item value="include-single">Include only this chapter</sl-menu-item>
+          <sl-menu-item value="include-tree">Include chapter and all subchapters</sl-menu-item>
+          <sl-divider></sl-divider>
+          <sl-menu-item value="exclude-single">Exclude only this chapter</sl-menu-item>
+          <sl-menu-item value="exclude-tree">Exclude chapter and all subchapters</sl-menu-item>
         </sl-menu>
       </sl-dropdown>
     </div>
@@ -39,7 +42,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
 import { apiFetch } from '../../api';
-import type { BookStructure } from '../../types/library';
+import type { BookStructure, Section } from '../../types/library';
 import TableOfContents from '../TableOfContents.vue';
 
 const props = defineProps<{
@@ -47,15 +50,17 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'selectSingle', sectionPath: string): void;
-  (e: 'selectTree', sectionPath: string): void;
+  (e: 'includeSingle', section: Section): void;
+  (e: 'includeTree', section: Section): void;
+  (e: 'excludeSingle', section: Section): void;
+  (e: 'excludeTree', section: Section): void;
 }>();
 
 const bookStructure = ref<BookStructure | null>(null);
 const loading = ref(false);
 const error = ref('');
 const dropdown = ref<any>(null);
-const selectedPath = ref<string | null>(null);
+const selectedSection = ref<Section | null>(null);
 
 async function fetchStructure() {
   if (!props.machineName) {
@@ -80,8 +85,8 @@ watch(() => props.machineName, fetchStructure);
 
 onMounted(fetchStructure);
 
-function handleSelect(payload: { path: string, event: MouseEvent }) {
-  selectedPath.value = payload.path;
+function handleSelect(payload: { section: Section, event: MouseEvent }) {
+  selectedSection.value = payload.section;
   const event = payload.event;
 
   const anchor = dropdown.value?.querySelector('.context-menu-anchor') as HTMLElement | null;
@@ -100,12 +105,16 @@ function handleMenuSelect(event: CustomEvent) {
   const item = event.detail.item;
   const action = item.value;
   
-  if (!selectedPath.value) return;
+  if (!selectedSection.value) return;
 
-  if (action === 'single') {
-    emit('selectSingle', selectedPath.value);
-  } else if (action === 'tree') {
-    emit('selectTree', selectedPath.value);
+  if (action === 'include-single') {
+    emit('includeSingle', selectedSection.value);
+  } else if (action === 'include-tree') {
+    emit('includeTree', selectedSection.value);
+  } else if (action === 'exclude-single') {
+    emit('excludeSingle', selectedSection.value);
+  } else if (action === 'exclude-tree') {
+    emit('excludeTree', selectedSection.value);
   }
 }
 </script>

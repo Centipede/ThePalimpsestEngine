@@ -15,17 +15,34 @@
         :key="author.id"
         :class="['author-item', { 'is-selected': selectedIds.includes(author.id) }]"
         @click="toggleSelection(author.id)"
+        @contextmenu.prevent="handleContextMenu(author, $event)"
       >
         <span class="author-name">{{ author.full_name }}</span>
         <span v-if="author.abbrev" class="author-abbrev">({{ author.abbrev }})</span>
       </div>
     </div>
+
+    <sl-dropdown ref="dropdown">
+      <div slot="trigger" class="context-menu-anchor"></div>
+      <sl-menu @sl-select="handleMenuSelect">
+        <sl-menu-item value="include">Include Author</sl-menu-item>
+        <sl-menu-item value="exclude">Exclude Author</sl-menu-item>
+        <sl-divider v-if="selectedIds.length > 0"></sl-divider>
+        <sl-menu-item v-if="selectedIds.length > 0" value="include-selected">
+          Include Selected ({{ selectedIds.length }})
+        </sl-menu-item>
+        <sl-menu-item v-if="selectedIds.length > 0" value="exclude-selected">
+          Exclude Selected ({{ selectedIds.length }})
+        </sl-menu-item>
+      </sl-menu>
+    </sl-dropdown>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useLibraryStore } from '../../stores/library';
+import type { Author } from '../../types/library';
 
 const props = defineProps<{
   selectedIds: number[];
@@ -33,10 +50,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:selectedIds', ids: number[]): void;
+  (e: 'includeAuthors', ids: number[]): void;
+  (e: 'excludeAuthors', ids: number[]): void;
 }>();
 
 const libraryStore = useLibraryStore();
 const searchQuery = ref('');
+const dropdown = ref<any>(null);
+const contextAuthor = ref<Author | null>(null);
 
 onMounted(() => {
   libraryStore.fetchAuthors();
@@ -61,6 +82,35 @@ function toggleSelection(id: number) {
   }
   emit('update:selectedIds', newSelection);
 }
+
+function handleContextMenu(author: Author, event: MouseEvent) {
+  contextAuthor.value = author;
+  
+  const anchor = dropdown.value?.querySelector('.context-menu-anchor') as HTMLElement | null;
+  if (!anchor || !dropdown.value) return;
+
+  anchor.style.position = 'fixed';
+  anchor.style.left = `${event.clientX}px`;
+  anchor.style.top = `${event.clientY}px`;
+  anchor.style.width = '1px';
+  anchor.style.height = '1px';
+
+  dropdown.value.show();
+}
+
+function handleMenuSelect(event: CustomEvent) {
+  const action = event.detail.item.value;
+  
+  if (action === 'include' && contextAuthor.value) {
+    emit('includeAuthors', [contextAuthor.value.id]);
+  } else if (action === 'exclude' && contextAuthor.value) {
+    emit('excludeAuthors', [contextAuthor.value.id]);
+  } else if (action === 'include-selected') {
+    emit('includeAuthors', props.selectedIds);
+  } else if (action === 'exclude-selected') {
+    emit('excludeAuthors', props.selectedIds);
+  }
+}
 </script>
 
 <style scoped>
@@ -69,6 +119,12 @@ function toggleSelection(id: number) {
   flex-direction: column;
   gap: 0.5rem;
   height: 100%;
+  position: relative;
+}
+
+.context-menu-anchor {
+  width: 1px;
+  height: 1px;
 }
 
 .author-list {

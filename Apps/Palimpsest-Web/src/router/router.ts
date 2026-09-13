@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import UnauthorizedView from '../views/UnauthorizedView.vue';
 import AdminHome from '../views/AdminHome.vue';
 import StudyHome from '../views/StudyHome.vue';
+import Search from '../views/Search.vue';
 import { useAuth } from '../composables/useAuth';
 import BookStudyView from "../components/BookStudyView.vue";
 import SectionStudyView from "../components/SectionStudyView.vue";
@@ -12,6 +13,7 @@ export const router = createRouter({
         { path: '/', component: UnauthorizedView },
         { path: '/admin', component: AdminHome },
         { path: '/study', component: StudyHome },
+        { path: '/search', component: Search },
         {
             path: '/study/:machine_name',
             component: BookStudyView,

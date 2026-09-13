@@ -67,8 +67,8 @@
           <span
             v-else
             class="toc__title toc__title--selectable"
-            @click.stop="emit('select', { path: entry.section.path_full, event: $event })"
-            @contextmenu.stop.prevent="emit('select', { path: entry.section.path_full, event: $event })"
+            @click.stop="emit('select', { section: entry.section, event: $event })"
+            @contextmenu.stop.prevent="emit('select', { section: entry.section, event: $event })"
           >
             {{ entry.section.title_text }}
           </span>
@@ -149,7 +149,7 @@ const props = withDefaults(defineProps<{
 });
 
 const emit = defineEmits<{
-  (e: 'select', payload: { path: string, event: MouseEvent }): void;
+  (e: 'select', payload: { section: Section, event: MouseEvent }): void;
 }>();
 
 interface TocEntry {

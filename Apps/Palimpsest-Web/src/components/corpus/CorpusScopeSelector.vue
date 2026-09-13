@@ -5,6 +5,8 @@
       <AuthorSelector
         :selected-ids="selectedAuthorIds"
         @update:selected-ids="selectedAuthorIds = $event"
+        @include-authors="handleIncludeAuthors"
+        @exclude-authors="handleExcludeAuthors"
       />
     </div>
 
@@ -14,6 +16,8 @@
         :author-ids="selectedAuthorIds"
         :selected-ids="selectedBookIds"
         @update:selected-ids="handleBookSelectionChange"
+        @include-books="handleIncludeBooks"
+        @exclude-books="handleExcludeBooks"
       />
     </div>
 
@@ -21,8 +25,10 @@
       <div class="column-header">Chapters</div>
       <SectionSelector
         :machine-name="lastSelectedBookMachineName"
-        @select-single="handleSelectSingle"
-        @select-tree="handleSelectTree"
+        @include-single="handleIncludeSingle"
+        @include-tree="handleIncludeTree"
+        @exclude-single="handleExcludeSingle"
+        @exclude-tree="handleExcludeTree"
       />
     </div>
   </div>
@@ -34,8 +40,18 @@ import AuthorSelector from './AuthorSelector.vue';
 import BookSelector from './BookSelector.vue';
 import SectionSelector from './SectionSelector.vue';
 import { useLibraryStore } from '../../stores/library';
+import type { 
+  CorpusMaterialItem, 
+  MaterialInclusionStrategy, 
+  MaterialSubtreeStrategy,
+  Section
+} from '../../types/library';
 
 const libraryStore = useLibraryStore();
+
+const emit = defineEmits<{
+  (e: 'add-materials', items: CorpusMaterialItem[]): void;
+}>();
 
 const selectedAuthorIds = ref<number[]>([]);
 const selectedBookIds = ref<number[]>([]);
@@ -54,12 +70,99 @@ function handleBookSelectionChange(ids: number[]) {
   }
 }
 
-function handleSelectSingle(path: string) {
-  console.log('Single section selected:', path);
+function handleIncludeAuthors(ids: number[]) {
+  const items: CorpusMaterialItem[] = ids.map(id => {
+    const author = libraryStore.authors.find(a => a.id === id);
+    return {
+      strategy: 'include',
+      type: 'author',
+      author: { id, abbrev: author?.abbrev || '' }
+    };
+  });
+  emit('add-materials', items);
 }
 
-function handleSelectTree(path: string) {
-  console.log('Section tree selected:', path);
+function handleExcludeAuthors(ids: number[]) {
+  const items: CorpusMaterialItem[] = ids.map(id => {
+    const author = libraryStore.authors.find(a => a.id === id);
+    return {
+      strategy: 'exclude',
+      type: 'author',
+      author: { id, abbrev: author?.abbrev || '' }
+    };
+  });
+  emit('add-materials', items);
+}
+
+function handleIncludeBooks(ids: number[]) {
+  const items: CorpusMaterialItem[] = ids.map(id => {
+    const book = libraryStore.books.find(b => b.id === id);
+    const author = libraryStore.authors.find(a => a.id === book?.by_author);
+    return {
+      strategy: 'include',
+      type: 'book',
+      book: { 
+        id, 
+        abbrev: book?.abbrev || '', 
+        machine_name: book?.machine_name || '',
+        author_abbrev: author?.abbrev || ''
+      }
+    };
+  });
+  emit('add-materials', items);
+}
+
+function handleExcludeBooks(ids: number[]) {
+  const items: CorpusMaterialItem[] = ids.map(id => {
+    const book = libraryStore.books.find(b => b.id === id);
+    const author = libraryStore.authors.find(a => a.id === book?.by_author);
+    return {
+      strategy: 'exclude',
+      type: 'book',
+      book: { 
+        id, 
+        abbrev: book?.abbrev || '', 
+        machine_name: book?.machine_name || '',
+        author_abbrev: author?.abbrev || ''
+      }
+    };
+  });
+  emit('add-materials', items);
+}
+
+function handleSectionAction(section: Section, strategy: MaterialInclusionStrategy, subtree: MaterialSubtreeStrategy) {
+  const book = libraryStore.books.find(b => b.machine_name === lastSelectedBookMachineName.value);
+  const author = libraryStore.authors.find(a => a.id === book?.by_author);
+  
+  const item: CorpusMaterialItem = {
+    strategy,
+    type: 'section',
+    section: {
+      id: section.id,
+      path_full: section.path_full,
+      path_coded: section.path_coded || section.path_full,
+      book_abbrev: book?.abbrev || '',
+      author_abbrev: author?.abbrev || '',
+      subtree_strategy: subtree
+    }
+  };
+  emit('add-materials', [item]);
+}
+
+function handleIncludeSingle(section: Section) {
+  handleSectionAction(section, 'include', 'node');
+}
+
+function handleIncludeTree(section: Section) {
+  handleSectionAction(section, 'include', 'tree');
+}
+
+function handleExcludeSingle(section: Section) {
+  handleSectionAction(section, 'exclude', 'node');
+}
+
+function handleExcludeTree(section: Section) {
+  handleSectionAction(section, 'exclude', 'tree');
 }
 </script>
 

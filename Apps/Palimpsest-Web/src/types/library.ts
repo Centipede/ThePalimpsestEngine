@@ -225,12 +225,41 @@ export interface SectionSummaryNew {
 }
 
 
+ export type MaterialInclusionStrategy = 'include' | 'exclude';
+ export type MaterialSubtreeStrategy = 'node' | 'tree';
 
+ export interface AuthorMaterial {
+     id: number;
+     abbrev: string;
+ }
 
+ export interface BookMaterial {
+     id: number;
+     abbrev: string;
+     machine_name: string;
+     author_abbrev: string;
+ }
 
+ export interface SectionMaterial {
+     id: number;
+     path_full: string;
+     path_coded: string;
+     book_abbrev: string;
+     author_abbrev: string;
+     subtree_strategy: MaterialSubtreeStrategy;
+ }
 
+ export interface CorpusMaterialItem {
+     strategy: MaterialInclusionStrategy;
+     type: 'author' | 'book' | 'section';
+     author?: AuthorMaterial;
+     book?: BookMaterial;
+     section?: SectionMaterial;
+ }
 
-
+export interface CorpusMaterial {
+    items: CorpusMaterialItem[];
+}
 
 
 
