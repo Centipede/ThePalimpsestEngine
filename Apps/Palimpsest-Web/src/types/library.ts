@@ -261,5 +261,19 @@ export interface CorpusMaterial {
     items: CorpusMaterialItem[];
 }
 
+export interface SearchHit {
+  in_book: number;
+  by_author: number;
+  on_page: number;
+  published: string | null;
+  book_thumbnail_url: string | null;
+  html_highlighted: string;
+  rank: number;
+}
+
+export interface SearchResponse {
+  hits: SearchHit[];
+}
+
 
 
