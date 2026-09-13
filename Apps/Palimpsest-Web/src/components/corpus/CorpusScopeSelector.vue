@@ -21,7 +21,8 @@
       <div class="column-header">Chapters</div>
       <SectionSelector
         :machine-name="lastSelectedBookMachineName"
-        @select="handleSectionSelect"
+        @select-single="handleSelectSingle"
+        @select-tree="handleSelectTree"
       />
     </div>
   </div>
@@ -53,9 +54,12 @@ function handleBookSelectionChange(ids: number[]) {
   }
 }
 
-function handleSectionSelect(path: string) {
-  console.log('Section selected:', path);
-  // Aggregate selection logic will be added in future steps
+function handleSelectSingle(path: string) {
+  console.log('Single section selected:', path);
+}
+
+function handleSelectTree(path: string) {
+  console.log('Section tree selected:', path);
 }
 </script>
 

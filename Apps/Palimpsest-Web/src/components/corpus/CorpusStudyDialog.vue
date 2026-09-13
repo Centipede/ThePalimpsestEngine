@@ -3,7 +3,7 @@
     :label="type === 'talk' ? 'Talk with book' : 'Ask book'"
     :open="open"
     @sl-request-close="handleRequestClose"
-    @sl-after-hide="$emit('update:open', false)"
+    @sl-after-hide.self="$emit('update:open', false)"
     style="--width: 90vw;"
   >
     <div class="corpus-study-dialog">

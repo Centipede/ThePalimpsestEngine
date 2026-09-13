@@ -20,6 +20,14 @@
         :show-discussions="false"
         @select="handleSelect"
       />
+
+      <sl-dropdown ref="dropdown">
+        <div slot="trigger" class="context-menu-anchor"></div>
+        <sl-menu @sl-select="handleMenuSelect">
+          <sl-menu-item value="single">Add only this chapter</sl-menu-item>
+          <sl-menu-item value="tree">Add chapter and all subchapters</sl-menu-item>
+        </sl-menu>
+      </sl-dropdown>
     </div>
     <div v-else class="empty-state">
       <sl-icon name="book" class="empty-icon"></sl-icon>
@@ -39,12 +47,15 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'select', sectionPath: string): void;
+  (e: 'selectSingle', sectionPath: string): void;
+  (e: 'selectTree', sectionPath: string): void;
 }>();
 
 const bookStructure = ref<BookStructure | null>(null);
 const loading = ref(false);
 const error = ref('');
+const dropdown = ref<any>(null);
+const selectedPath = ref<string | null>(null);
 
 async function fetchStructure() {
   if (!props.machineName) {
@@ -69,8 +80,33 @@ watch(() => props.machineName, fetchStructure);
 
 onMounted(fetchStructure);
 
-function handleSelect(path: string) {
-  emit('select', path);
+function handleSelect(payload: { path: string, event: MouseEvent }) {
+  selectedPath.value = payload.path;
+  const event = payload.event;
+
+  const anchor = dropdown.value?.querySelector('.context-menu-anchor') as HTMLElement | null;
+  if (!anchor || !dropdown.value) return;
+
+  anchor.style.position = 'fixed';
+  anchor.style.left = `${event.clientX}px`;
+  anchor.style.top = `${event.clientY}px`;
+  anchor.style.width = '1px';
+  anchor.style.height = '1px';
+
+  dropdown.value.show();
+}
+
+function handleMenuSelect(event: CustomEvent) {
+  const item = event.detail.item;
+  const action = item.value;
+  
+  if (!selectedPath.value) return;
+
+  if (action === 'single') {
+    emit('selectSingle', selectedPath.value);
+  } else if (action === 'tree') {
+    emit('selectTree', selectedPath.value);
+  }
 }
 </script>
 
@@ -126,5 +162,10 @@ function handleSelect(path: string) {
 
 .toc-container :deep(.toc) {
   padding: 0.5rem;
+}
+
+.context-menu-anchor {
+  width: 1px;
+  height: 1px;
 }
 </style>
