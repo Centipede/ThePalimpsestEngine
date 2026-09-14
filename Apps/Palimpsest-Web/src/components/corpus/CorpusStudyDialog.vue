@@ -90,7 +90,7 @@
           </sl-alert>
         </div>
 
-        <div v-if="result" class="result-panel">
+        <div v-if="resultAsk" class="result-panel">
           <sl-divider></sl-divider>
           
           <div class="result-layout">
@@ -99,9 +99,14 @@
                 <sl-icon name="chat-dots"></sl-icon>
                 AI Answer
               </div>
-              <div class="answer-content markdown-body" v-html="result.answer_html"></div>
+              <div class="answer-content markdown-body" v-html="resultAsk.answer_html"></div>
               <div class="qa-footer">
-                <sl-button variant="text" size="small" :href="`/study/qa/${result.qa_id}`" target="_blank">
+                <sl-button 
+                  variant="text" 
+                  size="small" 
+                  :href="`/study/qa/${resultAsk.qa_id}`" 
+                  target="_blank"
+                >
                   <sl-icon slot="prefix" name="box-arrow-up-right"></sl-icon>
                   Open full Q&A record
                 </sl-button>
@@ -114,16 +119,42 @@
                 Source Passages
               </div>
               <div class="hits-list">
-                <div v-for="(hit, index) in result.hits" :key="index" class="hit-item">
-                  <div class="hit-meta">
-                    <img v-if="hit.book_thumbnail_url" :src="hit.book_thumbnail_url" class="hit-thumbnail" />
-                    <div class="hit-info">
-                      <div class="hit-book">{{ getBookTitle(hit.in_book) }}</div>
-                      <div class="hit-location">Page {{ hit.on_page }} • Score: {{ hit.rank.toFixed(3) }}</div>
-                    </div>
-                  </div>
-                  <div class="hit-text" v-html="hit.html_highlighted"></div>
-                </div>
+                <CorpusHitItem v-for="(hit, index) in resultAsk.hits" :key="index" :hit="hit" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="resultTalk" class="result-panel">
+          <sl-divider></sl-divider>
+          
+          <div class="result-layout">
+            <div class="answer-section">
+              <div class="section-header">
+                <sl-icon name="chat-dots"></sl-icon>
+                AI Answer
+              </div>
+              <div class="answer-content markdown-body" v-html="resultTalk.answer_html"></div>
+              <div class="qa-footer">
+                <sl-button 
+                  variant="text" 
+                  size="small" 
+                  :href="`/study/conversation/${resultTalk.conversation_id}`" 
+                  target="_blank"
+                >
+                  <sl-icon slot="prefix" name="box-arrow-up-right"></sl-icon>
+                  Open full conversation record
+                </sl-button>
+              </div>
+            </div>
+
+            <div class="sources-section">
+              <div class="section-header">
+                <sl-icon name="journal-text"></sl-icon>
+                Source Passages
+              </div>
+              <div class="hits-list">
+                <CorpusHitItem v-for="(hit, index) in resultTalk.hits" :key="index" :hit="hit" />
               </div>
             </div>
           </div>
@@ -137,7 +168,7 @@
       variant="success" 
       :loading="loading"
       :disabled="materials.length === 0 || !question"
-      @click="handleGetAnswer"
+      @click="type === 'talk' ? handleStartTalk() : handleGetAnswer()"
     >
       {{ type === 'talk' ? 'Start Talk' : 'Get Answer' }}
     </sl-button>
@@ -147,12 +178,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import CorpusScopeSelector from './CorpusScopeSelector.vue';
+import CorpusHitItem from './CorpusHitItem.vue';
 import { apiFetch } from '../../api';
-import { useLibraryStore } from '../../stores/library';
 import type { CorpusMaterialItem } from '../../types/library';
-import type { AskCorpusRequest, AskCorpusResponse } from '../../types/study';
+import type { AskCorpusRequest, AskCorpusResponse, ConverseCorpusRequest, ConverseCorpusResponse } from '../../types/study';
 
-defineProps<{
+const props = defineProps<{
   open: boolean;
   type: 'talk' | 'ask';
   initialAuthors?: number[];
@@ -160,7 +191,6 @@ defineProps<{
   initialSections?: number[];
 }>();
 
-const libraryStore = useLibraryStore();
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void;
 }>();
@@ -171,17 +201,58 @@ const materials = ref<CorpusMaterialItem[]>([]);
 const question = ref('');
 const loading = ref(false);
 const error = ref<string | null>(null);
-const result = ref<AskCorpusResponse | null>(null);
+const resultAsk = ref<AskCorpusResponse | null>(null);
+const resultTalk = ref<ConverseCorpusResponse | null>(null);
 
 const selectedModel = ref('gpt-5.6-luna');
 const selectedStyle = ref('scholarly');
+
+async function handleStartTalk() {
+  if (!question.value || materials.value.length === 0) return;
+
+  loading.value = true;
+  error.value = null;
+  resultAsk.value = null;
+  resultTalk.value = null;
+
+  const request: ConverseCorpusRequest = {
+    question: question.value,
+    system_prompt: `You are a ${selectedStyle.value} assistant. Use the provided context to answer the user question. Format as markdown.`,
+    num_results: 20,
+    corpus: {
+      items: materials.value
+    }
+  };
+
+  try {
+    const response = await apiFetch('/teststudy/api/v1/converse/corpus/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(request)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+    }
+
+    resultTalk.value = await response.json();
+  } catch (e: any) {
+    error.value = e.message || 'An error occurred while starting the conversation.';
+  } finally {
+    loading.value = false;
+  }
+}
+
 
 async function handleGetAnswer() {
   if (!question.value || materials.value.length === 0) return;
 
   loading.value = true;
   error.value = null;
-  result.value = null;
+  resultAsk.value = null;
+  resultTalk.value = null;
 
   const request: AskCorpusRequest = {
     expression: null,
@@ -207,7 +278,7 @@ async function handleGetAnswer() {
       throw new Error(`Server returned ${response.status}: ${response.statusText}`);
     }
 
-    result.value = await response.json();
+    resultAsk.value = await response.json();
   } catch (e: any) {
     error.value = e.message || 'An error occurred while fetching the answer.';
   } finally {
@@ -250,11 +321,6 @@ function getItemLabel(item: CorpusMaterialItem) {
   return 'Unknown item';
 }
 
-function getBookTitle(bookId: number | null) {
-  if (!bookId) return 'Unknown Book';
-  const book = libraryStore.books.find(b => b.id === bookId);
-  return book ? book.title : `Book #${bookId}`;
-}
 </script>
 
 <style scoped>
@@ -434,50 +500,4 @@ function getBookTitle(bookId: number | null) {
   padding-right: 0.5rem;
 }
 
-.hit-item {
-  border: 1px solid var(--sl-color-neutral-200);
-  border-radius: var(--sl-border-radius-medium);
-  padding: 0.75rem;
-  background-color: white;
-}
-
-.hit-meta {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
-  align-items: flex-start;
-}
-
-.hit-thumbnail {
-  width: 40px;
-  height: 60px;
-  object-fit: cover;
-  border-radius: var(--sl-border-radius-small);
-  border: 1px solid var(--sl-color-neutral-200);
-}
-
-.hit-book {
-  font-weight: 600;
-  font-size: 0.8rem;
-  color: var(--sl-color-neutral-700);
-}
-
-.hit-location {
-  font-size: 0.75rem;
-  color: var(--sl-color-neutral-500);
-}
-
-.hit-text {
-  font-size: 0.85rem;
-  line-height: 1.4;
-  color: var(--sl-color-neutral-800);
-}
-
-.hit-text :deep(em) {
-  font-weight: 600;
-  font-style: normal;
-  background-color: var(--sl-color-warning-100);
-  color: var(--sl-color-warning-900);
-  padding: 0 0.1rem;
-}
 </style>

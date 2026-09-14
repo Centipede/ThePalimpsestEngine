@@ -91,19 +91,32 @@ export interface AskCorpusRequest {
   corpus: CorpusMaterial;
 }
 
-export interface AskCorpusHit {
-  in_book: number | null;
-  by_author: number | null;
-  on_page: number;
-  published: string | null;
-  book_thumbnail_url: string | null;
-  html_highlighted: string;
+export interface CorpusHit {
+  book_id: number | null;
+  page_name: string;
+  sb_id: number;
+  sb_text: string;
+  sb_text_highlighted: string;
   rank: number;
 }
 
 export interface AskCorpusResponse {
   answer: string;
   answer_html: string;
-  hits: AskCorpusHit[];
+  hits: CorpusHit[];
   qa_id: number;
+}
+
+export interface ConverseCorpusRequest {
+  corpus: CorpusMaterial;
+  question: string;
+  system_prompt?: string;
+  num_results?: number;
+}
+
+export interface ConverseCorpusResponse {
+  answer: string;
+  answer_html: string;
+  hits: CorpusHit[];
+  conversation_id: number;
 }
