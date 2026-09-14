@@ -40,7 +40,11 @@
         <div
           v-show="isVisible(entry)"
           class="toc__row"
-          :class="[`toc__row--depth-${entry.depth}`, { 'toc__row--ancestor': entry.isAncestor, 'toc__row--descendant': entry.isDescendant }]"
+          :class="[`toc__row--depth-${entry.depth}`, {
+            'toc__row--ancestor': entry.isAncestor,
+            'toc__row--descendant': entry.isDescendant,
+            'toc__row--selected': props.selectedIds?.includes(entry.section.id)
+          }]"
         >
           <span
             class="toc__badge toc__badge--id"
@@ -142,10 +146,12 @@ const props = withDefaults(defineProps<{
   machineName: string,
   root_section_pf?: string,
   mode?: 'nav' | 'select',
-  showDiscussions?: boolean
+  showDiscussions?: boolean,
+  selectedIds?: number[]
 }>(), {
   mode: 'nav',
-  showDiscussions: true
+  showDiscussions: true,
+  selectedIds: () => []
 });
 
 const emit = defineEmits<{
@@ -268,6 +274,37 @@ watch(allEntries, (entries) => {
     initialized = true;
   }
 }, { immediate: true });
+
+function expandAncestorsOfSelected() {
+  if (!props.selectedIds || props.selectedIds.length === 0) return;
+
+  const newCollapsed = [...collapsed.value];
+  let changed = false;
+
+  props.selectedIds.forEach(id => {
+    const entry = allEntries.value.find(e => e.section.id === id);
+    if (entry) {
+      const parts = entry.section.path_full.split('.');
+      let currentPath = '';
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (currentPath) currentPath += '.';
+        currentPath += parts[i];
+
+        const idx = newCollapsed.indexOf(currentPath);
+        if (idx !== -1) {
+          newCollapsed.splice(idx, 1);
+          changed = true;
+        }
+      }
+    }
+  });
+
+  if (changed) {
+    collapsed.value = newCollapsed;
+  }
+}
+
+watch([() => props.selectedIds, allEntries], expandAncestorsOfSelected, { immediate: true });
 
 function isCollapsed(pathFull: string): boolean {
   return collapsed.value.includes(pathFull);
@@ -490,6 +527,11 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
 .toc__row--ancestor {
   color: var(--color-text-muted);
   opacity: 0.8;
+}
+
+.toc__row--selected {
+  background-color: var(--sl-color-primary-100);
+  font-weight: 500;
 }
 
 .toc__row--descendant {

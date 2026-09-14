@@ -75,7 +75,12 @@
 
         <div v-if="showScopeSelector" class="scope-selector-panel">
           <sl-divider></sl-divider>
-          <CorpusScopeSelector @add-materials="handleAddMaterials" />
+          <CorpusScopeSelector
+              :initial-authors="initialAuthors"
+              :initial-books="initialBooks"
+              :initial-sections="initialSections"
+              @add-materials="handleAddMaterials"
+          />
         </div>
 
         <div v-if="error" class="error-panel">
@@ -150,6 +155,9 @@ import type { AskCorpusRequest, AskCorpusResponse } from '../../types/study';
 defineProps<{
   open: boolean;
   type: 'talk' | 'ask';
+  initialAuthors?: number[];
+  initialBooks?: number[];
+  initialSections?: number[];
 }>();
 
 const libraryStore = useLibraryStore();
@@ -165,7 +173,7 @@ const loading = ref(false);
 const error = ref<string | null>(null);
 const result = ref<AskCorpusResponse | null>(null);
 
-const selectedModel = ref('gpt-4o');
+const selectedModel = ref('gpt-5.6-luna');
 const selectedStyle = ref('scholarly');
 
 async function handleGetAnswer() {
@@ -176,7 +184,7 @@ async function handleGetAnswer() {
   result.value = null;
 
   const request: AskCorpusRequest = {
-    expression: question.value, // Using question as expression for search
+    expression: null,
     style: selectedStyle.value,
     question: question.value,
     system_prompt: `You are a ${selectedStyle.value} assistant. Use the provided passages to answer the question. Format as markdown.`,

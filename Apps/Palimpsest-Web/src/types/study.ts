@@ -1,4 +1,3 @@
-import type { ConversationRef, QuestionAnswerRef } from './study';
 import type { CorpusMaterial } from './library';
 
 export type ConversationGoal = 'C' | 'ST' | 'TWB';
@@ -84,7 +83,7 @@ export interface QuestionAnswerRef extends BaseRef {
 }
 
 export interface AskCorpusRequest {
-  expression: string;
+  expression: string | null;
   style: string;
   question: string;
   system_prompt: string;

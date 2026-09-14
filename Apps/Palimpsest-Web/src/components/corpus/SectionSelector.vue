@@ -18,6 +18,7 @@
         :machine-name="machineName!"
         mode="select"
         :show-discussions="false"
+        :selected-ids="selectedIds"
         @select="handleSelect"
       />
 
@@ -47,6 +48,7 @@ import TableOfContents from '../TableOfContents.vue';
 
 const props = defineProps<{
   machineName: string | null;
+  selectedIds?: number[];
 }>();
 
 const emit = defineEmits<{

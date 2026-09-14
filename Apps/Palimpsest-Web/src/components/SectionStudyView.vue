@@ -192,6 +192,9 @@
       <CorpusStudyDialog
           v-model:open="corpusDialog.open"
           :type="corpusDialog.type"
+          :initial-authors="initialAuthors"
+          :initial-books="initialBooks"
+          :initial-sections="initialSections"
       />
 
       <header v-if="data.contents.length>0" class="section-study__header">
@@ -355,6 +358,25 @@ const showEntities = ref(false);
 const corpusDialog = ref({
   open: false,
   type: 'ask' as 'ask' | 'talk'
+});
+
+const initialAuthors = computed(() => {
+  if (!props.bookStructure) return [];
+  const authors = [props.bookStructure.book.by_author];
+  if (props.bookStructure.book.by_author1) authors.push(props.bookStructure.book.by_author1);
+  if (props.bookStructure.book.by_author2) authors.push(props.bookStructure.book.by_author2);
+  if (props.bookStructure.book.by_author3) authors.push(props.bookStructure.book.by_author3);
+  return authors;
+});
+
+const initialBooks = computed(() => {
+  if (!props.bookStructure) return [];
+  return [props.bookStructure.book.id];
+});
+
+const initialSections = computed(() => {
+  if (!data.value?.section) return [];
+  return [data.value.section.id];
 });
 
 function openCorpusDialog(type: 'ask' | 'talk') {

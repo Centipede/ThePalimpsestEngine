@@ -25,6 +25,7 @@
       <div class="column-header">Chapters</div>
       <SectionSelector
         :machine-name="lastSelectedBookMachineName"
+        :selected-ids="initialSections"
         @include-single="handleIncludeSingle"
         @include-tree="handleIncludeTree"
         @exclude-single="handleExcludeSingle"
@@ -35,7 +36,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import AuthorSelector from './AuthorSelector.vue';
 import BookSelector from './BookSelector.vue';
 import SectionSelector from './SectionSelector.vue';
@@ -47,15 +48,31 @@ import type {
   Section
 } from '../../types/library';
 
+const props = defineProps<{
+  initialAuthors?: number[];
+  initialBooks?: number[];
+  initialSections?: number[];
+}>();
+
 const libraryStore = useLibraryStore();
 
 const emit = defineEmits<{
   (e: 'add-materials', items: CorpusMaterialItem[]): void;
 }>();
 
-const selectedAuthorIds = ref<number[]>([]);
-const selectedBookIds = ref<number[]>([]);
+const selectedAuthorIds = ref<number[]>(props.initialAuthors || []);
+const selectedBookIds = ref<number[]>(props.initialBooks || []);
 const lastSelectedBookMachineName = ref<string | null>(null);
+
+watch(() => libraryStore.books, (books) => {
+  if (props.initialBooks && props.initialBooks.length > 0 && !lastSelectedBookMachineName.value) {
+    const bookId = props.initialBooks[props.initialBooks.length - 1];
+    const book = books.find(b => b.id === bookId);
+    if (book) {
+      lastSelectedBookMachineName.value = book.machine_name;
+    }
+  }
+}, { immediate: true });
 
 function handleBookSelectionChange(ids: number[]) {
   selectedBookIds.value = ids;
