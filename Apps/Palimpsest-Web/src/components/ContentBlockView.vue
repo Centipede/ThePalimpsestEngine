@@ -3,7 +3,7 @@
 
     <!-- Left outer: Block link -->
     <div class="block-info">
-      <div class="block-link" title="{{ block.path_id }}">
+      <div class="block-link" :title="block.path_id">
         ¶ {{ index + 1 }}
         <sl-icon-button
             :name="isFolded ? 'chevron-right' : 'chevron-down'"
@@ -53,7 +53,7 @@
       <template v-if="firstPage || lastPage">
         p.
         <span v-if="firstPage">{{ firstPage }}</span>
-        <span v-if="firstPage && lastPage"> - </span>
+        <span v-if="firstPage && lastPage !== firstPage"> - </span>
         <span v-if="lastPage && lastPage !== firstPage">{{ lastPage }}</span>
       </template>
     </div>

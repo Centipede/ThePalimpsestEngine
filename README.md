@@ -1,6 +1,6 @@
 # The Palimpsest Engine
 
-**Status August 2026: Planning happening alongside early implementation**
+**Status September 2026: Still only in planning phase (albeit the web UI of the old system is being ported to Vue and improved)**
 
 A study environment for people who still need books and paper.
 

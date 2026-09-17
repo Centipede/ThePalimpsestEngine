@@ -144,20 +144,7 @@
         </div>
 
         <div class="tools-right">
-          <sl-button-group>
-            <sl-button size="small" @click="openCorpusDialog('ask')">
-              <sl-icon slot="prefix" name="chat-dots"></sl-icon>
-              Ask book...
-            </sl-button>
-            <sl-button size="small" @click="openCorpusDialog('talk')">
-              <sl-icon slot="prefix" name="chat-quote"></sl-icon>
-              Talk with book...
-            </sl-button>
-          </sl-button-group>
-
-          <sl-divider vertical></sl-divider>
-
-          <sl-dropdown stay-open-on-select>
+          <sl-dropdown size="small" stay-open-on-select>
             <sl-button slot="trigger" size="small" caret>Entities</sl-button>
             <sl-menu @sl-select="handleToolbarSelect('info-right', $event)">
               <sl-menu-item
@@ -172,6 +159,20 @@
               </sl-menu-item>
             </sl-menu>
           </sl-dropdown>
+
+          <sl-divider vertical></sl-divider>
+
+          <sl-button-group>
+            <sl-button size="small" @click="openCorpusDialog('ask')">
+              <sl-icon slot="prefix" name="chat-dots"></sl-icon>
+              Ask
+            </sl-button>
+            <sl-button size="small" @click="openCorpusDialog('talk')">
+              <sl-icon slot="prefix" name="chat-quote"></sl-icon>
+              Talk
+            </sl-button>
+          </sl-button-group>
+
         </div>
 
         <div class="toolbar-inforight" />
@@ -283,6 +284,7 @@
 
 <script setup lang="ts">
 import {computed, onMounted, ref, watch} from 'vue';
+import { useHead } from '@unhead/vue';
 import {apiFetch} from '../api';
 import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle} from '../types/library';
 import SummaryInfoRecord from './SummaryInfoRecord.vue';
@@ -291,6 +293,7 @@ import SectionEntities from './SectionEntities.vue';
 import ContentBlockView from './ContentBlockView.vue';
 import TableOfContents from './TableOfContents.vue';
 import CorpusStudyDialog from './corpus/CorpusStudyDialog.vue';
+import {useLibraryStore} from "../stores/library.ts";
 
 const props = defineProps<{
   machineName: string;
@@ -323,6 +326,13 @@ const availableInfoRight = ref<ToolbarToggle[]>([
 ]);
 
 type ToolbarToggleGroup = 'info-left' | 'highlights' | 'info-right';
+
+const store = useLibraryStore();
+const author = computed(() => store.getAuthorById(props.bookStructure?.book.by_author ?? null));
+const pageTitle = computed(() => `${data.value?.section.path_coded ?? props.sectionPath} | ${props.bookStructure?.book.abbrev ?? props.machineName} | ${author.value?.abbrev ?? ''}`);
+useHead({
+  title: pageTitle
+});
 
 function handleToolbarSelect(group: ToolbarToggleGroup, event: Event) {
   const selectedItem = (event as CustomEvent<{ item: HTMLElement }>).detail.item as HTMLElement & {
@@ -499,7 +509,7 @@ async function fetchSection() {
   loading.value = true;
   error.value = '';
   try {
-    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=sum,ents&cont_info=sum,ents&pageinfo=1`);
+    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=sum,ents&cont_info=sum,ents&path_coded=1&pageinfo=1`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data.value = await res.json();
   } catch (e) {
@@ -566,7 +576,10 @@ watch(() => props.sectionPath, fetchSection);
 
 .section-study__toolbar .tools-right {
   grid-area: entities;
+  display: flex;
+  justify-content: space-between;
   justify-self: end;
+  gap: 0.5rem;
 }
 
 .toolbar-inforight {
