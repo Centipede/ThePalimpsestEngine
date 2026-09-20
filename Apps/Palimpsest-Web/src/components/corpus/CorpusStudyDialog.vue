@@ -1,10 +1,11 @@
 <template>
   <sl-dialog
+    class="corpus-dialog"
     :label="type === 'talk' ? 'Talk with book' : 'Ask book'"
     :open="open"
     @sl-request-close="handleRequestClose"
     @sl-after-hide.self="$emit('update:open', false)"
-    style="--width: 90vw;"
+    style="--width: 80vw; "
   >
     <div class="corpus-study-dialog">
       <div class="dialog-layout">
@@ -89,76 +90,6 @@
             <strong>Error:</strong> {{ error }}
           </sl-alert>
         </div>
-
-        <div v-if="resultAsk" class="result-panel">
-          <sl-divider></sl-divider>
-          
-          <div class="result-layout">
-            <div class="answer-section">
-              <div class="section-header">
-                <sl-icon name="chat-dots"></sl-icon>
-                AI Answer
-              </div>
-              <div class="answer-content markdown-body" v-html="resultAsk.answer_html"></div>
-              <div class="qa-footer">
-                <sl-button 
-                  variant="text" 
-                  size="small" 
-                  :href="`/study/qa/${resultAsk.qa_id}`" 
-                  target="_blank"
-                >
-                  <sl-icon slot="prefix" name="box-arrow-up-right"></sl-icon>
-                  Open full Q&A record
-                </sl-button>
-              </div>
-            </div>
-
-            <div class="sources-section">
-              <div class="section-header">
-                <sl-icon name="journal-text"></sl-icon>
-                Source Passages
-              </div>
-              <div class="hits-list">
-                <CorpusHitItem v-for="(hit, index) in resultAsk.hits" :key="index" :hit="hit" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="resultTalk" class="result-panel">
-          <sl-divider></sl-divider>
-          
-          <div class="result-layout">
-            <div class="answer-section">
-              <div class="section-header">
-                <sl-icon name="chat-dots"></sl-icon>
-                AI Answer
-              </div>
-              <div class="answer-content markdown-body" v-html="resultTalk.answer_html"></div>
-              <div class="qa-footer">
-                <sl-button 
-                  variant="text" 
-                  size="small" 
-                  :href="`/study/conversation/${resultTalk.conversation_id}`" 
-                  target="_blank"
-                >
-                  <sl-icon slot="prefix" name="box-arrow-up-right"></sl-icon>
-                  Open full conversation record
-                </sl-button>
-              </div>
-            </div>
-
-            <div class="sources-section">
-              <div class="section-header">
-                <sl-icon name="journal-text"></sl-icon>
-                Source Passages
-              </div>
-              <div class="hits-list">
-                <CorpusHitItem v-for="(hit, index) in resultTalk.hits" :key="index" :hit="hit" />
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -178,7 +109,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import CorpusScopeSelector from './CorpusScopeSelector.vue';
-import CorpusHitItem from './CorpusHitItem.vue';
 import { apiFetch } from '../../api';
 import type { CorpusMaterialItem } from '../../types/library';
 import type { AskCorpusRequest, AskCorpusResponse, ConverseCorpusRequest, ConverseCorpusResponse } from '../../types/study';
@@ -203,8 +133,6 @@ const materials = ref<CorpusMaterialItem[]>([]);
 const question = ref('');
 const loading = ref(false);
 const error = ref<string | null>(null);
-const resultAsk = ref<AskCorpusResponse | null>(null);
-const resultTalk = ref<ConverseCorpusResponse | null>(null);
 
 const selectedModel = ref('gpt-5.6-luna');
 const selectedStyle = ref('scholarly');
@@ -214,8 +142,6 @@ async function handleStartTalk() {
 
   loading.value = true;
   error.value = null;
-  resultAsk.value = null;
-  resultTalk.value = null;
 
   const request: ConverseCorpusRequest = {
     question: question.value,
@@ -240,7 +166,6 @@ async function handleStartTalk() {
     }
 
     const data: ConverseCorpusResponse = await response.json();
-    resultTalk.value = data;
     emit('conversation-created', data.conversation_id);
   } catch (e: any) {
     error.value = e.message || 'An error occurred while starting the conversation.';
@@ -255,8 +180,6 @@ async function handleGetAnswer() {
 
   loading.value = true;
   error.value = null;
-  resultAsk.value = null;
-  resultTalk.value = null;
 
   const request: AskCorpusRequest = {
     expression: null,
@@ -270,7 +193,7 @@ async function handleGetAnswer() {
   };
 
   try {
-    const response = await apiFetch('/testbooks/api/v1/ask/corpus/', {
+    const response = await apiFetch('/teststudy/api/v1/ask/corpus/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -283,7 +206,6 @@ async function handleGetAnswer() {
     }
 
     const data: AskCorpusResponse = await response.json();
-    resultAsk.value = data;
     emit('qa-created', data.qa_id);
   } catch (e: any) {
     error.value = e.message || 'An error occurred while fetching the answer.';
@@ -330,22 +252,36 @@ function getItemLabel(item: CorpusMaterialItem) {
 </script>
 
 <style scoped>
+.corpus-dialog::part(panel) {
+  height: 80vh;
+  max-height: 80vh;
+}
+
+.corpus-dialog::part(body) {
+  height: 100%;
+  overflow: hidden;
+}
+
 .corpus-study-dialog {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  height: 100%;
 }
 
 .dialog-layout {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  flex: 1;
+  min-height: 0;
 }
 
 .workspace-panel {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
+  flex: 1;
+  min-height: 0;
 }
 
 .llm-controls {
@@ -368,6 +304,7 @@ function getItemLabel(item: CorpusMaterialItem) {
   border-radius: var(--sl-border-radius-medium);
   padding: 1rem;
   background-color: var(--sl-color-neutral-50);
+  min-height: 0;
 }
 
 .panel-header {
@@ -403,8 +340,8 @@ function getItemLabel(item: CorpusMaterialItem) {
   flex-direction: column;
   gap: 0.25rem;
   padding: 0.5rem;
-  max-height: 300px;
   overflow-y: auto;
+  flex: 1;
 }
 
 .material-item {
@@ -452,58 +389,11 @@ function getItemLabel(item: CorpusMaterialItem) {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  max-height: 50%;
+  overflow-y: auto;
 }
 
 .error-panel {
   margin-top: 1rem;
 }
-
-.result-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.result-layout {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr;
-  gap: 2rem;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
-  font-size: 1rem;
-  margin-bottom: 1rem;
-  color: var(--sl-color-neutral-800);
-}
-
-.answer-content {
-  line-height: 1.6;
-  font-size: 0.95rem;
-  color: var(--sl-color-neutral-900);
-}
-
-.qa-footer {
-  margin-top: 1.5rem;
-  border-top: 1px solid var(--sl-color-neutral-100);
-  padding-top: 0.5rem;
-}
-
-.sources-section {
-  border-left: 1px solid var(--sl-color-neutral-200);
-  padding-left: 1.5rem;
-}
-
-.hits-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  max-height: 600px;
-  overflow-y: auto;
-  padding-right: 0.5rem;
-}
-
 </style>
