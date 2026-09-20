@@ -184,7 +184,7 @@ import type { CorpusMaterialItem } from '../../types/library';
 import type { AskCorpusRequest, AskCorpusResponse, ConverseCorpusRequest, ConverseCorpusResponse } from '../../types/study';
 
 const props = defineProps<{
-  open: boolean;
+  open: boolean
   type: 'talk' | 'ask';
   initialAuthors?: number[];
   initialBooks?: number[];
@@ -193,6 +193,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void;
+  (e: 'conversation-created', id: number): void;
+  (e: 'qa-created', id: number): void;
 }>();
 
 const showScopeSelector = ref(false);
@@ -237,7 +239,9 @@ async function handleStartTalk() {
       throw new Error(`Server returned ${response.status}: ${response.statusText}`);
     }
 
-    resultTalk.value = await response.json();
+    const data: ConverseCorpusResponse = await response.json();
+    resultTalk.value = data;
+    emit('conversation-created', data.conversation_id);
   } catch (e: any) {
     error.value = e.message || 'An error occurred while starting the conversation.';
   } finally {
@@ -278,7 +282,9 @@ async function handleGetAnswer() {
       throw new Error(`Server returned ${response.status}: ${response.statusText}`);
     }
 
-    resultAsk.value = await response.json();
+    const data: AskCorpusResponse = await response.json();
+    resultAsk.value = data;
+    emit('qa-created', data.qa_id);
   } catch (e: any) {
     error.value = e.message || 'An error occurred while fetching the answer.';
   } finally {
