@@ -12,6 +12,13 @@
       <div class="selector-header">
         <sl-icon name="list-ul"></sl-icon>
         <span class="header-text">Chapters</span>
+        <sl-input 
+          size="small" 
+          placeholder="Quick add/remove: +2.3-7, -1*" 
+          clearable
+          class="parser-input"
+          @keydown.enter="handleParse"
+        ></sl-input>
       </div>
       <TableOfContents
         :book-structure="bookStructure"
@@ -41,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import { apiFetch } from '../../api';
 import type { BookStructure, Section } from '../../types/library';
 import TableOfContents from '../TableOfContents.vue';
@@ -59,6 +66,27 @@ const emit = defineEmits<{
 }>();
 
 const bookStructure = ref<BookStructure | null>(null);
+
+const flattenedSections = computed(() => {
+  const result: Section[] = [];
+  if (!bookStructure.value) return result;
+
+  const mainFlow = bookStructure.value.flows.find(f => f.name === 'main');
+  const tree = mainFlow?.tree;
+  if (!tree?.subsections) return result;
+
+  const walk = (sections: Section[]) => {
+    for (const s of sections) {
+      result.push(s);
+      if (s.subsections?.length) {
+        walk(s.subsections);
+      }
+    }
+  };
+
+  walk(tree.subsections);
+  return result;
+});
 const loading = ref(false);
 const error = ref('');
 const dropdown = ref<any>(null);
@@ -119,6 +147,76 @@ function handleMenuSelect(event: CustomEvent) {
     emit('excludeTree', selectedSection.value);
   }
 }
+
+function handleParse(event: CustomEvent) {
+  const target = event.target as any;
+  const input = target.value.trim();
+  if (!input) return;
+
+  const instructions = input.split(',').map((s: string) => s.trim()).filter(Boolean);
+
+  for (const instruction of instructions) {
+    let strategy: 'include' | 'exclude' = 'include';
+    let rawPath = instruction;
+
+    if (instruction.startsWith('+')) {
+      strategy = 'include';
+      rawPath = instruction.slice(1).trim();
+    } else if (instruction.startsWith('-')) {
+      strategy = 'exclude';
+      rawPath = instruction.slice(1).trim();
+    }
+
+    let isTree = false;
+    if (rawPath.endsWith('*')) {
+      isTree = true;
+      rawPath = rawPath.slice(0, -1).trim();
+    }
+
+    const pathsToMatch = new Set<string>();
+
+    // Check for range: e.g. 2.3-7 or 1-5
+    const rangeMatch = rawPath.match(/^(.+?)\.(\d+)-(\d+)$/);
+    const simpleRangeMatch = rawPath.match(/^(\d+)-(\d+)$/);
+
+    if (rangeMatch) {
+      const prefix = rangeMatch[1];
+      const start = parseInt(rangeMatch[2], 10);
+      const end = parseInt(rangeMatch[3], 10);
+      for (let i = start; i <= end; i++) {
+        pathsToMatch.add(`${prefix}.${i}`);
+      }
+    } else if (simpleRangeMatch) {
+      const start = parseInt(simpleRangeMatch[1], 10);
+      const end = parseInt(simpleRangeMatch[2], 10);
+      for (let i = start; i <= end; i++) {
+        pathsToMatch.add(`${i}`);
+      }
+    } else {
+      pathsToMatch.add(rawPath);
+    }
+
+    for (const path of pathsToMatch) {
+      // Prioritize path_coded, fall back to path_full
+      const match = flattenedSections.value.find(s => 
+        s.path_coded === path || s.path_full === path
+      );
+
+      if (match) {
+        if (strategy === 'include') {
+          if (isTree) emit('includeTree', match);
+          else emit('includeSingle', match);
+        } else {
+          if (isTree) emit('excludeTree', match);
+          else emit('excludeSingle', match);
+        }
+      }
+    }
+  }
+
+  // Clear the input
+  target.value = '';
+}
 </script>
 
 <style scoped>
@@ -164,6 +262,11 @@ function handleMenuSelect(event: CustomEvent) {
   gap: 0.5rem;
   font-weight: 600;
   font-size: 0.9rem;
+}
+
+.parser-input {
+  flex: 1;
+  margin-left: 0.5rem;
 }
 
 .toc-container :deep(.toc-wrapper) {
