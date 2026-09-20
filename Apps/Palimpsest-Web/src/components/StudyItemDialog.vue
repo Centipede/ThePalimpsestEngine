@@ -2,6 +2,7 @@
   <sl-dialog
     :label="type === 'conversation' ? 'Conversation' : 'Q&A'"
     :open="open"
+    class="studyitem-dialog"
     @sl-after-hide.self="$emit('update:open', false)"
     style="--width: 80vw;"
   >
@@ -28,6 +29,7 @@
         @title-updated="$emit('title-updated', $event)"
         @pin-updated="$emit('pin-updated', $event)"
         @turn-note-updated="$emit('turn-note-updated', $event)"
+        @turn-added="$emit('turn-added', $event)"
       />
     </div>
     <sl-button slot="footer" variant="primary" @click="$emit('update:open', false)">Close</sl-button>
@@ -35,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Conversation, ConversationRef, QuestionAnswer, QuestionAnswerRef } from '../types/study';
+import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import QuestionAnswerWorkspace from './QuestionAnswerWorkspace.vue';
 import ConversationWorkspace from './ConversationWorkspace.vue';
 
@@ -54,10 +56,21 @@ defineEmits<{
   (e: 'pin-updated', isPinned: boolean): void;
   (e: 'note-updated', payload: { field: 'question_note' | 'answer_note', value: string | null }): void;
   (e: 'turn-note-updated', payload: { turnId: number, field: 'question_note' | 'answer_note', value: string | null }): void;
+  (e: 'turn-added', turn: ConversationTurn): void;
 }>();
 </script>
 
 <style scoped>
+.studyitem-dialog::part(panel) {
+  height: 80vh;
+  max-height: 80vh;
+}
+
+.studyitem-dialog::part(body) {
+  height: 100%;
+  overflow: scroll;
+}
+
 .dialog-status {
   display: flex;
   align-items: center;

@@ -211,6 +211,7 @@
           @pin-updated="handlePinUpdated"
           @note-updated="handleNoteUpdated"
           @turn-note-updated="handleTurnNoteUpdated"
+          @turn-added="handleTurnAdded"
       />
 
       <header v-if="data.contents.length>0" class="section-study__header">
@@ -302,7 +303,7 @@ import {computed, onMounted, ref, watch} from 'vue';
 import { useHead } from '@unhead/vue';
 import {apiFetch} from '../api';
 import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle} from '../types/library';
-import type { Conversation, ConversationRef, QuestionAnswer, QuestionAnswerRef } from '../types/study';
+import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import SummaryInfoRecord from './SummaryInfoRecord.vue';
 import SectionSegmentsOverview from './SectionSegmentsOverview.vue';
 import SectionEntities from './SectionEntities.vue';
@@ -714,6 +715,15 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
   if (turn) {
     turn[payload.field] = payload.value;
   }
+}
+
+function handleTurnAdded(newTurn: ConversationTurn) {
+  if (!activeItem.value.data || activeItem.value.type !== 'conversation') return;
+  const conv = activeItem.value.data as Conversation;
+  if (!conv.turns) {
+    conv.turns = [];
+  }
+  conv.turns.push(newTurn);
 }
 
 async function fetchSection() {

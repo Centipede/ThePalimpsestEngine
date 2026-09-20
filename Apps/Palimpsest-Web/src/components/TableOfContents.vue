@@ -128,6 +128,7 @@
       @pin-updated="handlePinUpdated"
       @note-updated="handleNoteUpdated"
       @turn-note-updated="handleTurnNoteUpdated"
+      @turn-added="handleTurnAdded"
     />
   </div>
 </template>
@@ -136,7 +137,7 @@
 import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import type { BookStructure, Section } from '../types/library';
-import type { Conversation, ConversationRef, QuestionAnswer, QuestionAnswerRef } from '../types/study';
+import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import { apiFetch } from '../api';
 import SummaryInfoRecord from './SummaryInfoRecord.vue';
 import StudyItemDialog from './StudyItemDialog.vue';
@@ -471,6 +472,15 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
   if (turn) {
     turn[payload.field] = payload.value;
   }
+}
+
+function handleTurnAdded(newTurn: ConversationTurn) {
+  if (!activeItem.value.data || activeItem.value.type !== 'conversation') return;
+  const conv = activeItem.value.data as Conversation;
+  if (!conv.turns) {
+    conv.turns = [];
+  }
+  conv.turns.push(newTurn);
 }
 </script>
 

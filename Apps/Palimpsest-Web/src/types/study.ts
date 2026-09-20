@@ -52,6 +52,8 @@ export interface Conversation {
 export interface ConversationTurn {
   id: number;
   of_conversation: number;
+  system_prompt: string | null;
+  model: string | null;
   question: string;
   answer: string;
   question_note: string | null;
