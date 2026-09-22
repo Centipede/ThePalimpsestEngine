@@ -1,10 +1,10 @@
 <template>
   <div class="toc-wrapper">
-    <div class="toc">
+    <div class="toc" :class="{ 'toc--hide-discussions': !props.showDiscussions }">
 
       <!-- Book-wide discussion rows -->
       <div
-        v-if="!props.root_section_pf && (props.bookStructure.book.conversations?.length || props.bookStructure.book.question_answers?.length)"
+        v-if="props.showDiscussions && !props.root_section_pf && (props.bookStructure.book.conversations?.length || props.bookStructure.book.question_answers?.length)"
         class="toc__row toc__row--book-level"
       >
         <sl-icon name="book" class="toc__book-icon" />
@@ -40,7 +40,11 @@
         <div
           v-show="isVisible(entry)"
           class="toc__row"
-          :class="[`toc__row--depth-${entry.depth}`, { 'toc__row--ancestor': entry.isAncestor, 'toc__row--descendant': entry.isDescendant }]"
+          :class="[`toc__row--depth-${entry.depth}`, {
+            'toc__row--ancestor': entry.isAncestor,
+            'toc__row--descendant': entry.isDescendant,
+            'toc__row--selected': props.selectedIds?.includes(entry.section.id)
+          }]"
         >
           <span
             class="toc__badge toc__badge--id"
@@ -58,11 +62,20 @@
           <span v-else class="toc__chevron-spacer" />
 
           <router-link
+            v-if="props.mode === 'nav'"
             class="toc__title"
             :to="`/study/${props.machineName}/section/${entry.section.path_full}`"
           >
             {{ entry.section.title_text }}
           </router-link>
+          <span
+            v-else
+            class="toc__title toc__title--selectable"
+            @click.stop="emit('select', { section: entry.section, event: $event })"
+            @contextmenu.stop.prevent="emit('select', { section: entry.section, event: $event })"
+          >
+            {{ entry.section.title_text }}
+          </span>
 
           <span class="toc__pages">
             <template v-if="entry.section.pageinfo?.first_page">
@@ -70,7 +83,7 @@
             </template>
           </span>
 
-          <div class="toc__badges">
+          <div v-if="props.showDiscussions" class="toc__badges">
             <span
               v-for="ref in entry.section.conversations"
               :key="'conv-' + ref.id"
@@ -115,6 +128,7 @@
       @pin-updated="handlePinUpdated"
       @note-updated="handleNoteUpdated"
       @turn-note-updated="handleTurnNoteUpdated"
+      @turn-added="handleTurnAdded"
     />
   </div>
 </template>
@@ -123,15 +137,26 @@
 import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import type { BookStructure, Section } from '../types/library';
-import type { Conversation, ConversationRef, QuestionAnswer, QuestionAnswerRef } from '../types/study';
+import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import { apiFetch } from '../api';
 import SummaryInfoRecord from './SummaryInfoRecord.vue';
 import StudyItemDialog from './StudyItemDialog.vue';
 
-const props = defineProps<{ 
+const props = withDefaults(defineProps<{
   bookStructure: BookStructure,
   machineName: string,
-  root_section_pf?: string
+  root_section_pf?: string,
+  mode?: 'nav' | 'select',
+  showDiscussions?: boolean,
+  selectedIds?: number[]
+}>(), {
+  mode: 'nav',
+  showDiscussions: true,
+  selectedIds: () => []
+});
+
+const emit = defineEmits<{
+  (e: 'select', payload: { section: Section, event: MouseEvent }): void;
 }>();
 
 interface TocEntry {
@@ -250,6 +275,37 @@ watch(allEntries, (entries) => {
     initialized = true;
   }
 }, { immediate: true });
+
+function expandAncestorsOfSelected() {
+  if (!props.selectedIds || props.selectedIds.length === 0) return;
+
+  const newCollapsed = [...collapsed.value];
+  let changed = false;
+
+  props.selectedIds.forEach(id => {
+    const entry = allEntries.value.find(e => e.section.id === id);
+    if (entry) {
+      const parts = entry.section.path_full.split('.');
+      let currentPath = '';
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (currentPath) currentPath += '.';
+        currentPath += parts[i];
+
+        const idx = newCollapsed.indexOf(currentPath);
+        if (idx !== -1) {
+          newCollapsed.splice(idx, 1);
+          changed = true;
+        }
+      }
+    }
+  });
+
+  if (changed) {
+    collapsed.value = newCollapsed;
+  }
+}
+
+watch([() => props.selectedIds, allEntries], expandAncestorsOfSelected, { immediate: true });
 
 function isCollapsed(pathFull: string): boolean {
   return collapsed.value.includes(pathFull);
@@ -417,6 +473,15 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
     turn[payload.field] = payload.value;
   }
 }
+
+function handleTurnAdded(newTurn: ConversationTurn) {
+  if (!activeItem.value.data || activeItem.value.type !== 'conversation') return;
+  const conv = activeItem.value.data as Conversation;
+  if (!conv.turns) {
+    conv.turns = [];
+  }
+  conv.turns.push(newTurn);
+}
 </script>
 
 <style scoped>
@@ -436,6 +501,10 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
   padding: 0.375rem 1rem;
   transition: background 0.1s;
   user-select: none;
+}
+
+.toc--hide-discussions .toc__row {
+  grid-template-columns: 4.5rem 1.5rem 2fr 5rem;
 }
 
 .toc__row:hover {
@@ -470,9 +539,23 @@ function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note'
   opacity: 0.8;
 }
 
+.toc__row--selected {
+  background-color: var(--sl-color-primary-100);
+  font-weight: 500;
+}
+
 .toc__row--descendant {
   color: var(--color-text-muted);
   opacity: 0.8;
+}
+
+.toc__title--selectable {
+  cursor: pointer;
+}
+
+.toc__title--selectable:hover {
+  color: var(--sl-color-primary-600);
+  text-decoration: underline;
 }
 
 .toc__row--depth-0 {

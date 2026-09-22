@@ -32,6 +32,7 @@ import { apiFetch } from '../api';
 import type { BookStructure } from '../types/library';
 import { useLibraryStore } from '../stores/library';
 import TableOfContents from './TableOfContents.vue';
+import {useHead} from "@unhead/vue";
 
 const props = defineProps<{ machineName: string }>();
 
@@ -43,6 +44,10 @@ const book = ref<BookStructure | null>(null);
 const author = computed(() => store.getAuthorById(book.value?.book.by_author ?? null));
 const loading = ref(true);
 const error = ref('');
+const pageTitle = computed(() => `${book.value?.book.abbrev ?? props.machineName} | ${author.value?.abbrev ?? ''}`);
+useHead({
+  title: pageTitle
+});
 
 onMounted(async () => {
   try {

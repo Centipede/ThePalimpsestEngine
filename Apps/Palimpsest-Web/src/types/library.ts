@@ -225,12 +225,55 @@ export interface SectionSummaryNew {
 }
 
 
+ export type MaterialInclusionStrategy = 'include' | 'exclude';
+ export type MaterialSubtreeStrategy = 'node' | 'tree';
 
+ export interface AuthorMaterial {
+     id: number;
+     abbrev: string;
+ }
 
+ export interface BookMaterial {
+     id: number;
+     abbrev: string;
+     machine_name: string;
+     author_abbrev: string;
+ }
 
+ export interface SectionMaterial {
+     id: number;
+     path_full: string;
+     path_coded: string;
+     book_abbrev: string;
+     author_abbrev: string;
+     subtree_strategy: MaterialSubtreeStrategy;
+ }
 
+ export interface CorpusMaterialItem {
+     strategy: MaterialInclusionStrategy;
+     type: 'author' | 'book' | 'section';
+     author?: AuthorMaterial;
+     book?: BookMaterial;
+     section?: SectionMaterial;
+ }
 
+export interface CorpusMaterial {
+    items: CorpusMaterialItem[];
+}
 
+export interface SearchHit {
+  in_book: number;
+  by_author: number;
+  on_page: number;
+  published: string | null;
+  book_thumbnail_url: string | null;
+  html_highlighted: string;
+  rank: number;
+}
+
+export interface SearchResponse {
+  hits: SearchHit[];
+}
 
 
 

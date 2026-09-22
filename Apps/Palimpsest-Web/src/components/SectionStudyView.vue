@@ -144,7 +144,7 @@
         </div>
 
         <div class="tools-right">
-          <sl-dropdown stay-open-on-select>
+          <sl-dropdown size="small" stay-open-on-select>
             <sl-button slot="trigger" size="small" caret>Entities</sl-button>
             <sl-menu @sl-select="handleToolbarSelect('info-right', $event)">
               <sl-menu-item
@@ -159,6 +159,20 @@
               </sl-menu-item>
             </sl-menu>
           </sl-dropdown>
+
+          <sl-divider vertical></sl-divider>
+
+          <sl-button-group>
+            <sl-button size="small" @click="openCorpusDialog('ask')">
+              <sl-icon slot="prefix" name="chat-dots"></sl-icon>
+              Ask
+            </sl-button>
+            <sl-button size="small" @click="openCorpusDialog('talk')">
+              <sl-icon slot="prefix" name="chat-quote"></sl-icon>
+              Talk
+            </sl-button>
+          </sl-button-group>
+
         </div>
 
         <div class="toolbar-inforight" />
@@ -175,6 +189,30 @@
       <SummaryInfoRecord v-if="showSummary" :machine-name="props.machineName" :section-path="props.sectionPath"/>
       <SectionSegmentsOverview v-if="showSegmentsOverview && data.section.info?.summary?.paragraph_segments" :segments="data.section.info.summary.paragraph_segments"/>
       <SectionEntities v-if="showEntities && data.section.info?.entities" :entities="data.section.info.entities"/>
+
+      <CorpusStudyDialog
+          v-model:open="corpusDialog.open"
+          :type="corpusDialog.type"
+          :initial-authors="initialAuthors"
+          :initial-books="initialBooks"
+          :initial-sections="initialSections"
+          @conversation-created="handleConversationCreated"
+          @qa-created="handleQACreated"
+      />
+
+      <StudyItemDialog
+          v-model:open="activeItem.open"
+          :type="activeItem.type"
+          :loading="activeItem.loading"
+          :error="activeItem.error"
+          :data="activeItem.data"
+          :linking-ref="activeItem.linkingRef"
+          @title-updated="handleTitleUpdated"
+          @pin-updated="handlePinUpdated"
+          @note-updated="handleNoteUpdated"
+          @turn-note-updated="handleTurnNoteUpdated"
+          @turn-added="handleTurnAdded"
+      />
 
       <header v-if="data.contents.length>0" class="section-study__header">
         <h1 class="section-study__title">{{ data.section.title_text }}</h1>
@@ -262,13 +300,18 @@
 
 <script setup lang="ts">
 import {computed, onMounted, ref, watch} from 'vue';
+import { useHead } from '@unhead/vue';
 import {apiFetch} from '../api';
 import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle} from '../types/library';
+import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import SummaryInfoRecord from './SummaryInfoRecord.vue';
 import SectionSegmentsOverview from './SectionSegmentsOverview.vue';
 import SectionEntities from './SectionEntities.vue';
 import ContentBlockView from './ContentBlockView.vue';
 import TableOfContents from './TableOfContents.vue';
+import CorpusStudyDialog from './corpus/CorpusStudyDialog.vue';
+import StudyItemDialog from './StudyItemDialog.vue';
+import {useLibraryStore} from "../stores/library.ts";
 
 const props = defineProps<{
   machineName: string;
@@ -302,6 +345,13 @@ const availableInfoRight = ref<ToolbarToggle[]>([
 
 type ToolbarToggleGroup = 'info-left' | 'highlights' | 'info-right';
 
+const store = useLibraryStore();
+const author = computed(() => store.getAuthorById(props.bookStructure?.book.by_author ?? null));
+const pageTitle = computed(() => `${data.value?.section.path_coded ?? props.sectionPath} | ${props.bookStructure?.book.abbrev ?? props.machineName} | ${author.value?.abbrev ?? ''}`);
+useHead({
+  title: pageTitle
+});
+
 function handleToolbarSelect(group: ToolbarToggleGroup, event: Event) {
   const selectedItem = (event as CustomEvent<{ item: HTMLElement }>).detail.item as HTMLElement & {
     value: string;
@@ -332,6 +382,53 @@ const showTableOfContents = ref(true);
 const showSummary = ref(false);
 const showSegmentsOverview = ref(false);
 const showEntities = ref(false);
+
+const corpusDialog = ref({
+  open: false,
+  type: 'ask' as 'ask' | 'talk'
+});
+
+interface ActiveItem {
+  type: 'conversation' | 'question_answer' | null;
+  loading: boolean;
+  error: string | null;
+  data: Conversation | QuestionAnswer | null;
+  linkingRef: ConversationRef | QuestionAnswerRef | null;
+  open: boolean;
+}
+
+const activeItem = ref<ActiveItem>({
+  type: null,
+  loading: false,
+  error: null,
+  data: null,
+  linkingRef: null,
+  open: false
+});
+
+const initialAuthors = computed(() => {
+  if (!props.bookStructure) return [];
+  const authors = [props.bookStructure.book.by_author];
+  if (props.bookStructure.book.by_author1) authors.push(props.bookStructure.book.by_author1);
+  if (props.bookStructure.book.by_author2) authors.push(props.bookStructure.book.by_author2);
+  if (props.bookStructure.book.by_author3) authors.push(props.bookStructure.book.by_author3);
+  return authors;
+});
+
+const initialBooks = computed(() => {
+  if (!props.bookStructure) return [];
+  return [props.bookStructure.book.id];
+});
+
+const initialSections = computed(() => {
+  if (!data.value?.section) return [];
+  return [data.value.section.id];
+});
+
+function openCorpusDialog(type: 'ask' | 'talk') {
+  corpusDialog.value.type = type;
+  corpusDialog.value.open = true;
+}
 
 function toggleSegment(index: number, isOpen: boolean) {
   openSegments.value[index] = isOpen;
@@ -444,11 +541,196 @@ const breadcrumbs = computed(() => {
   return crumbs;
 });
 
+async function handleConversationCreated(id: number) {
+  corpusDialog.value.open = false;
+  activeItem.value = {
+    type: 'conversation',
+    loading: true,
+    error: null,
+    data: null,
+    linkingRef: null,
+    open: true
+  };
+
+  try {
+    const response = await apiFetch(`/teststudy/api/v1/conversation/${id}/`);
+    if (response.ok) {
+      const conv: Conversation = await response.json();
+      activeItem.value.data = conv;
+      if (conv.references && conv.references.length > 0) {
+        activeItem.value.linkingRef = conv.references[0];
+      }
+    } else {
+      activeItem.value.error = `Error: ${response.statusText}`;
+    }
+  } catch (e) {
+    activeItem.value.error = (e as Error).message;
+  } finally {
+    activeItem.value.loading = false;
+  }
+}
+
+async function handleQACreated(id: number) {
+  corpusDialog.value.open = false;
+  activeItem.value = {
+    type: 'question_answer',
+    loading: true,
+    error: null,
+    data: null,
+    linkingRef: null,
+    open: true
+  };
+
+  try {
+    const response = await apiFetch(`/teststudy/api/v1/question-answer/${id}/`);
+    if (response.ok) {
+      const qa: QuestionAnswer = await response.json();
+      activeItem.value.data = qa;
+      if (qa.references && qa.references.length > 0) {
+        activeItem.value.linkingRef = qa.references[0];
+      }
+    } else {
+      activeItem.value.error = `Error: ${response.statusText}`;
+    }
+  } catch (e) {
+    activeItem.value.error = (e as Error).message;
+  } finally {
+    activeItem.value.loading = false;
+  }
+}
+
+function handleTitleUpdated(newTitle: string) {
+  if (!activeItem.value.data || !activeItem.value.type) return;
+
+  activeItem.value.data.title = newTitle;
+
+  const itemId = activeItem.value.data.id;
+  const itemType = activeItem.value.type;
+
+  if (data.value?.section) {
+    if (itemType === 'conversation' && data.value.section.conversations) {
+      const ref = data.value.section.conversations.find(c => c.of_conversation === itemId);
+      if (ref) ref.title = newTitle;
+    } else if (itemType === 'question_answer' && data.value.section.question_answers) {
+      const ref = data.value.section.question_answers.find(qa => qa.of_questionanswer === itemId);
+      if (ref) ref.title = newTitle;
+    }
+  }
+
+  if (props.bookStructure) {
+    if (itemType === 'conversation' && props.bookStructure.book.conversations) {
+      const ref = props.bookStructure.book.conversations.find(c => c.of_conversation === itemId);
+      if (ref) ref.title = newTitle;
+    } else if (itemType === 'question_answer' && props.bookStructure.book.question_answers) {
+      const ref = props.bookStructure.book.question_answers.find(qa => qa.of_questionanswer === itemId);
+      if (ref) ref.title = newTitle;
+    }
+
+    const updateTitleInTree = (sections: Section[]) => {
+      for (const section of sections) {
+        if (itemType === 'conversation' && section.conversations) {
+          const ref = section.conversations.find(c => c.of_conversation === itemId);
+          if (ref) ref.title = newTitle;
+        } else if (itemType === 'question_answer' && section.question_answers) {
+          const ref = section.question_answers.find(qa => qa.of_questionanswer === itemId);
+          if (ref) ref.title = newTitle;
+        }
+        if (section.subsections?.length) {
+          updateTitleInTree(section.subsections);
+        }
+      }
+    };
+
+    props.bookStructure.flows.forEach(flow => {
+      if (flow.tree) {
+        updateTitleInTree([flow.tree]);
+      }
+    });
+  }
+}
+
+function handlePinUpdated(isPinned: boolean) {
+  if (!activeItem.value.data || !activeItem.value.type || !activeItem.value.linkingRef) return;
+
+  activeItem.value.linkingRef.is_pinned = isPinned;
+
+  const refId = activeItem.value.linkingRef.id;
+  const itemType = activeItem.value.type;
+
+  if ((activeItem.value.data as any).references) {
+    const ref = (activeItem.value.data as any).references.find((r: any) => r.id === refId);
+    if (ref) ref.is_pinned = isPinned;
+  }
+
+  if (data.value?.section) {
+    if (itemType === 'conversation' && data.value.section.conversations) {
+      const ref = data.value.section.conversations.find(c => c.id === refId);
+      if (ref) ref.is_pinned = isPinned;
+    } else if (itemType === 'question_answer' && data.value.section.question_answers) {
+      const ref = data.value.section.question_answers.find(qa => qa.id === refId);
+      if (ref) ref.is_pinned = isPinned;
+    }
+  }
+
+  if (props.bookStructure) {
+    if (itemType === 'conversation' && props.bookStructure.book.conversations) {
+      const ref = props.bookStructure.book.conversations.find(c => c.id === refId);
+      if (ref) ref.is_pinned = isPinned;
+    } else if (itemType === 'question_answer' && props.bookStructure.book.question_answers) {
+      const ref = props.bookStructure.book.question_answers.find(qa => qa.id === refId);
+      if (ref) ref.is_pinned = isPinned;
+    }
+
+    const updatePinInTree = (sections: Section[]) => {
+      for (const section of sections) {
+        if (itemType === 'conversation' && section.conversations) {
+          const ref = section.conversations.find(c => c.id === refId);
+          if (ref) ref.is_pinned = isPinned;
+        } else if (itemType === 'question_answer' && section.question_answers) {
+          const ref = section.question_answers.find(qa => qa.id === refId);
+          if (ref) ref.is_pinned = isPinned;
+        }
+        if (section.subsections?.length) {
+          updatePinInTree(section.subsections);
+        }
+      }
+    };
+
+    props.bookStructure.flows.forEach(flow => {
+      if (flow.tree) {
+        updatePinInTree([flow.tree]);
+      }
+    });
+  }
+}
+
+function handleNoteUpdated(payload: { field: 'question_note' | 'answer_note', value: string | null }) {
+  if (!activeItem.value.data || activeItem.value.type !== 'question_answer') return;
+  (activeItem.value.data as QuestionAnswer)[payload.field] = payload.value;
+}
+
+function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note' | 'answer_note', value: string | null }) {
+  if (!activeItem.value.data || activeItem.value.type !== 'conversation') return;
+  const turn = (activeItem.value.data as Conversation).turns?.find(t => t.id === payload.turnId);
+  if (turn) {
+    turn[payload.field] = payload.value;
+  }
+}
+
+function handleTurnAdded(newTurn: ConversationTurn) {
+  if (!activeItem.value.data || activeItem.value.type !== 'conversation') return;
+  const conv = activeItem.value.data as Conversation;
+  if (!conv.turns) {
+    conv.turns = [];
+  }
+  conv.turns.push(newTurn);
+}
+
 async function fetchSection() {
   loading.value = true;
   error.value = '';
   try {
-    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=sum,ents&cont_info=sum,ents&pageinfo=1`);
+    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=sum,ents&cont_info=sum,ents&path_coded=1&pageinfo=1`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data.value = await res.json();
   } catch (e) {
@@ -515,7 +797,10 @@ watch(() => props.sectionPath, fetchSection);
 
 .section-study__toolbar .tools-right {
   grid-area: entities;
+  display: flex;
+  justify-content: space-between;
   justify-self: end;
+  gap: 0.5rem;
 }
 
 .toolbar-inforight {

@@ -1,3 +1,5 @@
+import type { CorpusMaterial } from './library';
+
 export type ConversationGoal = 'C' | 'ST' | 'TWB';
 
 
@@ -50,6 +52,8 @@ export interface Conversation {
 export interface ConversationTurn {
   id: number;
   of_conversation: number;
+  system_prompt: string | null;
+  model: string | null;
   question: string;
   answer: string;
   question_note: string | null;
@@ -78,4 +82,43 @@ export interface QuestionAnswer {
 
 export interface QuestionAnswerRef extends BaseRef {
   of_questionanswer: number;
+}
+
+export interface AskCorpusRequest {
+  expression: string | null;
+  style: string;
+  question: string;
+  system_prompt: string;
+  num_results: number;
+  corpus: CorpusMaterial;
+}
+
+export interface CorpusHit {
+  book_id: number | null;
+  page_name: string;
+  sb_id: number;
+  sb_text: string;
+  sb_text_highlighted: string;
+  rank: number;
+}
+
+export interface AskCorpusResponse {
+  answer: string;
+  answer_html: string;
+  hits: CorpusHit[];
+  qa_id: number;
+}
+
+export interface ConverseCorpusRequest {
+  corpus: CorpusMaterial;
+  question: string;
+  system_prompt?: string;
+  num_results?: number;
+}
+
+export interface ConverseCorpusResponse {
+  answer: string;
+  answer_html: string;
+  hits: CorpusHit[];
+  conversation_id: number;
 }
