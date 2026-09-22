@@ -39,10 +39,10 @@ const thumbnail = computed(() => {
 
 <style scoped>
 .hit-item {
-  border: 1px solid var(--sl-color-neutral-200);
+  border: 1px solid var(--color-border);
   border-radius: var(--sl-border-radius-medium);
   padding: 0.75rem;
-  background-color: white;
+  background-color: var(--color-surface);
 }
 
 .hit-meta {
@@ -57,24 +57,24 @@ const thumbnail = computed(() => {
   height: 60px;
   object-fit: cover;
   border-radius: var(--sl-border-radius-small);
-  border: 1px solid var(--sl-color-neutral-200);
+  border: 1px solid var(--color-border);
 }
 
 .hit-book {
   font-weight: 600;
   font-size: 0.8rem;
-  color: var(--sl-color-neutral-700);
+  color: var(--color-text);
 }
 
 .hit-location {
   font-size: 0.75rem;
-  color: var(--sl-color-neutral-500);
+  color: var(--color-text-muted);
 }
 
 .hit-text {
   font-size: 0.85rem;
   line-height: 1.4;
-  color: var(--sl-color-neutral-800);
+  color: var(--color-text);
 }
 
 .hit-text :deep(em) {
@@ -83,5 +83,10 @@ const thumbnail = computed(() => {
   background-color: var(--sl-color-warning-100);
   color: var(--sl-color-warning-900);
   padding: 0 0.1rem;
+}
+
+[data-theme="dark"] .hit-text :deep(em) {
+  background-color: var(--sl-color-warning-900);
+  color: var(--sl-color-warning-100);
 }
 </style>

@@ -207,9 +207,9 @@ function handleExcludeTree(section: Section) {
   font-weight: 600;
   font-size: 0.85rem;
   text-transform: uppercase;
-  color: var(--sl-color-neutral-500);
+  color: var(--color-text-muted);
   letter-spacing: 0.05em;
   padding-bottom: 0.25rem;
-  border-bottom: 1px solid var(--sl-color-neutral-100);
+  border-bottom: 1px solid var(--color-border);
 }
 </style>

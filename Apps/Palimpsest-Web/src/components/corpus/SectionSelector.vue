@@ -224,9 +224,9 @@ function handleParse(event: CustomEvent) {
   display: flex;
   flex-direction: column;
   height: 100%;
-  border: 1px solid var(--sl-color-neutral-200);
+  border: 1px solid var(--color-border);
   border-radius: var(--sl-border-radius-medium);
-  background-color: var(--sl-color-neutral-0);
+  background-color: var(--color-surface);
   overflow: hidden;
 }
 
@@ -237,7 +237,7 @@ function handleParse(event: CustomEvent) {
   justify-content: center;
   flex: 1;
   padding: 2rem;
-  color: var(--sl-color-neutral-500);
+  color: var(--color-text-muted);
   gap: 1rem;
   text-align: center;
 }
@@ -255,8 +255,8 @@ function handleParse(event: CustomEvent) {
 
 .selector-header {
   padding: 0.75rem 1rem;
-  background-color: var(--sl-color-neutral-50);
-  border-bottom: 1px solid var(--sl-color-neutral-200);
+  background-color: var(--color-bg-muted);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   gap: 0.5rem;

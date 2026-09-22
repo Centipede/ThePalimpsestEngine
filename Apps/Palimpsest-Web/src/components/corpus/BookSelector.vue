@@ -141,7 +141,7 @@ function handleMenuSelect(event: CustomEvent) {
 .book-list {
   flex: 1;
   overflow-y: auto;
-  border: 1px solid var(--sl-color-neutral-200);
+  border: 1px solid var(--color-border);
   border-radius: var(--sl-border-radius-medium);
 }
 
@@ -156,12 +156,17 @@ function handleMenuSelect(event: CustomEvent) {
 }
 
 .book-item:hover {
-  background-color: var(--sl-color-neutral-100);
+  background-color: var(--color-bg-muted);
 }
 
 .book-item.is-selected {
-  background-color: var(--sl-color-primary-100);
-  color: var(--sl-color-primary-700);
+  background-color: var(--color-bg-selected);
+  color: white;
+}
+
+[data-theme="dark"] .book-item.is-selected {
+  background-color: var(--color-bg-selected);
+  color: var(--color-text);
 }
 
 .book-title {
@@ -170,6 +175,6 @@ function handleMenuSelect(event: CustomEvent) {
 
 .book-abbrev {
   font-size: 0.8rem;
-  color: var(--sl-color-neutral-500);
+  color: var(--color-text-muted);
 }
 </style>

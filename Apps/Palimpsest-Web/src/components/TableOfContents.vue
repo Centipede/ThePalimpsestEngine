@@ -512,9 +512,9 @@ function handleTurnAdded(newTurn: ConversationTurn) {
 }
 
 .toc__row--book-level {
-  border-bottom: 1px solid var(--sl-color-neutral-200);
+  border-bottom: 1px solid var(--color-border);
   margin-bottom: 0.5rem;
-  background: var(--sl-color-neutral-50);
+  background: var(--color-bg-muted);
 }
 
 .toc__row--book-level .toc__book-icon {
@@ -540,8 +540,14 @@ function handleTurnAdded(newTurn: ConversationTurn) {
 }
 
 .toc__row--selected {
-  background-color: var(--sl-color-primary-100);
+  background-color: var(--color-bg-selected);
+  color: white;
   font-weight: 500;
+}
+
+[data-theme="dark"] .toc__row--selected {
+  background-color: var(--color-bg-selected);
+  color: var(--color-text);
 }
 
 .toc__row--descendant {
@@ -554,7 +560,7 @@ function handleTurnAdded(newTurn: ConversationTurn) {
 }
 
 .toc__title--selectable:hover {
-  color: var(--sl-color-primary-600);
+  color: var(--color-accent);
   text-decoration: underline;
 }
 
@@ -642,9 +648,19 @@ function handleTurnAdded(newTurn: ConversationTurn) {
   color: var(--sl-color-success-700);
 }
 
+[data-theme="dark"] .toc__badge--qa {
+  background: var(--sl-color-success-950);
+  color: var(--sl-color-success-200);
+}
+
 .toc__badge--conversation {
   background: var(--sl-color-primary-100);
   color: var(--sl-color-primary-700);
+}
+
+[data-theme="dark"] .toc__badge--conversation {
+  background: var(--sl-color-primary-950);
+  color: var(--sl-color-primary-200);
 }
 
 .toc__badge--unpinned {

@@ -1,3 +1,104 @@
+<template>
+  <Teleport to=".nav-mid-title-portal">
+    Search
+  </Teleport>
+
+  <div class="search-layout">
+    <aside class="logo-sidebar">
+      <img src="/logos/palimpsest-logo.png" alt="Palimpsest Logo" class="main-logo" />
+    </aside>
+
+    <div class="search-page">
+      <div class="search-header">
+        <div class="search-input-group">
+          <sl-input
+              v-model="searchQuery"
+              placeholder="Type your search query here..."
+              size="large"
+              clearable
+              @sl-input="searchError = null"
+              @keydown.enter="performSearch"
+          >
+            <sl-icon name="search" slot="prefix"></sl-icon>
+          </sl-input>
+          <sl-button variant="primary" size="large" :loading="isSearching" :disabled="!searchQuery" @click="performSearch">
+            Search
+          </sl-button>
+        </div>
+      </div>
+
+      <div class="search-content">
+        <div class="scope-section">
+          <h3>Search Scope</h3>
+          <p class="description">Select the authors, books, or chapters to search within.</p>
+          <CorpusScopeSelector @add-materials="handleAddMaterials" />
+        </div>
+
+        <div class="materials-section">
+          <h3>Selected Materials</h3>
+          <div class="material-list">
+            <div v-if="materials.length === 0" class="empty-material">
+              No material added yet. Use the selector above to scope your search.
+            </div>
+            <div v-else class="material-items">
+              <div
+                  v-for="(item, index) in materials"
+                  :key="index"
+                  :class="['material-item', `material-item--${item.strategy}`]"
+              >
+                <div class="item-content">
+                  <sl-icon :name="getItemIcon(item)" class="item-icon"></sl-icon>
+                  <span class="item-label">{{ getItemLabel(item) }}</span>
+                </div>
+                <sl-button variant="text" size="small" @click="removeMaterial(index)">
+                  <sl-icon name="x-lg" slot="prefix"></sl-icon>
+                </sl-button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="searchResults.length > 0 || searchError || isSearching" class="results-section">
+          <div class="results-header">
+            <h3>Search Results</h3>
+            <span v-if="searchResults.length > 0" class="results-count">
+              Found {{ searchResults.length }} hits
+            </span>
+          </div>
+
+          <div v-if="searchError" class="search-error">
+            <sl-icon name="exclamation-triangle"></sl-icon>
+            {{ searchError }}
+          </div>
+
+          <div v-if="isSearching" class="search-loading">
+            <sl-spinner></sl-spinner>
+            <span>Searching corpus...</span>
+          </div>
+
+          <div v-else-if="searchResults.length > 0" class="results-list">
+            <div v-for="(hit, index) in searchResults" :key="index" class="search-hit">
+              <div class="hit-meta">
+                <span class="hit-book">{{ getBookTitle(hit.in_book) }}</span>
+                <span class="hit-author">by {{ getAuthorName(hit.by_author) }}</span>
+                <span class="hit-page">Page {{ hit.on_page }}</span>
+              </div>
+              <div class="hit-snippet" v-html="hit.html_highlighted"></div>
+              <div class="hit-footer">
+                <sl-badge variant="neutral" pill>Rank: {{ hit.rank.toFixed(4) }}</sl-badge>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="!isSearching && searchQuery && !searchError" class="no-results">
+            No matches found for "{{ searchQuery }}" in the selected scope.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useHead } from '@unhead/vue';
@@ -102,107 +203,6 @@ function getItemLabel(item: CorpusMaterialItem) {
 }
 </script>
 
-<template>
-  <Teleport to=".nav-mid-title-portal">
-    Search
-  </Teleport>
-
-  <div class="search-layout">
-    <aside class="logo-sidebar">
-      <img src="/logos/palimpsest-logo.png" alt="Palimpsest Logo" class="main-logo" />
-    </aside>
-
-    <div class="search-page">
-      <div class="search-header">
-        <div class="search-input-group">
-          <sl-input
-            v-model="searchQuery"
-            placeholder="Type your search query here..."
-            size="large"
-            clearable
-            @sl-input="searchError = null"
-            @keydown.enter="performSearch"
-          >
-            <sl-icon name="search" slot="prefix"></sl-icon>
-          </sl-input>
-          <sl-button variant="primary" size="large" :loading="isSearching" :disabled="!searchQuery" @click="performSearch">
-            Search
-          </sl-button>
-        </div>
-      </div>
-
-      <div class="search-content">
-        <div class="scope-section">
-          <h3>Search Scope</h3>
-          <p class="description">Select the authors, books, or chapters to search within.</p>
-          <CorpusScopeSelector @add-materials="handleAddMaterials" />
-        </div>
-
-        <div class="materials-section">
-          <h3>Selected Materials</h3>
-          <div class="material-list">
-            <div v-if="materials.length === 0" class="empty-material">
-              No material added yet. Use the selector above to scope your search.
-            </div>
-            <div v-else class="material-items">
-              <div 
-                v-for="(item, index) in materials" 
-                :key="index"
-                :class="['material-item', `material-item--${item.strategy}`]"
-              >
-                <div class="item-content">
-                  <sl-icon :name="getItemIcon(item)" class="item-icon"></sl-icon>
-                  <span class="item-label">{{ getItemLabel(item) }}</span>
-                </div>
-                <sl-button variant="text" size="small" @click="removeMaterial(index)">
-                  <sl-icon name="x-lg" slot="prefix"></sl-icon>
-                </sl-button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="searchResults.length > 0 || searchError || isSearching" class="results-section">
-          <div class="results-header">
-            <h3>Search Results</h3>
-            <span v-if="searchResults.length > 0" class="results-count">
-              Found {{ searchResults.length }} hits
-            </span>
-          </div>
-
-          <div v-if="searchError" class="search-error">
-            <sl-icon name="exclamation-triangle"></sl-icon>
-            {{ searchError }}
-          </div>
-
-          <div v-if="isSearching" class="search-loading">
-            <sl-spinner></sl-spinner>
-            <span>Searching corpus...</span>
-          </div>
-
-          <div v-else-if="searchResults.length > 0" class="results-list">
-            <div v-for="(hit, index) in searchResults" :key="index" class="search-hit">
-              <div class="hit-meta">
-                <span class="hit-book">{{ getBookTitle(hit.in_book) }}</span>
-                <span class="hit-author">by {{ getAuthorName(hit.by_author) }}</span>
-                <span class="hit-page">Page {{ hit.on_page }}</span>
-              </div>
-              <div class="hit-snippet" v-html="hit.html_highlighted"></div>
-              <div class="hit-footer">
-                <sl-badge variant="neutral" pill>Rank: {{ hit.rank.toFixed(4) }}</sl-badge>
-              </div>
-            </div>
-          </div>
-          
-          <div v-else-if="!isSearching && searchQuery && !searchError" class="no-results">
-            No matches found for "{{ searchQuery }}" in the selected scope.
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <style scoped>
 .search-layout {
   position: relative;
@@ -261,13 +261,13 @@ function getItemLabel(item: CorpusMaterialItem) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 2px solid var(--sl-color-neutral-200);
+  border-bottom: 2px solid var(--color-border);
   padding-bottom: 0.5rem;
 }
 
 .results-count {
   font-size: 0.9rem;
-  color: var(--sl-color-neutral-500);
+  color: var(--color-text-muted);
 }
 
 .results-list {
@@ -277,8 +277,8 @@ function getItemLabel(item: CorpusMaterialItem) {
 }
 
 .search-hit {
-  background-color: white;
-  border: 1px solid var(--sl-color-neutral-200);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--sl-border-radius-medium);
   padding: 1rem;
   display: flex;
@@ -295,32 +295,38 @@ function getItemLabel(item: CorpusMaterialItem) {
 
 .hit-book {
   font-weight: 600;
-  color: var(--sl-color-primary-700);
+  color: var(--color-accent);
 }
 
 .hit-author {
-  color: var(--sl-color-neutral-600);
+  color: var(--color-text-muted);
 }
 
 .hit-page {
-  background-color: var(--sl-color-neutral-100);
+  background-color: var(--color-bg-muted);
   padding: 0.1rem 0.4rem;
   border-radius: var(--sl-border-radius-small);
-  color: var(--sl-color-neutral-700);
+  color: var(--color-text);
 }
 
 .hit-snippet {
   font-family: var(--sl-font-serif, serif);
   line-height: 1.6;
-  color: var(--sl-color-neutral-800);
+  color: var(--color-text);
 }
 
 .hit-snippet :deep(em) {
   font-style: normal;
   font-weight: 600;
   background-color: var(--sl-color-warning-200);
+  color: var(--sl-color-neutral-900);
   padding: 0 0.1rem;
   border-radius: 2px;
+}
+
+[data-theme="dark"] .hit-snippet :deep(em) {
+  background-color: var(--sl-color-warning-800);
+  color: var(--sl-color-warning-50);
 }
 
 .hit-footer {
@@ -334,14 +340,19 @@ function getItemLabel(item: CorpusMaterialItem) {
   justify-content: center;
   gap: 0.75rem;
   padding: 3rem;
-  background-color: var(--sl-color-neutral-50);
+  background-color: var(--color-bg-muted);
   border-radius: var(--sl-border-radius-medium);
-  color: var(--sl-color-neutral-600);
+  color: var(--color-text-muted);
 }
 
 .search-error {
-  color: var(--sl-color-danger-600);
+  color: var(--sl-color-danger-700);
   background-color: var(--sl-color-danger-50);
+}
+
+[data-theme="dark"] .search-error {
+  color: var(--sl-color-danger-200);
+  background-color: var(--sl-color-danger-950);
 }
 
 .search-content {
@@ -358,13 +369,13 @@ h3 {
 
 .description {
   margin: 0 0 1rem 0;
-  color: var(--sl-color-neutral-600);
+  color: var(--color-text-muted);
   font-size: 0.9rem;
 }
 
 .material-list {
-  background-color: white;
-  border: 1px solid var(--sl-color-neutral-200);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--sl-border-radius-medium);
   min-height: 100px;
 }
@@ -391,10 +402,20 @@ h3 {
   color: var(--sl-color-success-900);
 }
 
+[data-theme="dark"] .material-item--include {
+  background-color: var(--sl-color-success-950);
+  color: var(--sl-color-success-200);
+}
+
 .material-item--exclude {
   background-color: var(--sl-color-warning-50);
   border-left: 4px solid var(--sl-color-warning-600);
   color: var(--sl-color-warning-900);
+}
+
+[data-theme="dark"] .material-item--exclude {
+  background-color: var(--sl-color-warning-950);
+  color: var(--sl-color-warning-200);
 }
 
 .item-content {
@@ -411,7 +432,7 @@ h3 {
 .empty-material {
   padding: 2rem;
   font-size: 0.9rem;
-  color: var(--sl-color-neutral-400);
+  color: var(--color-text-dimmed);
   font-style: italic;
   text-align: center;
 }
