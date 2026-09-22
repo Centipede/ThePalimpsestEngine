@@ -21,6 +21,12 @@
           >
             <sl-icon name="search" slot="prefix"></sl-icon>
           </sl-input>
+          <sl-select v-model="searchStyle" size="large" class="style-selector">
+            <sl-option value="plain">Plain words</sl-option>
+            <sl-option value="phrase">Phrase</sl-option>
+            <sl-option value="raw">Raw PostgreSQL expression</sl-option>
+            <sl-option value="websearch">Web search expression</sl-option>
+          </sl-select>
           <sl-button variant="primary" size="large" :loading="isSearching" :disabled="!searchQuery" @click="performSearch">
             Search
           </sl-button>
@@ -103,7 +109,7 @@
 import { ref, onMounted } from 'vue';
 import { useHead } from '@unhead/vue';
 import CorpusScopeSelector from '../components/corpus/CorpusScopeSelector.vue';
-import type { CorpusMaterialItem, SearchHit, SearchResponse } from '../types/library';
+import type { CorpusMaterialItem, SearchHit, SearchResponse, SearchStyle } from '../types/library';
 import { apiFetch } from '../api';
 import { useLibraryStore } from '../stores/library';
 
@@ -121,6 +127,7 @@ onMounted(async () => {
 });
 
 const searchQuery = ref('');
+const searchStyle = ref<SearchStyle>('plain');
 const materials = ref<CorpusMaterialItem[]>([]);
 const isSearching = ref(false);
 const searchResults = ref<SearchHit[]>([]);
@@ -138,7 +145,7 @@ async function performSearch() {
       method: 'POST',
       body: JSON.stringify({
         expression: searchQuery.value,
-        style: 'plain',
+        style: searchStyle.value,
         corpus: {
           items: materials.value
         }
@@ -248,6 +255,10 @@ function getItemLabel(item: CorpusMaterialItem) {
 
 .search-input-group sl-input {
   flex: 1;
+}
+
+.style-selector {
+  width: 180px;
 }
 
 .results-section {
