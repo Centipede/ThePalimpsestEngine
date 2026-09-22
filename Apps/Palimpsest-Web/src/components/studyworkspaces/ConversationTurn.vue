@@ -24,7 +24,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ConversationTurn } from '../types/study';
+import type { ConversationTurn } from '../../types/study';
 import WorkspaceFoldableSection from './WorkspaceFoldableSection.vue';
 
 defineProps<{

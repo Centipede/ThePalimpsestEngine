@@ -200,7 +200,7 @@
           @qa-created="handleQACreated"
       />
 
-      <StudyItemDialog
+      <StudyWorkspaceDialog
           v-model:open="activeItem.open"
           :type="activeItem.type"
           :loading="activeItem.loading"
@@ -310,7 +310,7 @@ import SectionEntities from './SectionEntities.vue';
 import ContentBlockView from './ContentBlockView.vue';
 import TableOfContents from './TableOfContents.vue';
 import CorpusStudyDialog from './corpus/CorpusStudyDialog.vue';
-import StudyItemDialog from './StudyItemDialog.vue';
+import StudyWorkspaceDialog from './studyworkspaces/StudyWorkspaceDialog.vue';
 import {useLibraryStore} from "../stores/library.ts";
 
 const props = defineProps<{

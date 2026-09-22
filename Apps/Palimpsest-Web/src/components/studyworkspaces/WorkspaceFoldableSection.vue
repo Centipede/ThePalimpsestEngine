@@ -39,7 +39,7 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue';
 import { marked } from 'marked';
-import { apiFetch } from '../api';
+import { apiFetch } from '../../api';
 
 const props = defineProps<{
   label: string;

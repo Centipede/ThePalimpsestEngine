@@ -71,8 +71,8 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { Conversation, ConversationRef, ConversationTurn } from '../types/study';
-import { apiFetch } from '../api';
+import type { Conversation, ConversationRef, ConversationTurn } from '../../types/study';
+import { apiFetch } from '../../api';
 import WorkspaceHeader from './WorkspaceHeader.vue';
 import ConversationTurnComponent from './ConversationTurn.vue';
 

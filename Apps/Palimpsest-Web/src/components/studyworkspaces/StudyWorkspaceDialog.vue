@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
+import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../../types/study';
 import QuestionAnswerWorkspace from './QuestionAnswerWorkspace.vue';
 import ConversationWorkspace from './ConversationWorkspace.vue';
 

@@ -76,9 +76,9 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch } from 'vue';
 import { RouterLink } from 'vue-router';
-import type { BaseRef, SearchMetadata } from '../types/study';
-import type { SectionDetail } from '../types/library';
-import { apiFetch } from '../api';
+import type { BaseRef, SearchMetadata } from '../../types/study';
+import type { SectionDetail } from '../../types/library';
+import { apiFetch } from '../../api';
 
 const props = defineProps<{
   title: string | null;

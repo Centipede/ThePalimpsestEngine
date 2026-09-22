@@ -36,7 +36,7 @@
 </template>
 
 <script setup lang="ts">
-import type { QuestionAnswer, QuestionAnswerRef } from '../types/study';
+import type { QuestionAnswer, QuestionAnswerRef } from '../../types/study';
 import WorkspaceHeader from './WorkspaceHeader.vue';
 import WorkspaceFoldableSection from './WorkspaceFoldableSection.vue';
 

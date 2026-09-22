@@ -117,7 +117,7 @@
       </template>
     </div>
 
-    <StudyItemDialog
+    <StudyWorkspaceDialog
       v-model:open="activeItem.open"
       :type="activeItem.type"
       :loading="activeItem.loading"
@@ -140,7 +140,7 @@ import type { BookStructure, Section } from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import { apiFetch } from '../api';
 import SummaryInfoRecord from './SummaryInfoRecord.vue';
-import StudyItemDialog from './StudyItemDialog.vue';
+import StudyWorkspaceDialog from './studyworkspaces/StudyWorkspaceDialog.vue';
 
 const props = withDefaults(defineProps<{
   bookStructure: BookStructure,
