@@ -11,27 +11,33 @@
         <span class="toc__title">Book-wide discussions</span>
 
         <div class="toc__badges">
-          <span
+          <a
             v-for="ref in props.bookStructure.book.conversations"
             :key="'conv-' + ref.id"
+            :href="getConversationHref(ref)"
+            target="_blank"
+            rel="noopener noreferrer"
             class="toc__badge toc__badge--conversation"
             :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
             :title="ref.title || 'Conversation'"
-            @click.stop="showConversation(ref)"
+            @click.stop="showConversation(ref, $event)"
           >
             {{ ref.is_pinned ? ref.title : '•' }}
-          </span>
+          </a>
 
-          <span
+          <a
             v-for="ref in props.bookStructure.book.question_answers"
             :key="'qa-' + ref.id"
+            :href="getQuestionAnswerHref(ref)"
+            target="_blank"
+            rel="noopener noreferrer"
             class="toc__badge toc__badge--qa"
             :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
             :title="ref.title || 'Q&A'"
-            @click.stop="showQuestionAnswer(ref)"
+            @click.stop="showQuestionAnswer(ref, $event)"
           >
             {{ ref.is_pinned ? ref.title : '•' }}
-          </span>
+          </a>
         </div>
       </div>
 
@@ -84,27 +90,33 @@
           </span>
 
           <div v-if="props.showDiscussions" class="toc__badges">
-            <span
+            <a
               v-for="ref in entry.section.conversations"
               :key="'conv-' + ref.id"
+              :href="getConversationHref(ref)"
+              target="_blank"
+              rel="noopener noreferrer"
               class="toc__badge toc__badge--conversation"
               :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
               :title="ref.title || 'Conversation'"
-              @click.stop="showConversation(ref)"
+              @click.stop="showConversation(ref, $event)"
             >
               {{ ref.is_pinned ? ref.title : '•' }}
-            </span>
+            </a>
 
-            <span
+            <a
               v-for="ref in entry.section.question_answers"
               :key="'qa-' + ref.id"
+              :href="getQuestionAnswerHref(ref)"
+              target="_blank"
+              rel="noopener noreferrer"
               class="toc__badge toc__badge--qa"
               :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
               :title="ref.title || 'Q&A'"
-              @click.stop="showQuestionAnswer(ref)"
+              @click.stop="showQuestionAnswer(ref, $event)"
             >
               {{ ref.is_pinned ? ref.title : '•' }}
-            </span>
+            </a>
           </div>
         </div>
 
@@ -118,12 +130,12 @@
     </div>
 
     <StudyWorkspaceDialog
-      v-model:open="activeItem.open"
-      :type="activeItem.type"
-      :loading="activeItem.loading"
-      :error="activeItem.error"
-      :data="activeItem.data"
-      :linking-ref="activeItem.linkingRef"
+      v-model:open="isDialogOpen"
+      :type="type"
+      :loading="loading"
+      :error="error"
+      :data="data"
+      :linking-ref="linkingRef"
       @title-updated="handleTitleUpdated"
       @pin-updated="handlePinUpdated"
       @note-updated="handleNoteUpdated"
@@ -135,10 +147,10 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
 import type { BookStructure, Section } from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
-import { apiFetch } from '../api';
+import { useStudyWorkspaceItem } from '../composables/useStudyWorkspaceItem';
 import SummaryInfoRecord from './SummaryInfoRecord.vue';
 import StudyWorkspaceDialog from './studyworkspaces/StudyWorkspaceDialog.vue';
 
@@ -173,23 +185,9 @@ interface SummaryState {
 
 const expandedSummaries = ref<Record<string, SummaryState>>({});
 
-interface ActiveItem {
-  type: 'conversation' | 'question_answer' | null;
-  loading: boolean;
-  error: string | null;
-  data: Conversation | QuestionAnswer | null;
-  linkingRef: ConversationRef | QuestionAnswerRef | null;
-  open: boolean;
-}
-
-const activeItem = ref<ActiveItem>({
-  type: null,
-  loading: false,
-  error: null,
-  data: null,
-  linkingRef: null,
-  open: false
-});
+const router = useRouter();
+const { loading, error, data, type, linkingRef, loadItem } = useStudyWorkspaceItem();
+const isDialogOpen = ref(false);
 
 function walkTree(sections: Section[], depth: number, result: TocEntry[] = []): TocEntry[] {
   for (const s of sections) {
@@ -327,36 +325,40 @@ function toggleSummary(entry: TocEntry) {
   }
 }
 
-async function showConversation(ref: ConversationRef) {
-  activeItem.value = { type: 'conversation', loading: true, error: null, data: null, linkingRef: ref, open: true };
-  try {
-    const response = await apiFetch(`/teststudy/api/v1/conversation/${ref.of_conversation}/`);
-    if (response.ok) {
-      activeItem.value.data = await response.json();
-    } else {
-      activeItem.value.error = `Error: ${response.statusText}`;
-    }
-  } catch (e) {
-    activeItem.value.error = (e as Error).message;
-  } finally {
-    activeItem.value.loading = false;
-  }
+function getConversationHref(ref: ConversationRef) {
+  return router.resolve({
+    path: `/study/${props.machineName}/workspace/conversation/${ref.of_conversation}`,
+    query: { ref: ref.id }
+  }).href;
 }
 
-async function showQuestionAnswer(ref: QuestionAnswerRef) {
-  activeItem.value = { type: 'question_answer', loading: true, error: null, data: null, linkingRef: ref, open: true };
-  try {
-    const response = await apiFetch(`/teststudy/api/v1/question-answer/${ref.of_questionanswer}/`);
-    if (response.ok) {
-      activeItem.value.data = await response.json();
-    } else {
-      activeItem.value.error = `Error: ${response.statusText}`;
-    }
-  } catch (e) {
-    activeItem.value.error = (e as Error).message;
-  } finally {
-    activeItem.value.loading = false;
+function getQuestionAnswerHref(ref: QuestionAnswerRef) {
+  return router.resolve({
+    path: `/study/${props.machineName}/workspace/question_answer/${ref.of_questionanswer}`,
+    query: { ref: ref.id }
+  }).href;
+}
+
+async function showConversation(ref: ConversationRef, event?: MouseEvent) {
+  if (event && (event.shiftKey || event.ctrlKey || event.metaKey || event.button === 1)) {
+    // Let browser handle opening the link in a new tab/window
+    return;
   }
+  
+  event?.preventDefault(); // Prevent opening the href for normal clicks
+  isDialogOpen.value = true;
+  await loadItem('conversation', ref.of_conversation, ref.id);
+}
+
+async function showQuestionAnswer(ref: QuestionAnswerRef, event?: MouseEvent) {
+  if (event && (event.shiftKey || event.ctrlKey || event.metaKey || event.button === 1)) {
+    // Let browser handle opening the link in a new tab/window
+    return;
+  }
+  
+  event?.preventDefault(); // Prevent opening the href for normal clicks
+  isDialogOpen.value = true;
+  await loadItem('question_answer', ref.of_questionanswer, ref.id);
 }
 
 function isVisible(entry: TocEntry): boolean {
@@ -371,14 +373,14 @@ function isVisible(entry: TocEntry): boolean {
 }
 
 function handleTitleUpdated(newTitle: string) {
-  if (!activeItem.value.data || !activeItem.value.type) return;
+  if (!data.value || !type.value) return;
 
   // 1. Update the active item data so the dialog reflects the change immediately
-  activeItem.value.data.title = newTitle;
+  data.value.title = newTitle;
 
   // 2. Find and update the title in the collections
-  const itemId = activeItem.value.data.id;
-  const itemType = activeItem.value.type;
+  const itemId = data.value.id;
+  const itemType = type.value;
 
   // 2a. Update book-level items
   if (itemType === 'conversation' && props.bookStructure.book.conversations) {
@@ -413,17 +415,17 @@ function handleTitleUpdated(newTitle: string) {
 }
 
 function handlePinUpdated(isPinned: boolean) {
-  if (!activeItem.value.data || !activeItem.value.type || !activeItem.value.linkingRef) return;
+  if (!data.value || !type.value || !linkingRef.value) return;
 
   // 1. Update the linking ref status
-  activeItem.value.linkingRef.is_pinned = isPinned;
+  linkingRef.value.is_pinned = isPinned;
 
   // 2. Update the reference inside the data object if it exists
-  const itemType = activeItem.value.type;
-  const refId = activeItem.value.linkingRef.id;
+  const itemType = type.value;
+  const refId = linkingRef.value.id;
 
-  if ((activeItem.value.data as any).references) {
-    const ref = (activeItem.value.data as any).references.find((r: any) => r.id === refId);
+  if ((data.value as any).references) {
+    const ref = (data.value as any).references.find((r: any) => r.id === refId);
     if (ref) ref.is_pinned = isPinned;
   }
 
@@ -462,21 +464,21 @@ function handlePinUpdated(isPinned: boolean) {
 }
 
 function handleNoteUpdated(payload: { field: 'question_note' | 'answer_note', value: string | null }) {
-  if (!activeItem.value.data || activeItem.value.type !== 'question_answer') return;
-  (activeItem.value.data as QuestionAnswer)[payload.field] = payload.value;
+  if (!data.value || type.value !== 'question_answer') return;
+  (data.value as QuestionAnswer)[payload.field] = payload.value;
 }
 
 function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note' | 'answer_note', value: string | null }) {
-  if (!activeItem.value.data || activeItem.value.type !== 'conversation') return;
-  const turn = (activeItem.value.data as Conversation).turns?.find(t => t.id === payload.turnId);
+  if (!data.value || type.value !== 'conversation') return;
+  const turn = (data.value as Conversation).turns?.find(t => t.id === payload.turnId);
   if (turn) {
     turn[payload.field] = payload.value;
   }
 }
 
 function handleTurnAdded(newTurn: ConversationTurn) {
-  if (!activeItem.value.data || activeItem.value.type !== 'conversation') return;
-  const conv = activeItem.value.data as Conversation;
+  if (!data.value || type.value !== 'conversation') return;
+  const conv = data.value as Conversation;
   if (!conv.turns) {
     conv.turns = [];
   }
@@ -636,6 +638,7 @@ function handleTurnAdded(newTurn: ConversationTurn) {
   white-space: nowrap;
   text-align: center;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .toc__badge--id {
