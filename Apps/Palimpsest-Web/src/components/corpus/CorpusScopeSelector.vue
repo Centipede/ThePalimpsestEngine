@@ -200,7 +200,7 @@ function handleExcludeTree(section: Section) {
 }
 
 .selector-column--wide {
-  flex: 1.5;
+  flex: 3;
 }
 
 .column-header {

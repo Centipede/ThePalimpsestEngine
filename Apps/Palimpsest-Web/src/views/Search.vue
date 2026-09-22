@@ -4,10 +4,6 @@
   </Teleport>
 
   <div class="search-layout">
-    <aside class="logo-sidebar">
-      <img src="/logos/palimpsest-logo.png" alt="Palimpsest Logo" class="main-logo" />
-    </aside>
-
     <div class="search-page">
       <div class="search-header">
         <div class="search-input-group">
@@ -34,31 +30,33 @@
       </div>
 
       <div class="search-content">
-        <div class="scope-section">
-          <h3>Search Scope</h3>
-          <p class="description">Select the authors, books, or chapters to search within.</p>
-          <CorpusScopeSelector @add-materials="handleAddMaterials" />
-        </div>
+        <div class="search-config">
+          <div class="scope-section">
+            <h3>Search Scope</h3>
+            <p class="description">Select the authors, books, or chapters to search within.</p>
+            <CorpusScopeSelector @add-materials="handleAddMaterials" />
+          </div>
 
-        <div class="materials-section">
-          <h3>Selected Materials</h3>
-          <div class="material-list">
-            <div v-if="materials.length === 0" class="empty-material">
-              No material added yet. Use the selector above to scope your search.
-            </div>
-            <div v-else class="material-items">
-              <div
-                  v-for="(item, index) in materials"
-                  :key="index"
-                  :class="['material-item', `material-item--${item.strategy}`]"
-              >
-                <div class="item-content">
-                  <sl-icon :name="getItemIcon(item)" class="item-icon"></sl-icon>
-                  <span class="item-label">{{ getItemLabel(item) }}</span>
+          <div class="materials-section">
+            <h3>Selected Materials</h3>
+            <div class="material-list">
+              <div v-if="materials.length === 0" class="empty-material">
+                No material added yet. Use the selector above to scope your search.
+              </div>
+              <div v-else class="material-items">
+                <div
+                    v-for="(item, index) in materials"
+                    :key="index"
+                    :class="['material-item', `material-item--${item.strategy}`]"
+                >
+                  <div class="item-content">
+                    <sl-icon :name="getItemIcon(item)" class="item-icon"></sl-icon>
+                    <span class="item-label">{{ getItemLabel(item) }}</span>
+                  </div>
+                  <sl-button variant="text" size="small" @click="removeMaterial(index)">
+                    <sl-icon name="x-lg" slot="prefix"></sl-icon>
+                  </sl-button>
                 </div>
-                <sl-button variant="text" size="small" @click="removeMaterial(index)">
-                  <sl-icon name="x-lg" slot="prefix"></sl-icon>
-                </sl-button>
               </div>
             </div>
           </div>
@@ -212,31 +210,15 @@ function getItemLabel(item: CorpusMaterialItem) {
 
 <style scoped>
 .search-layout {
-  position: relative;
   box-sizing: border-box;
   width: 100%;
-  max-width: 80rem;
   margin: 0 auto;
-  padding: 2rem 1rem;
-}
-
-.logo-sidebar {
-  position: absolute;
-  top: 2rem;
-  left: 1rem;
-  width: 12rem;
-  padding-top: 1rem;
-}
-
-.main-logo {
-  width: 100%;
-  height: auto;
-  opacity: 0.9;
+  padding: 2rem;
 }
 
 .search-page {
   box-sizing: border-box;
-  width: min(100%, 48rem);
+  width: 100%;
   margin: 0 auto;
   padding: 0;
   display: flex;
@@ -246,6 +228,8 @@ function getItemLabel(item: CorpusMaterialItem) {
 
 .search-header {
   width: 100%;
+  max-width: 48rem;
+  margin: 0 auto;
 }
 
 .search-input-group {
@@ -372,6 +356,21 @@ function getItemLabel(item: CorpusMaterialItem) {
   gap: 2rem;
 }
 
+.search-config {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.scope-section {
+  flex: 5;
+}
+
+.materials-section {
+  flex: 1;
+  min-width: 200px;
+}
+
 h3 {
   margin: 0 0 0.5rem 0;
   font-size: 1.25rem;
@@ -388,7 +387,8 @@ h3 {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--sl-border-radius-medium);
-  min-height: 100px;
+  height: 500px;
+  overflow-y: auto;
 }
 
 .material-items {
@@ -456,13 +456,18 @@ h3 {
     gap: 2rem;
   }
 
-  .logo-sidebar {
-    position: static;
-    width: 8rem;
-    padding-top: 0;
+  .search-page {
+    width: 100%;
+  }
+}
+
+@media (max-width: 1200px) {
+  .search-config {
+    flex-direction: column;
+    gap: 2rem;
   }
 
-  .search-page {
+  .materials-section {
     width: 100%;
   }
 }
