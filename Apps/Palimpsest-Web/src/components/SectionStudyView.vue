@@ -212,6 +212,7 @@
           @note-updated="handleNoteUpdated"
           @turn-note-updated="handleTurnNoteUpdated"
           @turn-added="handleTurnAdded"
+          @references-updated="handleReferencesUpdated"
       />
 
       <header v-if="data.contents.length>0" class="section-study__header">
@@ -724,6 +725,32 @@ function handleTurnAdded(newTurn: ConversationTurn) {
     conv.turns = [];
   }
   conv.turns.push(newTurn);
+}
+
+async function handleReferencesUpdated() {
+  if (!activeItem.value.data || !activeItem.value.type) return;
+
+  const id = activeItem.value.data.id;
+  const type = activeItem.value.type;
+  const endpoint = type === 'conversation' ? 'conversation' : 'question-answer';
+
+  activeItem.value.loading = true;
+  try {
+    const response = await apiFetch(`/teststudy/api/v1/${endpoint}/${id}/`);
+    if (response.ok) {
+      const updatedItem = await response.json();
+      activeItem.value.data = updatedItem;
+      if (updatedItem.references && updatedItem.references.length > 0) {
+        const oldId = activeItem.value.linkingRef?.id;
+        const newRef = updatedItem.references.find((r: any) => r.id === oldId) || updatedItem.references[0];
+        activeItem.value.linkingRef = newRef;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to refresh item after reference update', e);
+  } finally {
+    activeItem.value.loading = false;
+  }
 }
 
 async function fetchSection() {

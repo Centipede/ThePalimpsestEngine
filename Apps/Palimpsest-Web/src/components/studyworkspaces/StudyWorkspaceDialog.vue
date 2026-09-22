@@ -14,6 +14,7 @@
       :linking-ref="linkingRef"
       @title-updated="$emit('title-updated', $event)"
       @pin-updated="$emit('pin-updated', $event)"
+      @references-updated="$emit('references-updated')"
       @note-updated="$emit('note-updated', $event)"
       @turn-note-updated="$emit('turn-note-updated', $event)"
       @turn-added="$emit('turn-added', $event)"
@@ -39,6 +40,7 @@ defineEmits<{
   (e: 'update:open', value: boolean): void;
   (e: 'title-updated', newTitle: string): void;
   (e: 'pin-updated', isPinned: boolean): void;
+  (e: 'references-updated'): void;
   (e: 'note-updated', payload: { field: 'question_note' | 'answer_note', value: string | null }): void;
   (e: 'turn-note-updated', payload: { turnId: number, field: 'question_note' | 'answer_note', value: string | null }): void;
   (e: 'turn-added', turn: ConversationTurn): void;

@@ -25,15 +25,21 @@
     <sl-dropdown ref="dropdown">
       <div slot="trigger" class="context-menu-anchor"></div>
       <sl-menu @sl-select="handleMenuSelect">
-        <sl-menu-item value="include">Include Book</sl-menu-item>
-        <sl-menu-item value="exclude">Exclude Book</sl-menu-item>
-        <sl-divider v-if="selectedIds.length > 0"></sl-divider>
-        <sl-menu-item v-if="selectedIds.length > 0" value="include-selected">
-          Include Selected ({{ selectedIds.length }})
-        </sl-menu-item>
-        <sl-menu-item v-if="selectedIds.length > 0" value="exclude-selected">
-          Exclude Selected ({{ selectedIds.length }})
-        </sl-menu-item>
+        <template v-if="mode === 'corpus'">
+          <sl-menu-item value="include">Include Book</sl-menu-item>
+          <sl-menu-item value="exclude">Exclude Book</sl-menu-item>
+          <sl-divider v-if="selectedIds.length > 0"></sl-divider>
+          <sl-menu-item v-if="selectedIds.length > 0" value="include-selected">
+            Include Selected ({{ selectedIds.length }})
+          </sl-menu-item>
+          <sl-menu-item v-if="selectedIds.length > 0" value="exclude-selected">
+            Exclude Selected ({{ selectedIds.length }})
+          </sl-menu-item>
+        </template>
+        <template v-else-if="mode === 'reference'">
+          <sl-menu-item value="add">Add here</sl-menu-item>
+          <sl-menu-item value="move">Move here</sl-menu-item>
+        </template>
       </sl-menu>
     </sl-dropdown>
   </div>
@@ -44,15 +50,19 @@ import { ref, computed, onMounted } from 'vue';
 import { useLibraryStore } from '../../stores/library';
 import type { Book } from '../../types/library';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   selectedIds: number[];
   authorIds: number[];
-}>();
+  mode?: 'corpus' | 'reference';
+}>(), {
+  mode: 'corpus'
+});
 
 const emit = defineEmits<{
   (e: 'update:selectedIds', ids: number[]): void;
   (e: 'includeBooks', ids: number[]): void;
   (e: 'excludeBooks', ids: number[]): void;
+  (e: 'reference-action', payload: { action: 'add' | 'move', type: 'book', item: Book }): void;
 }>();
 
 const libraryStore = useLibraryStore();
@@ -120,6 +130,8 @@ function handleMenuSelect(event: CustomEvent) {
     emit('includeBooks', props.selectedIds);
   } else if (action === 'exclude-selected') {
     emit('excludeBooks', props.selectedIds);
+  } else if ((action === 'add' || action === 'move') && contextBook.value) {
+    emit('reference-action', { action, type: 'book', item: contextBook.value });
   }
 }
 </script>

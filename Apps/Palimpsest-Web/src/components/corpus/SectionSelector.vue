@@ -32,11 +32,17 @@
       <sl-dropdown ref="dropdown">
         <div slot="trigger" class="context-menu-anchor"></div>
         <sl-menu @sl-select="handleMenuSelect">
-          <sl-menu-item value="include-single">Include only this chapter</sl-menu-item>
-          <sl-menu-item value="include-tree">Include chapter and all subchapters</sl-menu-item>
-          <sl-divider></sl-divider>
-          <sl-menu-item value="exclude-single">Exclude only this chapter</sl-menu-item>
-          <sl-menu-item value="exclude-tree">Exclude chapter and all subchapters</sl-menu-item>
+          <template v-if="mode === 'corpus'">
+            <sl-menu-item value="include-single">Include only this chapter</sl-menu-item>
+            <sl-menu-item value="include-tree">Include chapter and all subchapters</sl-menu-item>
+            <sl-divider></sl-divider>
+            <sl-menu-item value="exclude-single">Exclude only this chapter</sl-menu-item>
+            <sl-menu-item value="exclude-tree">Exclude chapter and all subchapters</sl-menu-item>
+          </template>
+          <template v-else-if="mode === 'reference'">
+            <sl-menu-item value="add">Add here</sl-menu-item>
+            <sl-menu-item value="move">Move here</sl-menu-item>
+          </template>
         </sl-menu>
       </sl-dropdown>
     </div>
@@ -53,16 +59,20 @@ import { apiFetch } from '../../api';
 import type { BookStructure, Section } from '../../types/library';
 import TableOfContents from '../TableOfContents.vue';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   machineName: string | null;
   selectedIds?: number[];
-}>();
+  mode?: 'corpus' | 'reference';
+}>(), {
+  mode: 'corpus'
+});
 
 const emit = defineEmits<{
   (e: 'includeSingle', section: Section): void;
   (e: 'includeTree', section: Section): void;
   (e: 'excludeSingle', section: Section): void;
   (e: 'excludeTree', section: Section): void;
+  (e: 'reference-action', payload: { action: 'add' | 'move', type: 'section', item: Section }): void;
 }>();
 
 const bookStructure = ref<BookStructure | null>(null);
@@ -145,6 +155,8 @@ function handleMenuSelect(event: CustomEvent) {
     emit('excludeSingle', selectedSection.value);
   } else if (action === 'exclude-tree') {
     emit('excludeTree', selectedSection.value);
+  } else if ((action === 'add' || action === 'move')) {
+    emit('reference-action', { action, type: 'section', item: selectedSection.value });
   }
 }
 
