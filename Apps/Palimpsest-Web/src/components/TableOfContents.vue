@@ -468,7 +468,7 @@ function handleNoteUpdated(payload: { field: 'question_note' | 'answer_note', va
   (data.value as QuestionAnswer)[payload.field] = payload.value;
 }
 
-function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note' | 'answer_note', value: string | null }) {
+function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note' | 'answer_note' | 'question_summary' | 'answer_summary', value: string | null }) {
   if (!data.value || type.value !== 'conversation') return;
   const turn = (data.value as Conversation).turns?.find(t => t.id === payload.turnId);
   if (turn) {

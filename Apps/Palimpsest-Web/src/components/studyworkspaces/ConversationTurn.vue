@@ -48,7 +48,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'turn-note-updated', payload: { turnId: number, field: 'question_note' | 'answer_note', value: string | null }): void;
+  (e: 'turn-note-updated', payload: { turnId: number, field: 'question_note' | 'answer_note' | 'question_summary' | 'answer_summary', value: string | null }): void;
 }>();
 
 const isSummarizingUser = ref(false);
@@ -58,25 +58,16 @@ async function summarizeUserText() {
   if (isSummarizingUser.value) return;
   isSummarizingUser.value = true;
   try {
-    const summaryResponse = await apiFetch(`/teststudy/api/v1/conversation-turn/${props.turn.id}/summarize_user_text/`, {
+    const response = await apiFetch(`/teststudy/api/v1/conversation-turn/${props.turn.id}/summarize_user_text/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
     });
 
-    if (summaryResponse.ok) {
-      const { summary } = await summaryResponse.json();
-      
-      // Now PATCH to save the summary
-      const patchResponse = await apiFetch(`/teststudy/api/v1/conversation-turn/${props.turn.id}/`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question_note: summary }),
-      });
-
-      if (patchResponse.ok) {
-        emit('turn-note-updated', { turnId: props.turn.id, field: 'question_note', value: summary });
-      }
+    if (response.ok) {
+      const { question_note, question_summary } = await response.json();
+      emit('turn-note-updated', { turnId: props.turn.id, field: 'question_note', value: question_note });
+      emit('turn-note-updated', { turnId: props.turn.id, field: 'question_summary', value: question_summary });
     }
   } catch (error) {
     console.error('Error summarizing user text:', error);
@@ -89,25 +80,16 @@ async function summarizeAssistantText() {
   if (isSummarizingAssistant.value) return;
   isSummarizingAssistant.value = true;
   try {
-    const summaryResponse = await apiFetch(`/teststudy/api/v1/conversation-turn/${props.turn.id}/summarize_assistant_text/`, {
+    const response = await apiFetch(`/teststudy/api/v1/conversation-turn/${props.turn.id}/summarize_assistant_text/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
     });
 
-    if (summaryResponse.ok) {
-      const { summary } = await summaryResponse.json();
-
-      // Now PATCH to save the summary
-      const patchResponse = await apiFetch(`/teststudy/api/v1/conversation-turn/${props.turn.id}/`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answer_note: summary }),
-      });
-
-      if (patchResponse.ok) {
-        emit('turn-note-updated', { turnId: props.turn.id, field: 'answer_note', value: summary });
-      }
+    if (response.ok) {
+      const { answer_note, answer_summary } = await response.json();
+      emit('turn-note-updated', { turnId: props.turn.id, field: 'answer_note', value: answer_note });
+      emit('turn-note-updated', { turnId: props.turn.id, field: 'answer_summary', value: answer_summary });
     }
   } catch (error) {
     console.error('Error summarizing assistant text:', error);

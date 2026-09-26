@@ -86,7 +86,7 @@ const emit = defineEmits<{
   (e: 'title-updated', newTitle: string): void;
   (e: 'pin-updated', isPinned: boolean): void;
   (e: 'references-updated'): void;
-  (e: 'turn-note-updated', payload: { turnId: number, field: 'question_note' | 'answer_note', value: string | null }): void;
+  (e: 'turn-note-updated', payload: { turnId: number, field: 'question_note' | 'answer_note' | 'question_summary' | 'answer_summary', value: string | null }): void;
   (e: 'turn-added', turn: ConversationTurn): void;
 }>();
 

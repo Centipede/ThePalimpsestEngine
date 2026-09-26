@@ -710,7 +710,7 @@ function handleNoteUpdated(payload: { field: 'question_note' | 'answer_note', va
   (activeItem.value.data as QuestionAnswer)[payload.field] = payload.value;
 }
 
-function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note' | 'answer_note', value: string | null }) {
+function handleTurnNoteUpdated(payload: { turnId: number, field: 'question_note' | 'answer_note' | 'question_summary' | 'answer_summary', value: string | null }) {
   if (!activeItem.value.data || activeItem.value.type !== 'conversation') return;
   const turn = (activeItem.value.data as Conversation).turns?.find(t => t.id === payload.turnId);
   if (turn) {
