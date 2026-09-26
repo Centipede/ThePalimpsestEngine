@@ -261,6 +261,8 @@ export interface CorpusMaterial {
     items: CorpusMaterialItem[];
 }
 
+export type SearchStyle = 'plain' | 'phrase' | 'raw' | 'websearch';
+
 export interface SearchHit {
   in_book: number;
   by_author: number;

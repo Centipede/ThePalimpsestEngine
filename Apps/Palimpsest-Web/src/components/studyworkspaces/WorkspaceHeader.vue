@@ -20,16 +20,29 @@
       </div>
 
       <div class="pin-status">
-        <sl-radio-group
-          label="Pin Status"
-          :value="linkingRef.is_pinned ? 'pinned' : 'unpinned'"
-          @sl-change="togglePin"
-        >
-          <sl-radio-button value="pinned">Pinned</sl-radio-button>
-          <sl-radio-button value="unpinned">Unpinned</sl-radio-button>
-        </sl-radio-group>
+        <div class="pin-status-controls">
+          <sl-radio-group
+            size="small"
+            label="Pin Status"
+            :value="linkingRef.is_pinned ? 'pinned' : 'unpinned'"
+            @sl-change="togglePin"
+          >
+            <sl-radio-button value="pinned">Pinned</sl-radio-button>
+            <sl-radio-button value="unpinned">Unpinned</sl-radio-button>
+          </sl-radio-group>
+          <sl-button size="small" @click="refSelectorDialog?.show()">
+            <sl-icon slot="prefix" name="cursor-fill"></sl-icon>
+            Move...
+          </sl-button>
+        </div>
       </div>
     </div>
+
+    <ReferenceSelectorDialog
+      ref="refSelectorDialog"
+      label="Manage References"
+      @reference-action="handleReferenceAction"
+    />
 
     <div class="references-section">
       <h4 class="references-title">References</h4>
@@ -76,9 +89,10 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch } from 'vue';
 import { RouterLink } from 'vue-router';
-import type { BaseRef, SearchMetadata } from '../types/study';
-import type { SectionDetail } from '../types/library';
-import { apiFetch } from '../api';
+import type { BaseRef, SearchMetadata } from '../../types/study';
+import type { SectionDetail } from '../../types/library';
+import { apiFetch } from '../../api';
+import ReferenceSelectorDialog from './ReferenceSelectorDialog.vue';
 
 const props = defineProps<{
   title: string | null;
@@ -92,12 +106,14 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'title-updated', newTitle: string): void;
   (e: 'pin-updated', isPinned: boolean): void;
+  (e: 'references-updated'): void;
 }>();
 
 const isEditingTitle = ref(false);
 const editedTitle = ref('');
 const isSavingTitle = ref(false);
 const titleInput = ref<any>(null);
+const refSelectorDialog = ref<any>(null);
 
 const sectionTitles = ref<Record<string, string>>({});
 
@@ -159,6 +175,42 @@ async function togglePin(event: any) {
     }
   } catch (error) {
     console.error('Error toggling pin:', error);
+  }
+}
+
+async function handleReferenceAction(payload: { action: 'add' | 'move', type: 'book' | 'section', item: any, book?: any }) {
+  const newRef: any = {
+    is_pinned: true,
+    order_key: payload.action === 'move' ? 1 : props.allRefs.length + 1,
+    in_book: payload.type === 'book' ? payload.item.id : payload.book.id,
+    in_book_mn: payload.type === 'book' ? payload.item.machine_name : payload.book.machine_name,
+    in_section: payload.type === 'section' ? payload.item.id : null,
+    in_section_pf: payload.type === 'section' ? payload.item.path_full : null,
+    on_page: null,
+    in_block: null,
+    in_block_pi: null
+  };
+
+  let updatedRefs: BaseRef[];
+  if (payload.action === 'move') {
+    updatedRefs = [newRef];
+  } else {
+    updatedRefs = [...props.allRefs.map(r => ({ ...r })), newRef];
+  }
+
+  try {
+    const endpoint = props.itemType === 'conversation' ? 'conversation' : 'question-answer';
+    const response = await apiFetch(`/teststudy/api/v1/${endpoint}/${props.itemId}/`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ references: updatedRefs }),
+    });
+
+    if (response.ok) {
+      emit('references-updated');
+    }
+  } catch (error) {
+    console.error('Error updating references:', error);
   }
 }
 
@@ -255,6 +307,12 @@ watch(() => props.allRefs, fetchSectionTitles, { deep: true });
 
 .pin-status {
   flex-shrink: 0;
+}
+
+.pin-status-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
 }
 
 .references-section {

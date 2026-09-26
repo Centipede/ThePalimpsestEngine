@@ -4,7 +4,7 @@ export type ConversationGoal = 'C' | 'ST' | 'TWB';
 
 
 export interface BaseRef {
-  id: number;
+  id?: number;
   is_pinned: boolean;
   order_key: number;
   title?: string;

@@ -9,6 +9,7 @@
       :metadata="data.metadata"
       @title-updated="$emit('title-updated', $event)"
       @pin-updated="$emit('pin-updated', $event)"
+      @references-updated="$emit('references-updated')"
     />
     <div class="qa-container">
       <WorkspaceFoldableSection
@@ -36,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import type { QuestionAnswer, QuestionAnswerRef } from '../types/study';
+import type { QuestionAnswer, QuestionAnswerRef } from '../../types/study';
 import WorkspaceHeader from './WorkspaceHeader.vue';
 import WorkspaceFoldableSection from './WorkspaceFoldableSection.vue';
 
@@ -48,6 +49,7 @@ defineProps<{
 const emit = defineEmits<{
   (e: 'title-updated', newTitle: string): void;
   (e: 'pin-updated', isPinned: boolean): void;
+  (e: 'references-updated'): void;
   (e: 'note-updated', payload: { field: 'question_note' | 'answer_note', value: string | null }): void;
 }>();
 </script>

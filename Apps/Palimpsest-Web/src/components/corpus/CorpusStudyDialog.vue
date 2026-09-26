@@ -14,7 +14,7 @@
             <sl-textarea
               label="Question"
               placeholder="Type your question here..."
-              rows="3"
+              rows="10"
               resize="none"
               :value="question"
               @sl-input="question = $event.target.value"
@@ -108,6 +108,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useDraft } from '../../composables/useDraft';
 import CorpusScopeSelector from './CorpusScopeSelector.vue';
 import { apiFetch } from '../../api';
 import type { CorpusMaterialItem } from '../../types/library';
@@ -130,7 +131,7 @@ const emit = defineEmits<{
 const showScopeSelector = ref(false);
 const materials = ref<CorpusMaterialItem[]>([]);
 
-const question = ref('');
+const { draft: question, clear: clearQuestionDraft } = useDraft('palimpsest_draft_corpus_question');
 const loading = ref(false);
 const error = ref<string | null>(null);
 
@@ -167,6 +168,7 @@ async function handleStartTalk() {
 
     const data: ConverseCorpusResponse = await response.json();
     emit('conversation-created', data.conversation_id);
+    clearQuestionDraft();
   } catch (e: any) {
     error.value = e.message || 'An error occurred while starting the conversation.';
   } finally {
@@ -207,6 +209,7 @@ async function handleGetAnswer() {
 
     const data: AskCorpusResponse = await response.json();
     emit('qa-created', data.qa_id);
+    clearQuestionDraft();
   } catch (e: any) {
     error.value = e.message || 'An error occurred while fetching the answer.';
   } finally {
@@ -300,10 +303,10 @@ function getItemLabel(item: CorpusMaterialItem) {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  border: 1px solid var(--sl-color-neutral-200);
+  border: 1px solid var(--color-border);
   border-radius: var(--sl-border-radius-medium);
   padding: 1rem;
-  background-color: var(--sl-color-neutral-50);
+  background-color: var(--color-bg-muted);
   min-height: 0;
 }
 
@@ -316,7 +319,7 @@ function getItemLabel(item: CorpusMaterialItem) {
 .panel-title {
   font-weight: 600;
   font-size: 0.9rem;
-  color: var(--sl-color-neutral-700);
+  color: var(--color-text);
 }
 
 .panel-actions {
@@ -327,8 +330,8 @@ function getItemLabel(item: CorpusMaterialItem) {
 .material-list {
   flex: 1;
   min-height: 100px;
-  background-color: white;
-  border: 1px solid var(--sl-color-neutral-200);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--sl-border-radius-small);
   display: flex;
   flex-direction: column;
@@ -359,10 +362,20 @@ function getItemLabel(item: CorpusMaterialItem) {
   color: var(--sl-color-success-900);
 }
 
+[data-theme="dark"] .material-item--include {
+  background-color: var(--sl-color-success-950);
+  color: var(--sl-color-success-200);
+}
+
 .material-item--exclude {
   background-color: var(--sl-color-warning-50);
   border-left: 4px solid var(--sl-color-warning-600);
   color: var(--sl-color-warning-900);
+}
+
+[data-theme="dark"] .material-item--exclude {
+  background-color: var(--sl-color-warning-950);
+  color: var(--sl-color-warning-200);
 }
 
 .item-content {
@@ -379,7 +392,7 @@ function getItemLabel(item: CorpusMaterialItem) {
 .empty-material {
   padding: 2rem;
   font-size: 0.85rem;
-  color: var(--sl-color-neutral-400);
+  color: var(--color-text-dimmed);
   font-style: italic;
   text-align: center;
   align-self: center;

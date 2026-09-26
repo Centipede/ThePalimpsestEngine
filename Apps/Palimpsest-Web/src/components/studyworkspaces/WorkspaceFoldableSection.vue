@@ -39,7 +39,7 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue';
 import { marked } from 'marked';
-import { apiFetch } from '../api';
+import { apiFetch } from '../../api';
 
 const props = defineProps<{
   label: string;
@@ -111,7 +111,7 @@ async function saveNote() {
 
 <style scoped>
 .workspace-section {
-  margin-bottom: 1rem;
+  margin-bottom: 0.2rem;
 }
 
 .workspace-section::part(base) {

@@ -200,16 +200,16 @@ function handleExcludeTree(section: Section) {
 }
 
 .selector-column--wide {
-  flex: 1.5;
+  flex: 3;
 }
 
 .column-header {
   font-weight: 600;
   font-size: 0.85rem;
   text-transform: uppercase;
-  color: var(--sl-color-neutral-500);
+  color: var(--color-text-muted);
   letter-spacing: 0.05em;
   padding-bottom: 0.25rem;
-  border-bottom: 1px solid var(--sl-color-neutral-100);
+  border-bottom: 1px solid var(--color-border);
 }
 </style>

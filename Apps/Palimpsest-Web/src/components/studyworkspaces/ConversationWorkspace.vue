@@ -9,6 +9,7 @@
       :metadata="data.metadata"
       @title-updated="$emit('title-updated', $event)"
       @pin-updated="$emit('pin-updated', $event)"
+      @references-updated="$emit('references-updated')"
     />
     <div v-for="turn in data.turns" :key="turn.id">
       <ConversationTurnComponent
@@ -19,19 +20,18 @@
 
     <div class="add-turn-form">
       <sl-textarea
-        label="Ask a question"
-        placeholder="Type your question here..."
+        placeholder="You say..."
         :value="newQuestion"
         @sl-input="newQuestion = $event.target.value"
         :disabled="submitting"
-        resize="none"
+        rows="10"
       ></sl-textarea>
 
       <sl-details summary="Advanced Settings (Optional Overrides)">
         <div class="settings-grid">
           <sl-input
             label="Model Override"
-            placeholder="e.g. gpt-4o"
+            placeholder="e.g. gpt-5.6-luna"
             :value="newModel"
             @sl-input="newModel = $event.target.value"
             :disabled="submitting"
@@ -42,7 +42,7 @@
             :value="newSystemPrompt"
             @sl-input="newSystemPrompt = $event.target.value"
             :disabled="submitting"
-            rows="2"
+            rows="5"
             resize="none"
           ></sl-textarea>
         </div>
@@ -71,8 +71,9 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { Conversation, ConversationRef, ConversationTurn } from '../types/study';
-import { apiFetch } from '../api';
+import { useDraft } from '../../composables/useDraft';
+import type { Conversation, ConversationRef, ConversationTurn } from '../../types/study';
+import { apiFetch } from '../../api';
 import WorkspaceHeader from './WorkspaceHeader.vue';
 import ConversationTurnComponent from './ConversationTurn.vue';
 
@@ -84,11 +85,14 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'title-updated', newTitle: string): void;
   (e: 'pin-updated', isPinned: boolean): void;
+  (e: 'references-updated'): void;
   (e: 'turn-note-updated', payload: { turnId: number, field: 'question_note' | 'answer_note', value: string | null }): void;
   (e: 'turn-added', turn: ConversationTurn): void;
 }>();
 
-const newQuestion = ref('');
+const { draft: newQuestion, clear: clearQuestionDraft } = useDraft(
+  () => `palimpsest_draft_conv_${props.data.id}`
+);
 const newModel = ref('');
 const newSystemPrompt = ref('');
 const submitting = ref(false);
@@ -124,7 +128,7 @@ async function handleAddTurn() {
     emit('turn-added', newTurn);
     
     // Clear form
-    newQuestion.value = '';
+    clearQuestionDraft();
     // Clear optional overrides as well for next question
     newModel.value = '';
     newSystemPrompt.value = '';

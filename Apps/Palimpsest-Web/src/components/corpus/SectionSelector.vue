@@ -32,11 +32,17 @@
       <sl-dropdown ref="dropdown">
         <div slot="trigger" class="context-menu-anchor"></div>
         <sl-menu @sl-select="handleMenuSelect">
-          <sl-menu-item value="include-single">Include only this chapter</sl-menu-item>
-          <sl-menu-item value="include-tree">Include chapter and all subchapters</sl-menu-item>
-          <sl-divider></sl-divider>
-          <sl-menu-item value="exclude-single">Exclude only this chapter</sl-menu-item>
-          <sl-menu-item value="exclude-tree">Exclude chapter and all subchapters</sl-menu-item>
+          <template v-if="mode === 'corpus'">
+            <sl-menu-item value="include-single">Include only this chapter</sl-menu-item>
+            <sl-menu-item value="include-tree">Include chapter and all subchapters</sl-menu-item>
+            <sl-divider></sl-divider>
+            <sl-menu-item value="exclude-single">Exclude only this chapter</sl-menu-item>
+            <sl-menu-item value="exclude-tree">Exclude chapter and all subchapters</sl-menu-item>
+          </template>
+          <template v-else-if="mode === 'reference'">
+            <sl-menu-item value="add">Add here</sl-menu-item>
+            <sl-menu-item value="move">Move here</sl-menu-item>
+          </template>
         </sl-menu>
       </sl-dropdown>
     </div>
@@ -53,16 +59,20 @@ import { apiFetch } from '../../api';
 import type { BookStructure, Section } from '../../types/library';
 import TableOfContents from '../TableOfContents.vue';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   machineName: string | null;
   selectedIds?: number[];
-}>();
+  mode?: 'corpus' | 'reference';
+}>(), {
+  mode: 'corpus'
+});
 
 const emit = defineEmits<{
   (e: 'includeSingle', section: Section): void;
   (e: 'includeTree', section: Section): void;
   (e: 'excludeSingle', section: Section): void;
   (e: 'excludeTree', section: Section): void;
+  (e: 'reference-action', payload: { action: 'add' | 'move', type: 'section', item: Section }): void;
 }>();
 
 const bookStructure = ref<BookStructure | null>(null);
@@ -145,6 +155,8 @@ function handleMenuSelect(event: CustomEvent) {
     emit('excludeSingle', selectedSection.value);
   } else if (action === 'exclude-tree') {
     emit('excludeTree', selectedSection.value);
+  } else if ((action === 'add' || action === 'move')) {
+    emit('reference-action', { action, type: 'section', item: selectedSection.value });
   }
 }
 
@@ -224,9 +236,9 @@ function handleParse(event: CustomEvent) {
   display: flex;
   flex-direction: column;
   height: 100%;
-  border: 1px solid var(--sl-color-neutral-200);
+  border: 1px solid var(--color-border);
   border-radius: var(--sl-border-radius-medium);
-  background-color: var(--sl-color-neutral-0);
+  background-color: var(--color-surface);
   overflow: hidden;
 }
 
@@ -237,7 +249,7 @@ function handleParse(event: CustomEvent) {
   justify-content: center;
   flex: 1;
   padding: 2rem;
-  color: var(--sl-color-neutral-500);
+  color: var(--color-text-muted);
   gap: 1rem;
   text-align: center;
 }
@@ -255,8 +267,8 @@ function handleParse(event: CustomEvent) {
 
 .selector-header {
   padding: 0.75rem 1rem;
-  background-color: var(--sl-color-neutral-50);
-  border-bottom: 1px solid var(--sl-color-neutral-200);
+  background-color: var(--color-bg-muted);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   gap: 0.5rem;
