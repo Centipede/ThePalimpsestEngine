@@ -14,7 +14,7 @@
             <sl-textarea
               label="Question"
               placeholder="Type your question here..."
-              rows="3"
+              rows="10"
               resize="none"
               :value="question"
               @sl-input="question = $event.target.value"
@@ -108,6 +108,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useDraft } from '../../composables/useDraft';
 import CorpusScopeSelector from './CorpusScopeSelector.vue';
 import { apiFetch } from '../../api';
 import type { CorpusMaterialItem } from '../../types/library';
@@ -130,7 +131,7 @@ const emit = defineEmits<{
 const showScopeSelector = ref(false);
 const materials = ref<CorpusMaterialItem[]>([]);
 
-const question = ref('');
+const { draft: question, clear: clearQuestionDraft } = useDraft('palimpsest_draft_corpus_question');
 const loading = ref(false);
 const error = ref<string | null>(null);
 
@@ -167,6 +168,7 @@ async function handleStartTalk() {
 
     const data: ConverseCorpusResponse = await response.json();
     emit('conversation-created', data.conversation_id);
+    clearQuestionDraft();
   } catch (e: any) {
     error.value = e.message || 'An error occurred while starting the conversation.';
   } finally {
@@ -207,6 +209,7 @@ async function handleGetAnswer() {
 
     const data: AskCorpusResponse = await response.json();
     emit('qa-created', data.qa_id);
+    clearQuestionDraft();
   } catch (e: any) {
     error.value = e.message || 'An error occurred while fetching the answer.';
   } finally {

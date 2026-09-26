@@ -111,7 +111,7 @@ async function saveNote() {
 
 <style scoped>
 .workspace-section {
-  margin-bottom: 1rem;
+  margin-bottom: 0.2rem;
 }
 
 .workspace-section::part(base) {

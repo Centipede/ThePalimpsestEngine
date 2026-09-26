@@ -1,7 +1,7 @@
 <template>
   <div class="conversation-turn">
     <WorkspaceFoldableSection
-      label="User Question"
+      label="User"
       :content="turn.question"
       :note="turn.question_note"
       item-type="conversation-turn"
@@ -11,7 +11,7 @@
       @note-updated="$emit('turn-note-updated', { turnId: turn.id, field: 'question_note', value: $event })"
     />
     <WorkspaceFoldableSection
-      label="Assistant Answer"
+      label="Assistant"
       :content="turn.answer"
       :note="turn.answer_note"
       item-type="conversation-turn"
@@ -47,7 +47,7 @@ defineEmits<{
 }
 
 .turn-q {
-  margin-bottom: 1rem;
+  margin-bottom: 0.2rem;
 }
 
 .turn-a {

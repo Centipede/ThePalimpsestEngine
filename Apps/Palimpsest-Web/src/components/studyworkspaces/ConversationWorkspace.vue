@@ -20,19 +20,18 @@
 
     <div class="add-turn-form">
       <sl-textarea
-        label="Ask a question"
-        placeholder="Type your question here..."
+        placeholder="You say..."
         :value="newQuestion"
         @sl-input="newQuestion = $event.target.value"
         :disabled="submitting"
-        resize="none"
+        rows="10"
       ></sl-textarea>
 
       <sl-details summary="Advanced Settings (Optional Overrides)">
         <div class="settings-grid">
           <sl-input
             label="Model Override"
-            placeholder="e.g. gpt-4o"
+            placeholder="e.g. gpt-5.6-luna"
             :value="newModel"
             @sl-input="newModel = $event.target.value"
             :disabled="submitting"
@@ -43,7 +42,7 @@
             :value="newSystemPrompt"
             @sl-input="newSystemPrompt = $event.target.value"
             :disabled="submitting"
-            rows="2"
+            rows="5"
             resize="none"
           ></sl-textarea>
         </div>
@@ -72,6 +71,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useDraft } from '../../composables/useDraft';
 import type { Conversation, ConversationRef, ConversationTurn } from '../../types/study';
 import { apiFetch } from '../../api';
 import WorkspaceHeader from './WorkspaceHeader.vue';
@@ -90,7 +90,9 @@ const emit = defineEmits<{
   (e: 'turn-added', turn: ConversationTurn): void;
 }>();
 
-const newQuestion = ref('');
+const { draft: newQuestion, clear: clearQuestionDraft } = useDraft(
+  () => `palimpsest_draft_conv_${props.data.id}`
+);
 const newModel = ref('');
 const newSystemPrompt = ref('');
 const submitting = ref(false);
@@ -126,7 +128,7 @@ async function handleAddTurn() {
     emit('turn-added', newTurn);
     
     // Clear form
-    newQuestion.value = '';
+    clearQuestionDraft();
     // Clear optional overrides as well for next question
     newModel.value = '';
     newSystemPrompt.value = '';
