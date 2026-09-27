@@ -22,6 +22,7 @@
         @note-updated="handleNoteUpdated"
         @turn-note-updated="handleTurnNoteUpdated"
         @turn-added="handleTurnAdded"
+        @context-condensed="handleContextCondensed"
       />
     </main>
   </div>
@@ -33,7 +34,7 @@ import { useRoute } from 'vue-router';
 import { useHead } from '@unhead/vue';
 import StudyWorkspaceContent from '../components/studyworkspaces/StudyWorkspaceContent.vue';
 import { useStudyWorkspaceItem } from '../composables/useStudyWorkspaceItem';
-import type { ConversationTurn } from '../types/study';
+import type { Conversation, ConversationTurn } from '../types/study';
 
 const route = useRoute();
 const machineName = computed(() => route.params.machine_name as string);
@@ -95,6 +96,12 @@ function handleTurnAdded(turn: ConversationTurn) {
   if (data.value && 'turns' in data.value) {
     if (!data.value.turns) data.value.turns = [];
     data.value.turns.push(turn);
+  }
+}
+
+function handleContextCondensed(summary: string) {
+  if (data.value && type.value === 'conversation') {
+    (data.value as Conversation).context_dense = summary;
   }
 }
 </script>

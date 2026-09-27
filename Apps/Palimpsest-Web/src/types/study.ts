@@ -43,6 +43,7 @@ export interface Conversation {
   model: string | null;
   conversation_history: Record<string, any>;
   metadata: SearchMetadata;
+  context_dense: string | null;
   created_at: string;
   updated_at: string;
   turns?: ConversationTurn[];
