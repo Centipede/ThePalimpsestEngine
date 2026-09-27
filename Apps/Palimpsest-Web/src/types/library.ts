@@ -266,6 +266,14 @@ export type SearchStyle = 'plain' | 'phrase' | 'raw' | 'websearch';
 export interface SearchHit {
   in_book: number;
   by_author: number;
+  in_section: {
+    id: number;
+    path_full: string;
+    path_coded: string;
+    title: string;
+  };
+  in_block?: number;
+  in_block_pi?: string;
   on_page: number;
   published: string | null;
   book_thumbnail_url: string | null;
@@ -276,6 +284,13 @@ export interface SearchHit {
 export interface SearchResponse {
   hits: SearchHit[];
 }
+
+export interface SurroundingContentItem {
+  index: number;
+  content: ContentBlock | null;
+}
+
+export type SurroundingContentResponse = SurroundingContentItem[];
 
 
 

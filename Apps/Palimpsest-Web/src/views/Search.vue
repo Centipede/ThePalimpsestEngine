@@ -17,6 +17,16 @@
           >
             <sl-icon name="search" slot="prefix"></sl-icon>
           </sl-input>
+          <sl-input
+              v-model.number="numResults"
+              type="number"
+              min="1"
+              size="large"
+              class="num-results-input"
+              placeholder="Num. results"
+          >
+            <sl-icon name="hash" slot="prefix"></sl-icon>
+          </sl-input>
           <sl-select v-model="searchStyle" size="large" class="style-selector">
             <sl-option value="plain">Plain words</sl-option>
             <sl-option value="phrase">Phrase</sl-option>
@@ -64,7 +74,7 @@
 
         <div v-if="searchResults.length > 0 || searchError || isSearching" class="results-section">
           <div class="results-header">
-            <h3>Search Results</h3>
+            <h3>Search Results <span v-if="!isSearching">{{ searchResults.length }}</span></h3>
             <span v-if="searchResults.length > 0" class="results-count">
               Found {{ searchResults.length }} hits
             </span>
@@ -81,17 +91,12 @@
           </div>
 
           <div v-else-if="searchResults.length > 0" class="results-list">
-            <div v-for="(hit, index) in searchResults" :key="index" class="search-hit">
-              <div class="hit-meta">
-                <span class="hit-book">{{ getBookTitle(hit.in_book) }}</span>
-                <span class="hit-author">by {{ getAuthorName(hit.by_author) }}</span>
-                <span class="hit-page">Page {{ hit.on_page }}</span>
-              </div>
-              <div class="hit-snippet" v-html="hit.html_highlighted"></div>
-              <div class="hit-footer">
-                <sl-badge variant="neutral" pill>Rank: {{ hit.rank.toFixed(4) }}</sl-badge>
-              </div>
-            </div>
+            <SearchHitItem
+                v-for="(hit, index) in searchResults"
+                :key="index"
+                :hit="hit"
+                :index="index"
+            />
           </div>
 
           <div v-else-if="!isSearching && searchQuery && !searchError" class="no-results">
@@ -107,6 +112,7 @@
 import { ref, onMounted } from 'vue';
 import { useHead } from '@unhead/vue';
 import CorpusScopeSelector from '../components/corpus/CorpusScopeSelector.vue';
+import SearchHitItem from '../components/corpus/SearchHitItem.vue';
 import type { CorpusMaterialItem, SearchHit, SearchResponse, SearchStyle } from '../types/library';
 import { apiFetch } from '../api';
 import { useLibraryStore } from '../stores/library';
@@ -125,6 +131,7 @@ onMounted(async () => {
 });
 
 const searchQuery = ref('');
+const numResults = ref(100);
 const searchStyle = ref<SearchStyle>('plain');
 const materials = ref<CorpusMaterialItem[]>([]);
 const isSearching = ref(false);
@@ -144,6 +151,7 @@ async function performSearch() {
       body: JSON.stringify({
         expression: searchQuery.value,
         style: searchStyle.value,
+        num_results: numResults.value,
         corpus: {
           items: materials.value
         }
@@ -164,16 +172,6 @@ async function performSearch() {
   } finally {
     isSearching.value = false;
   }
-}
-
-function getBookTitle(id: number) {
-  const book = libraryStore.books.find(b => b.id === id);
-  return book?.title || `Book #${id}`;
-}
-
-function getAuthorName(id: number) {
-  const author = libraryStore.authors.find(a => a.id === id);
-  return author?.abbrev || `Author #${id}`;
 }
 
 function handleAddMaterials(newItems: CorpusMaterialItem[]) {
@@ -241,6 +239,10 @@ function getItemLabel(item: CorpusMaterialItem) {
   flex: 1;
 }
 
+.num-results-input {
+  width: 120px;
+}
+
 .style-selector {
   width: 180px;
 }
@@ -269,64 +271,6 @@ function getItemLabel(item: CorpusMaterialItem) {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-}
-
-.search-hit {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--sl-border-radius-medium);
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.hit-meta {
-  display: flex;
-  gap: 0.75rem;
-  font-size: 0.85rem;
-  align-items: center;
-}
-
-.hit-book {
-  font-weight: 600;
-  color: var(--color-accent);
-}
-
-.hit-author {
-  color: var(--color-text-muted);
-}
-
-.hit-page {
-  background-color: var(--color-bg-muted);
-  padding: 0.1rem 0.4rem;
-  border-radius: var(--sl-border-radius-small);
-  color: var(--color-text);
-}
-
-.hit-snippet {
-  font-family: var(--sl-font-serif, serif);
-  line-height: 1.6;
-  color: var(--color-text);
-}
-
-.hit-snippet :deep(em) {
-  font-style: normal;
-  font-weight: 600;
-  background-color: var(--sl-color-warning-200);
-  color: var(--sl-color-neutral-900);
-  padding: 0 0.1rem;
-  border-radius: 2px;
-}
-
-[data-theme="dark"] .hit-snippet :deep(em) {
-  background-color: var(--sl-color-warning-800);
-  color: var(--sl-color-warning-50);
-}
-
-.hit-footer {
-  display: flex;
-  justify-content: flex-end;
 }
 
 .search-loading, .search-error, .no-results {
