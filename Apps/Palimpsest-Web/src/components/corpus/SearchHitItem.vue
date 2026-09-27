@@ -22,18 +22,26 @@
     
     <div class="hit-content">
       <div class="expansion-trigger expansion-trigger--up">
-        <sl-button variant="text" size="small" @click="expandUp">
+        <sl-button variant="text" size="small" @click="expandUp" :loading="loadingUp" :disabled="!hasMoreUp">
           <sl-icon name="chevron-compact-up" slot="prefix"></sl-icon>
-          Expand Up
+          {{ hasMoreUp ? 'Expand Up' : 'Beginning of section' }}
         </sl-button>
+      </div>
+
+      <div v-for="block in contentBefore" :key="block.path_id" class="hit-extra-block">
+        {{ block.content_text }}
       </div>
 
       <div class="hit-snippet" v-html="hit.html_highlighted"></div>
 
+      <div v-for="block in contentAfter" :key="block.path_id" class="hit-extra-block">
+        {{ block.content_text }}
+      </div>
+
       <div class="expansion-trigger expansion-trigger--down">
-        <sl-button variant="text" size="small" @click="expandDown">
+        <sl-button variant="text" size="small" @click="expandDown" :loading="loadingDown" :disabled="!hasMoreDown">
           <sl-icon name="chevron-compact-down" slot="prefix"></sl-icon>
-          Expand Down
+          {{ hasMoreDown ? 'Expand Down' : 'End of section' }}
         </sl-button>
       </div>
     </div>
@@ -41,10 +49,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useLibraryStore } from '../../stores/library';
-import type { SearchHit } from '../../types/library';
+import { apiFetch } from '../../api';
+import type { SearchHit, ContentBlock, SurroundingContentResponse } from '../../types/library';
 
 const props = defineProps<{
   hit: SearchHit;
@@ -81,14 +90,72 @@ function jumpToSection() {
   });
 }
 
+const contentBefore = ref<ContentBlock[]>([]);
+const contentAfter = ref<ContentBlock[]>([]);
+const loadingUp = ref(false);
+const loadingDown = ref(false);
+const hasMoreUp = ref(true);
+const hasMoreDown = ref(true);
+
+async function fetchSurrounding(direction: 'up' | 'down') {
+  if (!book.value || !props.hit.in_block_pi) return;
+  
+  const isLoading = direction === 'up' ? loadingUp : loadingDown;
+  if (isLoading.value) return;
+  
+  const anchorPi = direction === 'up' 
+    ? (contentBefore.value.length > 0 ? contentBefore.value[0].path_id : props.hit.in_block_pi)
+    : (contentAfter.value.length > 0 ? contentAfter.value[contentAfter.value.length - 1].path_id : props.hit.in_block_pi);
+    
+  isLoading.value = true;
+  
+  const bookMn = book.value.machine_name;
+  const secPf = props.hit.in_section.path_full;
+  const before = direction === 'up' ? 1 : 0;
+  const after = direction === 'down' ? 1 : 0;
+  
+  try {
+    const url = `/testbooks/api/v1/book/${bookMn}/section/${secPf}/fetch_surrounding_content/?path_id=${anchorPi}&before=${before}&after=${after}`;
+    const res = await apiFetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    
+    const data: SurroundingContentResponse = await res.json();
+    
+    if (direction === 'up') {
+      // Data should be [NewBlock?, AnchorBlock]
+      // filter out the anchor block and any nulls for the content array
+      const newItems = data.filter(item => item.content && item.content.path_id !== anchorPi);
+      if (newItems.length > 0) {
+        contentBefore.value = [...newItems.map(i => i.content!), ...contentBefore.value];
+      }
+      // Check if we reached the boundary (the first item is null)
+      if (data.length > 0 && data[0].content === null) {
+        hasMoreUp.value = false;
+      }
+    } else {
+      // Data should be [AnchorBlock, NewBlock?]
+      const newItems = data.filter(item => item.content && item.content.path_id !== anchorPi);
+      if (newItems.length > 0) {
+        contentAfter.value = [...contentAfter.value, ...newItems.map(i => i.content!)];
+      }
+      // Check if we reached the boundary (the last item is null)
+      if (data.length > 0 && data[data.length - 1].content === null) {
+        hasMoreDown.value = false;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to fetch surrounding content:', e);
+  } finally {
+    isLoading.value = false;
+  }
+}
+
 function expandUp() {
-  // Empty handler as requested
-  console.log('Expand UP requested for hit:', props.hit.in_section.path_full);
+  fetchSurrounding('up');
 }
 
 function expandDown() {
-  // Empty handler as requested
-  console.log('Expand DOWN requested for hit:', props.hit.in_section.path_full);
+  fetchSurrounding('down');
 }
 </script>
 
@@ -176,6 +243,11 @@ function expandDown() {
   background-color: var(--color-bg-muted, var(--sl-color-neutral-50));
   border-radius: var(--sl-border-radius-small);
   border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.hit-content > *:not(:last-child) {
+  border-bottom: 1px solid var(--color-border);
 }
 
 .hit-snippet {
@@ -183,6 +255,14 @@ function expandDown() {
   font-size: 0.9rem;
   line-height: 1.5;
   color: var(--color-text);
+}
+
+.hit-extra-block {
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  background-color: var(--color-bg-subtle, var(--sl-color-neutral-100));
 }
 
 .hit-snippet :deep(em) {
@@ -197,16 +277,6 @@ function expandDown() {
 .expansion-trigger {
   display: flex;
   justify-content: center;
-  border-color: var(--color-border);
-  border-style: solid;
-}
-
-.expansion-trigger--up {
-  border-width: 0 0 1px 0;
-}
-
-.expansion-trigger--down {
-  border-width: 1px 0 0 0;
 }
 
 .expansion-trigger sl-button::part(base) {

@@ -285,5 +285,12 @@ export interface SearchResponse {
   hits: SearchHit[];
 }
 
+export interface SurroundingContentItem {
+  index: number;
+  content: ContentBlock | null;
+}
+
+export type SurroundingContentResponse = SurroundingContentItem[];
+
 
 
