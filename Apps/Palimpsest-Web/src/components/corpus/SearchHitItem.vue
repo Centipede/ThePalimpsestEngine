@@ -13,7 +13,7 @@
         </div>
       </div>
       <div class="hit-actions">
-        <sl-badge variant="neutral" pill>Rank: {{ hit.rank.toFixed(4) }}</sl-badge>
+        <sl-badge variant="neutral" pill>Hit: {{ index + 1}} - Rank: {{ hit.rank.toFixed(4) }}</sl-badge>
         <sl-tooltip content="Jump to section">
           <sl-icon-button name="box-arrow-in-right" label="Jump to section" @click="jumpToSection"></sl-icon-button>
         </sl-tooltip>
@@ -48,6 +48,7 @@ import type { SearchHit } from '../../types/library';
 
 const props = defineProps<{
   hit: SearchHit;
+  index: number;
 }>();
 
 const router = useRouter();

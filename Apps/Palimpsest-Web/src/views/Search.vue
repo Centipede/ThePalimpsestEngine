@@ -17,6 +17,16 @@
           >
             <sl-icon name="search" slot="prefix"></sl-icon>
           </sl-input>
+          <sl-input
+              v-model.number="numResults"
+              type="number"
+              min="1"
+              size="large"
+              class="num-results-input"
+              placeholder="Num. results"
+          >
+            <sl-icon name="hash" slot="prefix"></sl-icon>
+          </sl-input>
           <sl-select v-model="searchStyle" size="large" class="style-selector">
             <sl-option value="plain">Plain words</sl-option>
             <sl-option value="phrase">Phrase</sl-option>
@@ -64,7 +74,7 @@
 
         <div v-if="searchResults.length > 0 || searchError || isSearching" class="results-section">
           <div class="results-header">
-            <h3>Search Results</h3>
+            <h3>Search Results <span v-if="!isSearching">{{ searchResults.length }}</span></h3>
             <span v-if="searchResults.length > 0" class="results-count">
               Found {{ searchResults.length }} hits
             </span>
@@ -85,6 +95,7 @@
                 v-for="(hit, index) in searchResults"
                 :key="index"
                 :hit="hit"
+                :index="index"
             />
           </div>
 
@@ -120,6 +131,7 @@ onMounted(async () => {
 });
 
 const searchQuery = ref('');
+const numResults = ref(100);
 const searchStyle = ref<SearchStyle>('plain');
 const materials = ref<CorpusMaterialItem[]>([]);
 const isSearching = ref(false);
@@ -139,6 +151,7 @@ async function performSearch() {
       body: JSON.stringify({
         expression: searchQuery.value,
         style: searchStyle.value,
+        num_results: numResults.value,
         corpus: {
           items: materials.value
         }
@@ -224,6 +237,10 @@ function getItemLabel(item: CorpusMaterialItem) {
 
 .search-input-group sl-input {
   flex: 1;
+}
+
+.num-results-input {
+  width: 120px;
 }
 
 .style-selector {
