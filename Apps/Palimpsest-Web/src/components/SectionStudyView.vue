@@ -163,6 +163,10 @@
           <sl-divider vertical></sl-divider>
 
           <sl-button-group>
+            <sl-button size="small" @click="showNotesDrawer = true">
+              <sl-icon slot="prefix" name="sticky"></sl-icon>
+              Notes
+            </sl-button>
             <sl-button size="small" @click="openCorpusDialog('ask')">
               <sl-icon slot="prefix" name="chat-dots"></sl-icon>
               Ask
@@ -214,6 +218,21 @@
           @turn-added="handleTurnAdded"
           @references-updated="handleReferencesUpdated"
       />
+
+      <sl-drawer
+        label="Section Notes"
+        :open="showNotesDrawer"
+        @sl-after-hide="showNotesDrawer = false"
+        placement="end"
+        style="--size: 400px;"
+      >
+        <SectionNoteView
+          v-if="data && props.bookStructure"
+          :section="data.section"
+          :book="props.bookStructure.book"
+        />
+        <sl-button slot="footer" variant="primary" @click="showNotesDrawer = false">Close</sl-button>
+      </sl-drawer>
 
       <header v-if="data.contents.length>0" class="section-study__header">
         <h1 class="section-study__title">{{ data.section.title_text }}</h1>
@@ -305,6 +324,7 @@ import { useHead } from '@unhead/vue';
 import {apiFetch} from '../api';
 import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle} from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
+import SectionNoteView from './studynotes/SectionNoteView.vue';
 import SummaryInfoRecord from './SummaryInfoRecord.vue';
 import SectionSegmentsOverview from './SectionSegmentsOverview.vue';
 import SectionEntities from './SectionEntities.vue';
@@ -325,6 +345,7 @@ const loading = ref(true);
 const error = ref('');
 const organiseMode = ref<'linear' | 'segmented'>('linear');
 const openSegments = ref<Record<number, boolean>>({});
+const showNotesDrawer = ref(false);
 const paragraphFoldTrigger = ref<FoldTrigger>({ command: 'expand-all', count: 0 });
 
 const availableInfoLeft = ref<ToolbarToggle[]>([

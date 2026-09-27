@@ -125,3 +125,29 @@ export interface ConverseCorpusResponse {
   hits: CorpusHit[];
   conversation_id: number;
 }
+
+export interface StudyNote {
+  id: number;
+  owned_by: number | null;
+  title: string;
+  content_md: string;
+  created_at?: string;
+  updated_at?: string;
+  references?: StudyNoteRef[];
+  searchhits_simple?: NoteSearchHitSimple[];
+}
+
+export interface StudyNoteRef extends BaseRef {
+  of_studynote: number;
+}
+
+export interface NoteSearchHitSimple {
+  id: number;
+  of_studynote: number;
+  full_text: string;
+  in_book: number | null;
+  in_part: number | null;
+  in_lscontent: number | null;
+  location_path: string;
+  search_details: Record<string, any>;
+}

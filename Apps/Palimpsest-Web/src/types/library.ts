@@ -1,4 +1,4 @@
- import type { ConversationRef, QuestionAnswerRef } from './study';
+ import type { ConversationRef, QuestionAnswerRef, StudyNoteRef } from './study';
 
  export interface Author {
     id: number;
@@ -24,6 +24,7 @@ export interface Book {
     by_author3: number | null;
     question_answers?: QuestionAnswerRef[];
     conversations?: ConversationRef[];
+    studynotes?: StudyNoteRef[];
 }
 
 export interface PageInfo {
@@ -56,6 +57,7 @@ export interface Section {
     subsections: Section[] | null;
     question_answers?: QuestionAnswerRef[];
     conversations?: ConversationRef[];
+    studynotes?: StudyNoteRef[];
     pageinfo?: PageInfo | null;
 }
 
