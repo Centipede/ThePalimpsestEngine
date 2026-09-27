@@ -10,7 +10,17 @@
       @title-updated="$emit('title-updated', $event)"
       @pin-updated="$emit('pin-updated', $event)"
       @references-updated="$emit('references-updated')"
+      @context-condensed="$emit('context-condensed', $event)"
     />
+
+    <sl-details
+      v-if="data.context_dense"
+      summary="Condensed Context Summary"
+      class="context-summary"
+    >
+      <div class="summary-content" v-html="marked.parse(data.context_dense)"></div>
+    </sl-details>
+
     <div v-for="turn in data.turns" :key="turn.id">
       <ConversationTurnComponent
         :turn="turn"
@@ -71,6 +81,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { marked } from 'marked';
 import { useDraft } from '../../composables/useDraft';
 import type { Conversation, ConversationRef, ConversationTurn } from '../../types/study';
 import { apiFetch } from '../../api';
@@ -86,8 +97,9 @@ const emit = defineEmits<{
   (e: 'title-updated', newTitle: string): void;
   (e: 'pin-updated', isPinned: boolean): void;
   (e: 'references-updated'): void;
-  (e: 'turn-note-updated', payload: { turnId: number, field: 'question_note' | 'answer_note', value: string | null }): void;
+  (e: 'turn-note-updated', payload: { turnId: number, field: 'question_note' | 'answer_note' | 'question_summary' | 'answer_summary', value: string | null }): void;
   (e: 'turn-added', turn: ConversationTurn): void;
+  (e: 'context-condensed', summary: string): void;
 }>();
 
 const { draft: newQuestion, clear: clearQuestionDraft } = useDraft(
@@ -168,5 +180,43 @@ async function handleAddTurn() {
 
 .error-container {
   margin-top: 1rem;
+}
+
+.context-summary {
+  margin: 1rem 0 2rem 0;
+  border: 1px solid var(--sl-color-primary-200);
+  border-radius: var(--sl-border-radius-medium);
+  background-color: var(--sl-color-primary-50);
+}
+
+.context-summary::part(base) {
+  border: none;
+}
+
+.context-summary::part(header) {
+  padding: 0.75rem 1rem;
+  color: var(--sl-color-primary-700);
+  font-weight: 600;
+}
+
+.context-summary::part(content) {
+  padding: 1rem;
+  background-color: var(--sl-color-neutral-0);
+  border-top: 1px solid var(--sl-color-primary-200);
+}
+
+.summary-content {
+  line-height: 1.6;
+  font-size: 0.9375rem;
+  color: var(--sl-color-neutral-800);
+}
+
+.summary-content :deep(p) {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.summary-content :deep(p:last-child) {
+  margin-bottom: 0;
 }
 </style>

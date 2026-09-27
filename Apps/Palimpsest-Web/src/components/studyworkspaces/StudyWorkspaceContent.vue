@@ -28,6 +28,7 @@
       @references-updated="$emit('references-updated')"
       @turn-note-updated="$emit('turn-note-updated', $event)"
       @turn-added="$emit('turn-added', $event)"
+      @context-condensed="$emit('context-condensed', $event)"
     />
   </div>
 </template>
@@ -50,8 +51,9 @@ defineEmits<{
   (e: 'pin-updated', isPinned: boolean): void;
   (e: 'references-updated'): void;
   (e: 'note-updated', payload: { field: 'question_note' | 'answer_note', value: string | null }): void;
-  (e: 'turn-note-updated', payload: { turnId: number, field: 'question_note' | 'answer_note', value: string | null }): void;
+  (e: 'turn-note-updated', payload: { turnId: number, field: 'question_note' | 'answer_note' | 'question_summary' | 'answer_summary', value: string | null }): void;
   (e: 'turn-added', turn: ConversationTurn): void;
+  (e: 'context-condensed', summary: string): void;
 }>();
 </script>
 

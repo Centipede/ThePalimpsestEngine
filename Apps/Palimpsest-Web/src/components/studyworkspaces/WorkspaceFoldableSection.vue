@@ -29,6 +29,9 @@
             <sl-button size="small" @click="cancelEditing">Cancel</sl-button>
           </div>
         </div>
+        <div v-if="!isEditing && $slots.actions" class="extra-actions">
+          <slot name="actions"></slot>
+        </div>
       </div>
       
       <div class="markdown-content" v-html="marked.parse(content || '')"></div>
@@ -164,6 +167,14 @@ async function saveNote() {
   padding: 0.75rem;
   border-radius: var(--sl-border-radius-medium);
   border: 1px dashed var(--sl-color-neutral-200);
+}
+
+.extra-actions {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--sl-color-neutral-200);
+  display: flex;
+  justify-content: flex-end;
 }
 
 .note-display {

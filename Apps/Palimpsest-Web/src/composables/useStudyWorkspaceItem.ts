@@ -25,7 +25,7 @@ export function useStudyWorkspaceItem(): WorkspaceState {
 
     try {
       const endpoint = itemType === 'conversation' 
-        ? `/teststudy/api/v1/conversation/${id}/`
+        ? `/teststudy/api/v1/conversations/${id}/`
         : `/teststudy/api/v1/question-answer/${id}/`;
       
       const response = await apiFetch(endpoint);

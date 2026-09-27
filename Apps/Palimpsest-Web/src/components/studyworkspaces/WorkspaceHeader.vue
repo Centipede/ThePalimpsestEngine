@@ -34,6 +34,16 @@
             <sl-icon slot="prefix" name="cursor-fill"></sl-icon>
             Move...
           </sl-button>
+          <sl-button
+              v-if="itemType === 'conversation'"
+              size="small"
+              pill
+              :loading="isCondensing"
+              @click="condenseContext"
+          >
+            <sl-icon slot="prefix" name="layers"></sl-icon>
+            Condense
+          </sl-button>
         </div>
       </div>
     </div>
@@ -107,6 +117,7 @@ const emit = defineEmits<{
   (e: 'title-updated', newTitle: string): void;
   (e: 'pin-updated', isPinned: boolean): void;
   (e: 'references-updated'): void;
+  (e: 'context-condensed', summary: string): void;
 }>();
 
 const isEditingTitle = ref(false);
@@ -114,6 +125,7 @@ const editedTitle = ref('');
 const isSavingTitle = ref(false);
 const titleInput = ref<any>(null);
 const refSelectorDialog = ref<any>(null);
+const isCondensing = ref(false);
 
 const sectionTitles = ref<Record<string, string>>({});
 
@@ -127,6 +139,24 @@ function startEditing() {
 
 function cancelEditing() {
   isEditingTitle.value = false;
+}
+
+async function condenseContext() {
+  if (isCondensing.value) return;
+  isCondensing.value = true;
+  try {
+    const response = await apiFetch(`/teststudy/api/v1/conversations/${props.itemId}/condense_context/`, {
+      method: 'POST',
+    });
+    if (response.ok) {
+      const data = await response.json();
+      emit('context-condensed', data.context_dense);
+    }
+  } catch (error) {
+    console.error('Error condensing context:', error);
+  } finally {
+    isCondensing.value = false;
+  }
 }
 
 async function saveTitle() {
@@ -323,6 +353,17 @@ watch(() => props.allRefs, fetchSectionTitles, { deep: true });
 
 .search-scope-section {
   margin-top: 1rem;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.section-header .references-title {
+  margin-bottom: 0;
 }
 
 .references-title {

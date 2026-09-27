@@ -43,6 +43,7 @@ export interface Conversation {
   model: string | null;
   conversation_history: Record<string, any>;
   metadata: SearchMetadata;
+  context_dense: string | null;
   created_at: string;
   updated_at: string;
   turns?: ConversationTurn[];
@@ -55,9 +56,11 @@ export interface ConversationTurn {
   system_prompt: string | null;
   model: string | null;
   question: string;
-  answer: string;
   question_note: string | null;
+  question_summary: string | null;
+  answer: string;
   answer_note: string | null;
+  answer_summary: string | null;
   created_at: string;
   updated_at: string;
 }
