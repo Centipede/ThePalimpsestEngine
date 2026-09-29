@@ -92,7 +92,7 @@ export interface AskCorpusRequest {
   style: string;
   question: string;
   system_prompt: string;
-  num_results: number;
+  num_results?: number;
   corpus: CorpusMaterial;
 }
 

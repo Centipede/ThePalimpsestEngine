@@ -576,6 +576,27 @@ async function handleConversationCreated(id: number) {
   };
 
   try {
+    if (props.bookStructure && data.value?.section) {
+      const sectionRef = {
+        in_book: null,
+        in_book_mn: props.bookStructure.book.machine_name,
+        in_section: data.value.section.id,
+        in_section_pf: data.value.section.path_full,
+        is_pinned: false,
+        order_key: 0
+      };
+
+      try {
+        await apiFetch(`/teststudy/api/v1/conversation/${id}/`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ references: [sectionRef] })
+        });
+      } catch (patchError) {
+        console.error('Failed to attach section reference to conversation', patchError);
+      }
+    }
+
     const response = await apiFetch(`/teststudy/api/v1/conversation/${id}/`);
     if (response.ok) {
       const conv: Conversation = await response.json();
@@ -605,6 +626,27 @@ async function handleQACreated(id: number) {
   };
 
   try {
+    if (props.bookStructure && data.value?.section) {
+      const sectionRef = {
+        in_book: null,
+        in_book_mn: props.bookStructure.book.machine_name,
+        in_section: data.value.section.id,
+        in_section_pf: data.value.section.path_full,
+        is_pinned: false,
+        order_key: 0
+      };
+
+      try {
+        await apiFetch(`/teststudy/api/v1/question-answer/${id}/`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ references: [sectionRef] })
+        });
+      } catch (patchError) {
+        console.error('Failed to attach section reference to QA', patchError);
+      }
+    }
+
     const response = await apiFetch(`/teststudy/api/v1/question-answer/${id}/`);
     if (response.ok) {
       const qa: QuestionAnswer = await response.json();

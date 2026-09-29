@@ -147,7 +147,6 @@ async function handleStartTalk() {
   const request: ConverseCorpusRequest = {
     question: question.value,
     system_prompt: `You are a ${selectedStyle.value} assistant. Use the provided context to answer the user question. Format as markdown.`,
-    num_results: 20,
     corpus: {
       items: materials.value
     }
@@ -188,7 +187,6 @@ async function handleGetAnswer() {
     style: selectedStyle.value,
     question: question.value,
     system_prompt: `You are a ${selectedStyle.value} assistant. Use the provided passages to answer the question. Format as markdown.`,
-    num_results: 20,
     corpus: {
       items: materials.value
     }
