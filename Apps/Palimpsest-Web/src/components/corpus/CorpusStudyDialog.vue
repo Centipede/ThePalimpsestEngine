@@ -284,6 +284,7 @@ function getItemLabel(item: CorpusMaterialItem) {
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
   flex: 1;
+  overflow-y: clip;
   min-height: 0;
 }
 
@@ -399,11 +400,13 @@ function getItemLabel(item: CorpusMaterialItem) {
 }
 
 .scope-selector-panel {
+  flex: 1;
+  overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 1rem;
   max-height: 50%;
-  overflow-y: auto;
+  overflow-y: clip;
 }
 
 .error-panel {

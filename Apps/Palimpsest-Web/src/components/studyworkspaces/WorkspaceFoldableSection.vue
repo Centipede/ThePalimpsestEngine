@@ -63,7 +63,7 @@ const editedNote = ref('');
 const isSaving = ref(false);
 const noteInput = ref<any>(null);
 
-function truncateNote(text: string, length = 60) {
+function truncateNote(text: string, length = 200) {
   if (text.length <= length) return text;
   return text.substring(0, length) + '...';
 }
@@ -151,9 +151,6 @@ async function saveNote() {
   font-size: 0.875rem;
   color: var(--sl-color-neutral-400);
   font-style: italic;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .section-content {
