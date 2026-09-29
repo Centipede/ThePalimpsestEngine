@@ -576,7 +576,7 @@ async function handleConversationCreated(id: number) {
   };
 
   try {
-    const response = await apiFetch(`/teststudy/api/v1/conversations/${id}/`);
+    const response = await apiFetch(`/teststudy/api/v1/conversation/${id}/`);
     if (response.ok) {
       const conv: Conversation = await response.json();
       activeItem.value.data = conv;

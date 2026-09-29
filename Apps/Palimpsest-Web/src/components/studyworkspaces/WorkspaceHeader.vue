@@ -145,7 +145,7 @@ async function condenseContext() {
   if (isCondensing.value) return;
   isCondensing.value = true;
   try {
-    const response = await apiFetch(`/teststudy/api/v1/conversations/${props.itemId}/condense_context/`, {
+    const response = await apiFetch(`/teststudy/api/v1/conversation/${props.itemId}/condense_context/`, {
       method: 'POST',
     });
     if (response.ok) {
