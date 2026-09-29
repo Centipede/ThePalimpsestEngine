@@ -71,7 +71,14 @@ import { marked } from 'marked';
 const props = defineProps<{
   section: Section;
   book: Book;
+  visible?: boolean;
 }>();
+
+watch(() => props.visible, (isNowVisible) => {
+  if (isNowVisible) {
+    fetchNotes();
+  }
+});
 
 const notes = ref<StudyNote[]>([]);
 const loading = ref(false);
@@ -83,7 +90,7 @@ const fetchNotes = async () => {
   loading.value = true;
   try {
     // API supports filtering by in_section_pf as per plan requirements
-    const response = await apiFetch(`/teststudy/api/v1/study-notes/?in_section_pf=${encodeURIComponent(props.section.path_full)}`);
+    const response = await apiFetch(`/teststudy/api/v1/study-notes/?in_book_mc=${props.book.machine_name}&in_section_pf=${encodeURIComponent(props.section.path_full)}`);
     if (response.ok) {
       notes.value = await response.json();
     }

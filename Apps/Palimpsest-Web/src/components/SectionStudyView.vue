@@ -163,10 +163,6 @@
           <sl-divider vertical></sl-divider>
 
           <sl-button-group>
-            <sl-button size="small" @click="showNotesDrawer = true">
-              <sl-icon slot="prefix" name="sticky"></sl-icon>
-              Notes
-            </sl-button>
             <sl-button size="small" @click="openCorpusDialog('ask')">
               <sl-icon slot="prefix" name="chat-dots"></sl-icon>
               Ask
@@ -174,6 +170,10 @@
             <sl-button size="small" @click="openCorpusDialog('talk')">
               <sl-icon slot="prefix" name="chat-quote"></sl-icon>
               Talk
+            </sl-button>
+            <sl-button size="small" @click="showNotesDrawer = true">
+              <sl-icon slot="prefix" name="sticky"></sl-icon>
+              Notes
             </sl-button>
           </sl-button-group>
 
@@ -222,7 +222,7 @@
       <sl-drawer
         label="Section Notes"
         :open="showNotesDrawer"
-        @sl-after-hide="showNotesDrawer = false"
+        @sl-after-hide.self="showNotesDrawer = false"
         placement="end"
         style="--size: 400px;"
       >
@@ -230,6 +230,7 @@
           v-if="data && props.bookStructure"
           :section="data.section"
           :book="props.bookStructure.book"
+          :visible="showNotesDrawer"
         />
         <sl-button slot="footer" variant="primary" @click="showNotesDrawer = false">Close</sl-button>
       </sl-drawer>

@@ -10,30 +10,30 @@
           <sl-input
               v-model="searchQuery"
               placeholder="Type your search query here..."
-              size="large"
               clearable
               @sl-input="searchError = null"
               @keydown.enter="performSearch"
           >
             <sl-icon name="search" slot="prefix"></sl-icon>
           </sl-input>
-          <sl-input
+        </div>
+        <div class="search-input-group">
+        <sl-input
               v-model.number="numResults"
               type="number"
               min="1"
-              size="large"
               class="num-results-input"
               placeholder="Num. results"
           >
             <sl-icon name="hash" slot="prefix"></sl-icon>
           </sl-input>
-          <sl-select v-model="searchStyle" size="large" class="style-selector">
+          <sl-select v-model="searchStyle" class="style-selector">
             <sl-option value="plain">Plain words</sl-option>
             <sl-option value="phrase">Phrase</sl-option>
             <sl-option value="raw">Raw PostgreSQL expression</sl-option>
             <sl-option value="websearch">Web search expression</sl-option>
           </sl-select>
-          <sl-button variant="primary" size="large" :loading="isSearching" :disabled="!searchQuery" @click="performSearch">
+          <sl-button variant="primary" :loading="isSearching" :disabled="!searchQuery" @click="performSearch">
             Search
           </sl-button>
         </div>
