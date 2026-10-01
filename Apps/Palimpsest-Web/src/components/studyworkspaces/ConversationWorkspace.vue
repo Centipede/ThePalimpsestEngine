@@ -123,7 +123,7 @@ async function handleAddTurn() {
       model: newModel.value.trim() || null
     };
 
-    const response = await apiFetch(`/teststudy/api/v1/conversations/${props.data.id}/turns/`, {
+    const response = await apiFetch(`/teststudy/api/v1/conversation/${props.data.id}/turns/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

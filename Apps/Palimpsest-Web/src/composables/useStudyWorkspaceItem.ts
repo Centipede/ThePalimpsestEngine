@@ -1,32 +1,37 @@
 import { ref, type Ref } from 'vue';
-import type { Conversation, ConversationRef, QuestionAnswer, QuestionAnswerRef } from '../types/study';
+import type { Conversation, ConversationRef, QuestionAnswer, QuestionAnswerRef, StudyNote, StudyNoteRef } from '../types/study';
 import { apiFetch } from '../api';
 
 export interface WorkspaceState {
   loading: Ref<boolean>;
   error: Ref<string | null>;
-  data: Ref<Conversation | QuestionAnswer | null>;
-  type: Ref<'conversation' | 'question_answer' | null>;
-  linkingRef: Ref<ConversationRef | QuestionAnswerRef | null>;
-  loadItem: (type: 'conversation' | 'question_answer', id: number, refId?: number) => Promise<void>;
+  data: Ref<Conversation | QuestionAnswer | StudyNote | null>;
+  type: Ref<'conversation' | 'question_answer' | 'studynote' | null>;
+  linkingRef: Ref<ConversationRef | QuestionAnswerRef | StudyNoteRef | null>;
+  loadItem: (type: 'conversation' | 'question_answer' | 'studynote', id: number, refId?: number) => Promise<void>;
 }
 
 export function useStudyWorkspaceItem(): WorkspaceState {
   const loading = ref(false);
   const error = ref<string | null>(null);
-  const data = ref<Conversation | QuestionAnswer | null>(null);
-  const type = ref<'conversation' | 'question_answer' | null>(null);
-  const linkingRef = ref<ConversationRef | QuestionAnswerRef | null>(null);
+  const data = ref<Conversation | QuestionAnswer | StudyNote | null>(null);
+  const type = ref<'conversation' | 'question_answer' | 'studynote' | null>(null);
+  const linkingRef = ref<ConversationRef | QuestionAnswerRef | StudyNoteRef | null>(null);
 
-  async function loadItem(itemType: 'conversation' | 'question_answer', id: number, refId?: number) {
+  async function loadItem(itemType: 'conversation' | 'question_answer' | 'studynote', id: number, refId?: number) {
     loading.value = true;
     error.value = null;
     type.value = itemType;
 
     try {
-      const endpoint = itemType === 'conversation' 
-        ? `/teststudy/api/v1/conversations/${id}/`
-        : `/teststudy/api/v1/question-answer/${id}/`;
+      let endpoint = '';
+      if (itemType === 'conversation') {
+        endpoint = `/teststudy/api/v1/conversation/${id}/`;
+      } else if (itemType === 'question_answer') {
+        endpoint = `/teststudy/api/v1/question-answer/${id}/`;
+      } else if (itemType === 'studynote') {
+        endpoint = `/teststudy/api/v1/study-notes/${id}/`;
+      }
       
       const response = await apiFetch(endpoint);
       if (response.ok) {

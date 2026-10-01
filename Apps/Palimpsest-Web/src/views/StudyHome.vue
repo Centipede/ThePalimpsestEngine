@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useHead } from '@unhead/vue';
 import BookListView from '../components/BookListView.vue';
+import StudyNoteListView from '../components/studynotes/StudyNoteListView.vue';
 
 useHead({
   title: 'Study Home | Palimpsest Engine',
@@ -22,6 +23,7 @@ useHead({
 
     <div class="study-home-page">
       <BookListView />
+      <StudyNoteListView />
     </div>
   </div>
 </template>

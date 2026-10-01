@@ -147,7 +147,6 @@ async function handleStartTalk() {
   const request: ConverseCorpusRequest = {
     question: question.value,
     system_prompt: `You are a ${selectedStyle.value} assistant. Use the provided context to answer the user question. Format as markdown.`,
-    num_results: 20,
     corpus: {
       items: materials.value
     }
@@ -188,7 +187,6 @@ async function handleGetAnswer() {
     style: selectedStyle.value,
     question: question.value,
     system_prompt: `You are a ${selectedStyle.value} assistant. Use the provided passages to answer the question. Format as markdown.`,
-    num_results: 20,
     corpus: {
       items: materials.value
     }
@@ -284,6 +282,7 @@ function getItemLabel(item: CorpusMaterialItem) {
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
   flex: 1;
+  overflow-y: clip;
   min-height: 0;
 }
 
@@ -399,11 +398,13 @@ function getItemLabel(item: CorpusMaterialItem) {
 }
 
 .scope-selector-panel {
+  flex: 1;
+  overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 1rem;
   max-height: 50%;
-  overflow-y: auto;
+  overflow-y: clip;
 }
 
 .error-panel {

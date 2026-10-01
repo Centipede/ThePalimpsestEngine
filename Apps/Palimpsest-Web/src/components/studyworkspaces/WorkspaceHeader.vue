@@ -2,7 +2,7 @@
   <div class="workspace-header">
     <div class="header-main">
       <div v-if="!isEditingTitle" class="title-display" @click="startEditing">
-        <h2 class="title-text">{{ title || (itemType === 'conversation' ? 'Conversation' : 'Q&A') }}</h2>
+        <h2 class="title-text">{{ title || getDefaultTitle() }}</h2>
         <sl-icon name="pencil" class="edit-icon"></sl-icon>
       </div>
       <div v-else class="title-edit">
@@ -10,7 +10,7 @@
           ref="titleInput"
           v-model="editedTitle"
           size="medium"
-          :placeholder="itemType === 'conversation' ? 'Conversation' : 'Q&A'"
+          :placeholder="getDefaultTitle()"
           :loading="isSavingTitle"
           :disabled="isSavingTitle"
           @sl-blur="saveTitle"
@@ -108,7 +108,7 @@ const props = defineProps<{
   title: string | null;
   linkingRef: BaseRef;
   allRefs: BaseRef[];
-  itemType: 'conversation' | 'question_answer';
+  itemType: 'conversation' | 'question_answer' | 'studynote';
   itemId: number;
   metadata?: SearchMetadata | null;
 }>();
@@ -129,6 +129,12 @@ const isCondensing = ref(false);
 
 const sectionTitles = ref<Record<string, string>>({});
 
+function getDefaultTitle() {
+  if (props.itemType === 'conversation') return 'Conversation';
+  if (props.itemType === 'question_answer') return 'Q&A';
+  return 'Study Note';
+}
+
 function startEditing() {
   editedTitle.value = props.title || '';
   isEditingTitle.value = true;
@@ -145,7 +151,7 @@ async function condenseContext() {
   if (isCondensing.value) return;
   isCondensing.value = true;
   try {
-    const response = await apiFetch(`/teststudy/api/v1/conversations/${props.itemId}/condense_context/`, {
+    const response = await apiFetch(`/teststudy/api/v1/conversation/${props.itemId}/condense_context/`, {
       method: 'POST',
     });
     if (response.ok) {
@@ -170,7 +176,11 @@ async function saveTitle() {
 
   isSavingTitle.value = true;
   try {
-    const endpoint = props.itemType === 'conversation' ? 'conversation' : 'question-answer';
+    let endpoint = '';
+    if (props.itemType === 'conversation') endpoint = 'conversation';
+    else if (props.itemType === 'question_answer') endpoint = 'question-answer';
+    else if (props.itemType === 'studynote') endpoint = 'study-notes';
+
     const response = await apiFetch(`/teststudy/api/v1/${endpoint}/${props.itemId}/`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -178,7 +188,7 @@ async function saveTitle() {
     });
 
     if (response.ok) {
-      emit('title-updated', newTitle || (props.itemType === 'conversation' ? 'Conversation' : 'Q&A'));
+      emit('title-updated', newTitle || getDefaultTitle());
       isEditingTitle.value = false;
     }
   } catch (error) {
@@ -193,8 +203,17 @@ async function togglePin(event: any) {
   if (isPinned === props.linkingRef.is_pinned) return;
 
   try {
-    const endpoint = props.itemType === 'conversation' ? 'conversation-ref' : 'question-answer-ref';
-    const response = await apiFetch(`/teststudy/api/v1/${endpoint}/${props.linkingRef.id}/`, {
+    let url = '';
+    if (props.itemType === 'studynote') {
+      url = `/teststudy/api/v1/study-notes/${props.itemId}/references/${props.linkingRef.id}/`;
+    } else {
+      let endpoint = '';
+      if (props.itemType === 'conversation') endpoint = 'conversation-ref';
+      else if (props.itemType === 'question_answer') endpoint = 'question-answer-ref';
+      url = `/teststudy/api/v1/${endpoint}/${props.linkingRef.id}/`;
+    }
+
+    const response = await apiFetch(url, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_pinned: isPinned }),
@@ -229,7 +248,11 @@ async function handleReferenceAction(payload: { action: 'add' | 'move', type: 'b
   }
 
   try {
-    const endpoint = props.itemType === 'conversation' ? 'conversation' : 'question-answer';
+    let endpoint = '';
+    if (props.itemType === 'conversation') endpoint = 'conversation';
+    else if (props.itemType === 'question_answer') endpoint = 'question-answer';
+    else if (props.itemType === 'studynote') endpoint = 'study-notes';
+
     const response = await apiFetch(`/teststudy/api/v1/${endpoint}/${props.itemId}/`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

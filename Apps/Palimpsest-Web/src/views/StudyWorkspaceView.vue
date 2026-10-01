@@ -6,7 +6,7 @@
         Back to Study
       </router-link>
       <div class="page-title">
-        {{ type === 'conversation' ? 'Conversation' : 'Q&A' }}
+        {{ getPageTitle() }}
       </div>
     </header>
 
@@ -23,6 +23,7 @@
         @turn-note-updated="handleTurnNoteUpdated"
         @turn-added="handleTurnAdded"
         @context-condensed="handleContextCondensed"
+        @content-updated="handleContentUpdated"
       />
     </main>
   </div>
@@ -48,10 +49,18 @@ const pageTitle = computed(() => {
   if (data.value?.title) {
     return `${data.value.title} | Palimpsest Engine`;
   }
-  return typeParam.value === 'conversation'
-    ? 'Conversation | Palimpsest Engine'
-    : 'Q&A | Palimpsest Engine';
+  if (typeParam.value === 'conversation') return 'Conversation | Palimpsest Engine';
+  if (typeParam.value === 'question_answer') return 'Q&A | Palimpsest Engine';
+  if (typeParam.value === 'studynote') return 'Study Note | Palimpsest Engine';
+  return 'Workspace | Palimpsest Engine';
 });
+
+function getPageTitle() {
+  if (typeParam.value === 'conversation') return 'Conversation';
+  if (typeParam.value === 'question_answer') return 'Q&A';
+  if (typeParam.value === 'studynote') return 'Study Note';
+  return 'Workspace';
+}
 
 useHead({
   title: pageTitle,
@@ -65,7 +74,11 @@ useHead({
 });
 
 onMounted(() => {
-  const itemType = typeParam.value === 'conversation' ? 'conversation' : 'question_answer';
+  let itemType: 'conversation' | 'question_answer' | 'studynote' = 'conversation';
+  if (typeParam.value === 'conversation') itemType = 'conversation';
+  else if (typeParam.value === 'question_answer') itemType = 'question_answer';
+  else if (typeParam.value === 'studynote') itemType = 'studynote';
+  
   loadItem(itemType, idParam.value, refParam.value);
 });
 
@@ -96,6 +109,12 @@ function handleTurnAdded(turn: ConversationTurn) {
   if (data.value && 'turns' in data.value) {
     if (!data.value.turns) data.value.turns = [];
     data.value.turns.push(turn);
+  }
+}
+
+function handleContentUpdated(newContent: string) {
+  if (data.value && 'content_md' in data.value) {
+    (data.value as any).content_md = newContent;
   }
 }
 

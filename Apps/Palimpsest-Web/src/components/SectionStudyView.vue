@@ -171,6 +171,10 @@
               <sl-icon slot="prefix" name="chat-quote"></sl-icon>
               Talk
             </sl-button>
+            <sl-button size="small" @click="showNotesDrawer = true">
+              <sl-icon slot="prefix" name="sticky"></sl-icon>
+              Notes
+            </sl-button>
           </sl-button-group>
 
         </div>
@@ -214,6 +218,22 @@
           @turn-added="handleTurnAdded"
           @references-updated="handleReferencesUpdated"
       />
+
+      <sl-drawer
+        label="Section Notes"
+        :open="showNotesDrawer"
+        @sl-after-hide.self="showNotesDrawer = false"
+        placement="end"
+        style="--size: 400px;"
+      >
+        <SectionNoteView
+          v-if="data && props.bookStructure"
+          :section="data.section"
+          :book="props.bookStructure.book"
+          :visible="showNotesDrawer"
+        />
+        <sl-button slot="footer" variant="primary" @click="showNotesDrawer = false">Close</sl-button>
+      </sl-drawer>
 
       <header v-if="data.contents.length>0" class="section-study__header">
         <h1 class="section-study__title">{{ data.section.title_text }}</h1>
@@ -305,6 +325,7 @@ import { useHead } from '@unhead/vue';
 import {apiFetch} from '../api';
 import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle} from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
+import SectionNoteView from './studynotes/SectionNoteView.vue';
 import SummaryInfoRecord from './SummaryInfoRecord.vue';
 import SectionSegmentsOverview from './SectionSegmentsOverview.vue';
 import SectionEntities from './SectionEntities.vue';
@@ -325,6 +346,7 @@ const loading = ref(true);
 const error = ref('');
 const organiseMode = ref<'linear' | 'segmented'>('linear');
 const openSegments = ref<Record<number, boolean>>({});
+const showNotesDrawer = ref(false);
 const paragraphFoldTrigger = ref<FoldTrigger>({ command: 'expand-all', count: 0 });
 
 const availableInfoLeft = ref<ToolbarToggle[]>([
@@ -554,7 +576,28 @@ async function handleConversationCreated(id: number) {
   };
 
   try {
-    const response = await apiFetch(`/teststudy/api/v1/conversations/${id}/`);
+    if (props.bookStructure && data.value?.section) {
+      const sectionRef = {
+        in_book: null,
+        in_book_mn: props.bookStructure.book.machine_name,
+        in_section: data.value.section.id,
+        in_section_pf: data.value.section.path_full,
+        is_pinned: false,
+        order_key: 0
+      };
+
+      try {
+        await apiFetch(`/teststudy/api/v1/conversation/${id}/`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ references: [sectionRef] })
+        });
+      } catch (patchError) {
+        console.error('Failed to attach section reference to conversation', patchError);
+      }
+    }
+
+    const response = await apiFetch(`/teststudy/api/v1/conversation/${id}/`);
     if (response.ok) {
       const conv: Conversation = await response.json();
       activeItem.value.data = conv;
@@ -583,6 +626,27 @@ async function handleQACreated(id: number) {
   };
 
   try {
+    if (props.bookStructure && data.value?.section) {
+      const sectionRef = {
+        in_book: null,
+        in_book_mn: props.bookStructure.book.machine_name,
+        in_section: data.value.section.id,
+        in_section_pf: data.value.section.path_full,
+        is_pinned: false,
+        order_key: 0
+      };
+
+      try {
+        await apiFetch(`/teststudy/api/v1/question-answer/${id}/`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ references: [sectionRef] })
+        });
+      } catch (patchError) {
+        console.error('Failed to attach section reference to QA', patchError);
+      }
+    }
+
     const response = await apiFetch(`/teststudy/api/v1/question-answer/${id}/`);
     if (response.ok) {
       const qa: QuestionAnswer = await response.json();

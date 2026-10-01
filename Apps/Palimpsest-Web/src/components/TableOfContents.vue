@@ -38,6 +38,20 @@
           >
             {{ ref.is_pinned ? ref.title : '•' }}
           </a>
+
+          <a
+            v-for="ref in props.bookStructure.book.studynotes"
+            :key="'note-' + ref.id"
+            :href="getStudyNoteHref(ref)"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="toc__badge toc__badge--studynote"
+            :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
+            :title="ref.title || 'Study Note'"
+            @click.stop="showStudyNote(ref, $event)"
+          >
+            {{ ref.is_pinned ? ref.title : '•' }}
+          </a>
         </div>
       </div>
 
@@ -117,6 +131,20 @@
             >
               {{ ref.is_pinned ? ref.title : '•' }}
             </a>
+
+            <a
+              v-for="ref in entry.section.studynotes"
+              :key="'note-' + ref.id"
+              :href="getStudyNoteHref(ref)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="toc__badge toc__badge--studynote"
+              :class="{ 'toc__badge--unpinned': !ref.is_pinned }"
+              :title="ref.title || 'Study Note'"
+              @click.stop="showStudyNote(ref, $event)"
+            >
+              {{ ref.is_pinned ? ref.title : '•' }}
+            </a>
           </div>
         </div>
 
@@ -141,6 +169,7 @@
       @note-updated="handleNoteUpdated"
       @turn-note-updated="handleTurnNoteUpdated"
       @turn-added="handleTurnAdded"
+      @content-updated="handleContentUpdated"
     />
   </div>
 </template>
@@ -149,7 +178,7 @@
 import { computed, ref, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import type { BookStructure, Section } from '../types/library';
-import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
+import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef, StudyNote, StudyNoteRef } from '../types/study';
 import { useStudyWorkspaceItem } from '../composables/useStudyWorkspaceItem';
 import SummaryInfoRecord from './SummaryInfoRecord.vue';
 import StudyWorkspaceDialog from './studyworkspaces/StudyWorkspaceDialog.vue';
@@ -339,6 +368,13 @@ function getQuestionAnswerHref(ref: QuestionAnswerRef) {
   }).href;
 }
 
+function getStudyNoteHref(ref: StudyNoteRef) {
+  return router.resolve({
+    path: `/study/${props.machineName}/workspace/studynote/${ref.of_studynote}`,
+    query: { ref: ref.id }
+  }).href;
+}
+
 async function showConversation(ref: ConversationRef, event?: MouseEvent) {
   if (event && (event.shiftKey || event.ctrlKey || event.metaKey || event.button === 1)) {
     // Let browser handle opening the link in a new tab/window
@@ -359,6 +395,17 @@ async function showQuestionAnswer(ref: QuestionAnswerRef, event?: MouseEvent) {
   event?.preventDefault(); // Prevent opening the href for normal clicks
   isDialogOpen.value = true;
   await loadItem('question_answer', ref.of_questionanswer, ref.id);
+}
+
+async function showStudyNote(ref: StudyNoteRef, event?: MouseEvent) {
+  if (event && (event.shiftKey || event.ctrlKey || event.metaKey || event.button === 1)) {
+    // Let browser handle opening the link in a new tab/window
+    return;
+  }
+  
+  event?.preventDefault(); // Prevent opening the href for normal clicks
+  isDialogOpen.value = true;
+  await loadItem('studynote', ref.of_studynote, ref.id);
 }
 
 function isVisible(entry: TocEntry): boolean {
@@ -389,6 +436,9 @@ function handleTitleUpdated(newTitle: string) {
   } else if (itemType === 'question_answer' && props.bookStructure.book.question_answers) {
     const ref = props.bookStructure.book.question_answers.find(qa => qa.of_questionanswer === itemId);
     if (ref) ref.title = newTitle;
+  } else if (itemType === 'studynote' && props.bookStructure.book.studynotes) {
+    const ref = props.bookStructure.book.studynotes.find(n => n.of_studynote === itemId);
+    if (ref) ref.title = newTitle;
   }
 
   // 2b. Update section-level items in flows tree
@@ -399,6 +449,9 @@ function handleTitleUpdated(newTitle: string) {
         if (ref) ref.title = newTitle;
       } else if (itemType === 'question_answer' && section.question_answers) {
         const ref = section.question_answers.find(qa => qa.of_questionanswer === itemId);
+        if (ref) ref.title = newTitle;
+      } else if (itemType === 'studynote' && section.studynotes) {
+        const ref = section.studynotes.find(n => n.of_studynote === itemId);
         if (ref) ref.title = newTitle;
       }
       if (section.subsections?.length) {
@@ -438,6 +491,9 @@ function handlePinUpdated(isPinned: boolean) {
   } else if (itemType === 'question_answer' && props.bookStructure.book.question_answers) {
     const ref = props.bookStructure.book.question_answers.find(qa => qa.id === refId);
     if (ref) ref.is_pinned = isPinned;
+  } else if (itemType === 'studynote' && props.bookStructure.book.studynotes) {
+    const ref = props.bookStructure.book.studynotes.find(n => n.id === refId);
+    if (ref) ref.is_pinned = isPinned;
   }
 
   // 3b. Update section-level items in flows tree
@@ -448,6 +504,9 @@ function handlePinUpdated(isPinned: boolean) {
         if (ref) ref.is_pinned = isPinned;
       } else if (itemType === 'question_answer' && section.question_answers) {
         const ref = section.question_answers.find(qa => qa.id === refId);
+        if (ref) ref.is_pinned = isPinned;
+      } else if (itemType === 'studynote' && section.studynotes) {
+        const ref = section.studynotes.find(n => n.id === refId);
         if (ref) ref.is_pinned = isPinned;
       }
       if (section.subsections?.length) {
@@ -483,6 +542,11 @@ function handleTurnAdded(newTurn: ConversationTurn) {
     conv.turns = [];
   }
   conv.turns.push(newTurn);
+}
+
+function handleContentUpdated(newContent: string) {
+  if (!data.value || type.value !== 'studynote') return;
+  (data.value as StudyNote).content_md = newContent;
 }
 </script>
 
@@ -664,6 +728,16 @@ function handleTurnAdded(newTurn: ConversationTurn) {
 [data-theme="dark"] .toc__badge--conversation {
   background: var(--sl-color-primary-950);
   color: var(--sl-color-primary-200);
+}
+
+.toc__badge--studynote {
+  background: var(--sl-color-warning-100);
+  color: var(--sl-color-warning-700);
+}
+
+[data-theme="dark"] .toc__badge--studynote {
+  background: var(--sl-color-warning-950);
+  color: var(--sl-color-warning-200);
 }
 
 .toc__badge--unpinned {
