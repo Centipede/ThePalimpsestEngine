@@ -42,13 +42,10 @@
       <div class="search-content">
         <div class="search-config">
           <div class="scope-section">
-            <h3>Search Scope</h3>
-            <p class="description">Select the authors, books, or chapters to search within.</p>
             <CorpusScopeSelector @add-materials="handleAddMaterials" />
           </div>
 
           <div class="materials-section">
-            <h3>Selected Materials</h3>
             <div class="material-list">
               <div v-if="materials.length === 0" class="empty-material">
                 No material added yet. Use the selector above to scope your search.

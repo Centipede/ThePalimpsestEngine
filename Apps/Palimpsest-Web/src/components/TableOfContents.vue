@@ -564,7 +564,7 @@ function handleContentUpdated(newContent: string) {
   grid-template-columns: 4.5rem 1.5rem 2fr 5rem 2fr;
   align-items: center;
   column-gap: 0.5rem;
-  padding: 0.375rem 1rem;
+  padding: 0.075rem 1rem;
   transition: background 0.1s;
   user-select: none;
 }
