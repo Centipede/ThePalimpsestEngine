@@ -16,9 +16,7 @@
           >
             <sl-icon name="search" slot="prefix"></sl-icon>
           </sl-input>
-        </div>
-        <div class="search-input-group">
-        <sl-input
+          <sl-input
               v-model.number="numResults"
               type="number"
               min="1"
@@ -46,6 +44,7 @@
           </div>
 
           <div class="materials-section">
+            <div class="column-header">Picked material</div>
             <div class="material-list">
               <div v-if="materials.length === 0" class="empty-material">
                 No material added yet. Use the selector above to scope your search.
@@ -208,7 +207,7 @@ function getItemLabel(item: CorpusMaterialItem) {
   box-sizing: border-box;
   width: 100%;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem;
 }
 
 .search-page {
@@ -218,12 +217,11 @@ function getItemLabel(item: CorpusMaterialItem) {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1rem;
 }
 
 .search-header {
   width: 100%;
-  max-width: 48rem;
   margin: 0 auto;
 }
 
@@ -237,7 +235,7 @@ function getItemLabel(item: CorpusMaterialItem) {
 }
 
 .num-results-input {
-  width: 120px;
+  width: 100px;
 }
 
 .style-selector {
@@ -294,12 +292,12 @@ function getItemLabel(item: CorpusMaterialItem) {
 .search-content {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1rem;
 }
 
 .search-config {
   display: flex;
-  gap: 2rem;
+  gap: 1rem;
   align-items: flex-start;
 }
 
@@ -335,17 +333,17 @@ h3 {
 .material-items {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 1rem;
+  gap: 0.25rem;
+  padding: 0.5rem;
 }
 
 .material-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0.75rem;
+  padding: 0.2rem 0.5rem;
   border-radius: var(--sl-border-radius-small);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .material-item--include {

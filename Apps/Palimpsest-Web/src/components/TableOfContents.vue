@@ -564,7 +564,7 @@ function handleContentUpdated(newContent: string) {
   grid-template-columns: 4.5rem 1.5rem 2fr 5rem 2fr;
   align-items: center;
   column-gap: 0.5rem;
-  padding: 0.075rem 1rem;
+  padding: 0.05rem 0.5rem;
   transition: background 0.1s;
   user-select: none;
 }
@@ -631,29 +631,29 @@ function handleContentUpdated(newContent: string) {
 }
 
 .toc__row--depth-0 {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
 }
 
 .toc__row--depth-1 {
-  font-size: 0.9375rem;
+  font-size: 0.85rem;
   font-weight: 400;
 }
 
 .toc__row--depth-2 {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
 .toc__row--depth-3 {
-  font-size: 0.80rem;
-}
-
-.toc__row--depth-4 {
   font-size: 0.75rem;
 }
 
-.toc__row--depth-5 {
+.toc__row--depth-4 {
   font-size: 0.7rem;
+}
+
+.toc__row--depth-5 {
+  font-size: 0.65rem;
   color: var(--color-text-muted);
 }
 

@@ -11,7 +11,6 @@
     <div v-else-if="bookStructure" class="toc-container">
       <div class="selector-header">
         <sl-icon name="list-ul"></sl-icon>
-        <span class="header-text">Chapters</span>
         <sl-input 
           size="small" 
           placeholder="Quick add/remove: +2.3-7, -1*" 
@@ -266,14 +265,14 @@ function handleParse(event: CustomEvent) {
 }
 
 .selector-header {
-  padding: 0.75rem 1rem;
+  padding: 0.4rem 0.5rem;
   background-color: var(--color-bg-muted);
   border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .parser-input {

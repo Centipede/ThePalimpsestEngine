@@ -186,7 +186,7 @@ function handleExcludeTree(section: Section) {
 <style scoped>
 .corpus-scope-selector {
   display: flex;
-  gap: 1rem;
+  gap: 0.5rem;
   height: 500px;
   width: 100%;
 }
@@ -203,13 +203,4 @@ function handleExcludeTree(section: Section) {
   flex: 3;
 }
 
-.column-header {
-  font-weight: 600;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-  letter-spacing: 0.05em;
-  padding-bottom: 0.25rem;
-  border-bottom: 1px solid var(--color-border);
-}
 </style>

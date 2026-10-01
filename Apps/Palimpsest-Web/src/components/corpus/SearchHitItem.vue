@@ -163,11 +163,11 @@ function expandDown() {
 .search-hit-item {
   border: 1px solid var(--color-border);
   border-radius: var(--sl-border-radius-medium);
-  padding: 1rem;
+  padding: 0.75rem;
   background-color: var(--color-surface);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
   transition: border-color 0.2s;
 }
 
@@ -251,14 +251,14 @@ function expandDown() {
 }
 
 .hit-snippet {
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   font-size: 0.9rem;
   line-height: 1.5;
   color: var(--color-text);
 }
 
 .hit-extra-block {
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   font-size: 0.9rem;
   line-height: 1.5;
   color: var(--color-text-muted);
