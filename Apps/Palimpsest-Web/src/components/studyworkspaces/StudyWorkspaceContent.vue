@@ -30,20 +30,31 @@
       @turn-added="$emit('turn-added', $event)"
       @context-condensed="$emit('context-condensed', $event)"
     />
+
+    <StudyNoteWorkspace
+      v-else-if="type === 'studynote'"
+      :data="(data as StudyNote)"
+      :linking-ref="(linkingRef as StudyNoteRef)"
+      @title-updated="$emit('title-updated', $event)"
+      @pin-updated="$emit('pin-updated', $event)"
+      @references-updated="$emit('references-updated')"
+      @content-updated="$emit('content-updated', $event)"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../../types/study';
+import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef, StudyNote, StudyNoteRef } from '../../types/study';
 import QuestionAnswerWorkspace from './QuestionAnswerWorkspace.vue';
 import ConversationWorkspace from './ConversationWorkspace.vue';
+import StudyNoteWorkspace from './StudyNoteWorkspace.vue';
 
 defineProps<{
-  type: 'conversation' | 'question_answer' | null;
+  type: 'conversation' | 'question_answer' | 'studynote' | null;
   loading: boolean;
   error: string | null;
-  data: Conversation | QuestionAnswer | null;
-  linkingRef: ConversationRef | QuestionAnswerRef | null;
+  data: Conversation | QuestionAnswer | StudyNote | null;
+  linkingRef: ConversationRef | QuestionAnswerRef | StudyNoteRef | null;
 }>();
 
 defineEmits<{
@@ -54,6 +65,7 @@ defineEmits<{
   (e: 'turn-note-updated', payload: { turnId: number, field: 'question_note' | 'answer_note' | 'question_summary' | 'answer_summary', value: string | null }): void;
   (e: 'turn-added', turn: ConversationTurn): void;
   (e: 'context-condensed', summary: string): void;
+  (e: 'content-updated', newContent: string): void;
 }>();
 </script>
 

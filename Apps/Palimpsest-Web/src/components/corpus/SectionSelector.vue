@@ -111,7 +111,7 @@ async function fetchStructure() {
   loading.value = true;
   error.value = '';
   try {
-    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/structure/?tree_depth=5&qas=1&conversations=1&ref_title=1&pageinfo=1&path_coded=1`);
+    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/structure/?tree_depth=5&qas=1&conversations=1&studynotes=1&ref_title=1&pageinfo=1&path_coded=1`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     bookStructure.value = await res.json();
   } catch (e) {
