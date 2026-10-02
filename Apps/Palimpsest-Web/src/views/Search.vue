@@ -31,6 +31,9 @@
             <sl-option value="raw">Raw PostgreSQL expression</sl-option>
             <sl-option value="websearch">Web search expression</sl-option>
           </sl-select>
+          <sl-button v-if="isSearching" variant="neutral" outline @click="cancelSearch">
+            Cancel
+          </sl-button>
           <sl-button variant="primary" :loading="isSearching" :disabled="!searchQuery" @click="performSearch">
             Search
           </sl-button>
@@ -84,6 +87,7 @@
           <div v-if="isSearching" class="search-loading">
             <sl-spinner></sl-spinner>
             <span>Searching corpus...</span>
+            <sl-button variant="text" size="small" @click="cancelSearch">Cancel search</sl-button>
           </div>
 
           <div v-else-if="searchResults.length > 0" class="results-list">
@@ -133,17 +137,30 @@ const materials = ref<CorpusMaterialItem[]>([]);
 const isSearching = ref(false);
 const searchResults = ref<SearchHit[]>([]);
 const searchError = ref<string | null>(null);
+const searchAbortController = ref<AbortController | null>(null);
+
+function cancelSearch() {
+  if (searchAbortController.value) {
+    searchAbortController.value.abort();
+    searchAbortController.value = null;
+  }
+}
 
 async function performSearch() {
   if (!searchQuery.value) return;
+
+  cancelSearch();
 
   isSearching.value = true;
   searchError.value = null;
   searchResults.value = [];
 
+  searchAbortController.value = new AbortController();
+
   try {
     const response = await apiFetch('/testbooks/api/v1/search/corpus/', {
       method: 'POST',
+      signal: searchAbortController.value.signal,
       body: JSON.stringify({
         expression: searchQuery.value,
         style: searchStyle.value,
@@ -163,10 +180,15 @@ async function performSearch() {
 
     const data: SearchResponse = await response.json();
     searchResults.value = data.hits;
-  } catch (err) {
-    searchError.value = err instanceof Error ? err.message : 'An error occurred during search';
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      console.log('Search aborted');
+    } else {
+      searchError.value = err instanceof Error ? err.message : 'An error occurred during search';
+    }
   } finally {
     isSearching.value = false;
+    searchAbortController.value = null;
   }
 }
 
