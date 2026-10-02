@@ -4,7 +4,7 @@
 
       <!-- Book-wide discussion rows -->
       <div
-        v-if="props.showDiscussions && !props.root_section_pf && (props.bookStructure.book.conversations?.length || props.bookStructure.book.question_answers?.length)"
+        v-if="props.showDiscussions && !props.rootSectionPF && (props.bookStructure.book.conversations?.length || props.bookStructure.book.question_answers?.length)"
         class="toc__row toc__row--book-level"
       >
         <sl-icon name="book" class="toc__book-icon" />
@@ -186,7 +186,7 @@ import StudyWorkspaceDialog from './studyworkspaces/StudyWorkspaceDialog.vue';
 const props = withDefaults(defineProps<{
   bookStructure: BookStructure,
   machineName: string,
-  root_section_pf?: string,
+  rootSectionPF?: string,
   mode?: 'nav' | 'select',
   showDiscussions?: boolean,
   selectedIds?: number[]
@@ -199,6 +199,13 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   (e: 'select', payload: { section: Section, event: MouseEvent }): void;
 }>();
+
+const STORAGE_PREFIX = 'palimpsest:toc';
+
+function getStorageKey(type: 'collapsed' | 'summary', path: string) {
+  const root = props.rootSectionPF || 'all';
+  return `${STORAGE_PREFIX}:${type}:${props.machineName}:${root}:${path}`;
+}
 
 interface TocEntry {
   section: Section;
@@ -247,8 +254,8 @@ const allEntries = computed<TocEntry[]>(() => {
   const root = mainFlow.value?.tree;
   if (!root?.subsections?.length) return [];
 
-  if (props.root_section_pf) {
-    const path = findPath(root.subsections, props.root_section_pf);
+  if (props.rootSectionPF) {
+    const path = findPath(root.subsections, props.rootSectionPF);
     if (!path.length) return [];
 
     const entries: TocEntry[] = [];
@@ -282,23 +289,48 @@ const allEntries = computed<TocEntry[]>(() => {
 const collapsed = ref<string[]>([]);
 let initialized = false;
 
-watch(() => props.root_section_pf, () => {
+watch([() => props.rootSectionPF, () => props.machineName], () => {
   initialized = false;
 });
 
 watch(allEntries, (entries) => {
   if (!initialized && entries.length > 0) {
     let threshold = 1;
-    if (props.root_section_pf) {
-      const targetEntry = entries.find(e => e.section.path_full === props.root_section_pf);
+    if (props.rootSectionPF) {
+      const targetEntry = entries.find(e => e.section.path_full === props.rootSectionPF);
       if (targetEntry) {
         threshold = targetEntry.depth + 2;
       }
     }
 
-    collapsed.value = entries
-      .filter(e => e.hasChildren && !e.isAncestor && e.depth >= threshold)
-      .map(e => e.section.path_full);
+    const newCollapsed: string[] = [];
+    const newExpandedSummaries: Record<string, SummaryState> = {};
+
+    for (const entry of entries) {
+      const path = entry.section.path_full;
+      
+      // Tree collapse state
+      const storedCollapsed = localStorage.getItem(getStorageKey('collapsed', path));
+      if (storedCollapsed !== null) {
+        if (storedCollapsed === 'true') {
+          newCollapsed.push(path);
+        }
+      } else {
+        // Fallback to default depth-based logic
+        if (entry.hasChildren && !entry.isAncestor && entry.depth >= threshold) {
+          newCollapsed.push(path);
+        }
+      }
+
+      // Summary expansion state
+      const storedSummary = localStorage.getItem(getStorageKey('summary', path));
+      if (storedSummary !== null) {
+        newExpandedSummaries[path] = { expanded: storedSummary === 'true' };
+      }
+    }
+
+    collapsed.value = newCollapsed;
+    expandedSummaries.value = newExpandedSummaries;
     initialized = true;
   }
 }, { immediate: true });
@@ -340,8 +372,15 @@ function isCollapsed(pathFull: string): boolean {
 
 function toggle(pathFull: string) {
   const idx = collapsed.value.indexOf(pathFull);
-  if (idx >= 0) collapsed.value.splice(idx, 1);
-  else collapsed.value.push(pathFull);
+  let isNowCollapsed = false;
+  if (idx >= 0) {
+    collapsed.value.splice(idx, 1);
+    isNowCollapsed = false;
+  } else {
+    collapsed.value.push(pathFull);
+    isNowCollapsed = true;
+  }
+  localStorage.setItem(getStorageKey('collapsed', pathFull), isNowCollapsed ? 'true' : 'false');
 }
 
 function toggleSummary(entry: TocEntry) {
@@ -352,6 +391,7 @@ function toggleSummary(entry: TocEntry) {
   } else {
     expandedSummaries.value[path].expanded = !expandedSummaries.value[path].expanded;
   }
+  localStorage.setItem(getStorageKey('summary', path), expandedSummaries.value[path].expanded ? 'true' : 'false');
 }
 
 function getConversationHref(ref: ConversationRef) {

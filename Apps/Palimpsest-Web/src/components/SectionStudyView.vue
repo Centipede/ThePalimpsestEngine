@@ -187,7 +187,7 @@
           v-if="showTableOfContents && props.bookStructure"
           :book-structure="props.bookStructure"
           :machine-name="props.machineName"
-          :root_section_pf="props.sectionPath"
+          :rootSectionPF="props.sectionPath"
       />
 
       <SummaryInfoRecord v-if="showSummary" :machine-name="props.machineName" :section-path="props.sectionPath"/>
