@@ -748,29 +748,29 @@ function handleContentUpdated(newContent: string) {
 }
 
 .toc__row--depth-0 {
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 600;
 }
 
 .toc__row--depth-1 {
-  font-size: 0.85rem;
+  font-size: 0.9375rem;
   font-weight: 400;
 }
 
 .toc__row--depth-2 {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
 }
 
 .toc__row--depth-3 {
-  font-size: 0.75rem;
+  font-size: 0.80rem;
 }
 
 .toc__row--depth-4 {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
 }
 
 .toc__row--depth-5 {
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   color: var(--color-text-muted);
 }
 
