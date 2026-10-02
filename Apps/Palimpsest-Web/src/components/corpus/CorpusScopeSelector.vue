@@ -187,8 +187,19 @@ function handleExcludeTree(section: Section) {
 .corpus-scope-selector {
   display: flex;
   gap: 0.5rem;
-  height: 500px;
+  height: 60vh;
   width: 100%;
+}
+
+@media (max-width: 768px) {
+  .corpus-scope-selector {
+    flex-direction: column;
+    height: auto;
+  }
+  
+  .selector-column {
+    height: 300px;
+  }
 }
 
 .selector-column {

@@ -5,7 +5,7 @@
     :open="open"
     @sl-request-close="handleRequestClose"
     @sl-after-hide.self="$emit('update:open', false)"
-    style="--width: 80vw; "
+    style="--width: 95vw; "
   >
     <div class="corpus-study-dialog">
       <div class="dialog-layout">
@@ -40,8 +40,8 @@
             <div class="panel-header">
               <span class="panel-title">Current material added</span>
               <div class="panel-actions">
-                <sl-button size="small" @click="showScopeSelector = !showScopeSelector">
-                  <sl-icon slot="prefix" :name="showScopeSelector ? 'chevron-up' : 'plus'"></sl-icon>
+                <sl-button size="small" @click="showScopeSelector = true">
+                  <sl-icon slot="prefix" name="plus"></sl-icon>
                   Add chapters...
                 </sl-button>
                 <sl-button size="small" disabled>
@@ -74,16 +74,6 @@
           </div>
         </div>
 
-        <div v-if="showScopeSelector" class="scope-selector-panel">
-          <sl-divider></sl-divider>
-          <CorpusScopeSelector
-              :initial-authors="initialAuthors"
-              :initial-books="initialBooks"
-              :initial-sections="initialSections"
-              @add-materials="handleAddMaterials"
-          />
-        </div>
-
         <div v-if="error" class="error-panel">
           <sl-alert variant="danger" open closable @sl-after-hide="error = null">
             <sl-icon slot="icon" name="exclamation-octagon"></sl-icon>
@@ -92,6 +82,22 @@
         </div>
       </div>
     </div>
+
+    <sl-dialog
+      :open="showScopeSelector"
+      label="Add Material"
+      class="scope-selector-dialog"
+      @sl-after-hide="showScopeSelector = false"
+      style="--width: 90vw;"
+    >
+      <CorpusScopeSelector
+        :initial-authors="initialAuthors"
+        :initial-books="initialBooks"
+        :initial-sections="initialSections"
+        @add-materials="handleAddMaterials"
+      />
+      <sl-button slot="footer" variant="primary" @click="showScopeSelector = false">Done</sl-button>
+    </sl-dialog>
 
     <sl-button slot="footer" variant="primary" @click="$emit('update:open', false)">Close</sl-button>
     <sl-button 
@@ -254,13 +260,18 @@ function getItemLabel(item: CorpusMaterialItem) {
 
 <style scoped>
 .corpus-dialog::part(panel) {
-  height: 80vh;
-  max-height: 80vh;
+  height: 95vh;
+  max-height: 95vh;
 }
 
 .corpus-dialog::part(body) {
   height: 100%;
-  overflow: hidden;
+  overflow-y: auto;
+  padding: 0.75rem 1rem;
+}
+
+.corpus-dialog::part(footer) {
+  padding: 0.75rem 1rem;
 }
 
 .corpus-study-dialog {
@@ -272,7 +283,7 @@ function getItemLabel(item: CorpusMaterialItem) {
 .dialog-layout {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 0.75rem;
   flex: 1;
   min-height: 0;
 }
@@ -280,9 +291,8 @@ function getItemLabel(item: CorpusMaterialItem) {
 .workspace-panel {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2rem;
+  gap: 1rem;
   flex: 1;
-  overflow-y: clip;
   min-height: 0;
 }
 
@@ -298,13 +308,24 @@ function getItemLabel(item: CorpusMaterialItem) {
   gap: 1rem;
 }
 
+@media (max-width: 768px) {
+  .workspace-panel {
+    grid-template-columns: 1fr;
+    overflow-y: visible;
+  }
+
+  .llm-settings {
+    grid-template-columns: 1fr;
+  }
+}
+
 .material-panel {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   border: 1px solid var(--color-border);
   border-radius: var(--sl-border-radius-medium);
-  padding: 1rem;
+  padding: 0.75rem;
   background-color: var(--color-bg-muted);
   min-height: 0;
 }
@@ -395,16 +416,6 @@ function getItemLabel(item: CorpusMaterialItem) {
   font-style: italic;
   text-align: center;
   align-self: center;
-}
-
-.scope-selector-panel {
-  flex: 1;
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  max-height: 50%;
-  overflow-y: clip;
 }
 
 .error-panel {
