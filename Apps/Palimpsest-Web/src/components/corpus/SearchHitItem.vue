@@ -8,15 +8,24 @@
           <span class="hit-author">by {{ authorName }}</span>
         </div>
         <div class="hit-section-row">
-          <span class="hit-section">{{ hit.in_section.title }}</span>
+          <router-link
+            v-if="book"
+            :to="{
+              path: `/study/${book.machine_name}/section/${hit.in_section.path_full}`,
+              query: hit.in_block_pi ? { pi: hit.in_block_pi } : {}
+            }"
+            class="hit-section"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span class="hit-section-link-text">{{ hit.in_section.title }} <sl-icon name="box-arrow-in-right"></sl-icon></span>
+          </router-link>
+          <span v-else class="hit-section">{{ hit.in_section.title }}</span>
           <span class="hit-page">Page {{ hit.on_page }}</span>
         </div>
       </div>
       <div class="hit-actions">
         <sl-badge variant="neutral" pill>Hit: {{ index + 1}} - Rank: {{ hit.rank.toFixed(4) }}</sl-badge>
-        <sl-tooltip content="Jump to section">
-          <sl-icon-button name="box-arrow-in-right" label="Jump to section" @click="jumpToSection"></sl-icon-button>
-        </sl-tooltip>
       </div>
     </div>
     
@@ -50,7 +59,6 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import { useLibraryStore } from '../../stores/library';
 import { apiFetch } from '../../api';
 import type { SearchHit, ContentBlock, SurroundingContentResponse } from '../../types/library';
@@ -60,7 +68,6 @@ const props = defineProps<{
   index: number;
 }>();
 
-const router = useRouter();
 const libraryStore = useLibraryStore();
 
 const book = computed(() => {
@@ -80,15 +87,6 @@ const thumbnail = computed(() => {
   if (!book.value) return null;
   return book.value.thumbnail_url || book.value.thumbnail_local || null;
 });
-
-function jumpToSection() {
-  if (!book.value) return;
-  
-  router.push({
-    path: `/study/${book.value.machine_name}/section/${props.hit.in_section.path_full}`,
-    query: props.hit.in_block_pi ? { pi: props.hit.in_block_pi } : {}
-  });
-}
 
 const contentBefore = ref<ContentBlock[]>([]);
 const contentAfter = ref<ContentBlock[]>([]);
@@ -163,16 +161,22 @@ function expandDown() {
 .search-hit-item {
   border: 1px solid var(--color-border);
   border-radius: var(--sl-border-radius-medium);
-  padding: 1rem;
+  padding: 0.75rem;
   background-color: var(--color-surface);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
   transition: border-color 0.2s;
 }
 
 .search-hit-item:hover {
   border-color: var(--sl-color-primary-300);
+}
+
+.hit-section-link-text {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .hit-header {
@@ -224,6 +228,11 @@ function expandDown() {
 .hit-section {
   color: var(--color-accent, var(--sl-color-primary-600));
   font-weight: 500;
+  text-decoration: none;
+}
+
+a.hit-section:hover {
+  text-decoration: underline;
 }
 
 .hit-page {
@@ -251,14 +260,14 @@ function expandDown() {
 }
 
 .hit-snippet {
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   font-size: 0.9rem;
   line-height: 1.5;
   color: var(--color-text);
 }
 
 .hit-extra-block {
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   font-size: 0.9rem;
   line-height: 1.5;
   color: var(--color-text-muted);

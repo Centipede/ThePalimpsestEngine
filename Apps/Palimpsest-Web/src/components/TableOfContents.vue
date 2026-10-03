@@ -4,7 +4,7 @@
 
       <!-- Book-wide discussion rows -->
       <div
-        v-if="props.showDiscussions && !props.root_section_pf && (props.bookStructure.book.conversations?.length || props.bookStructure.book.question_answers?.length)"
+        v-if="props.showDiscussions && !props.rootSectionPF && (props.bookStructure.book.conversations?.length || props.bookStructure.book.question_answers?.length)"
         class="toc__row toc__row--book-level"
       >
         <sl-icon name="book" class="toc__book-icon" />
@@ -149,7 +149,7 @@
         </div>
 
         <SummaryInfoRecord
-          v-if="isVisible(entry) && expandedSummaries[entry.section.path_full]?.expanded"
+          v-if="isVisible(entry) && tocState.summaries[entry.section.path_full]"
           :machine-name="props.machineName"
           :section-path="entry.section.path_full"
           :depth="entry.depth"
@@ -186,7 +186,7 @@ import StudyWorkspaceDialog from './studyworkspaces/StudyWorkspaceDialog.vue';
 const props = withDefaults(defineProps<{
   bookStructure: BookStructure,
   machineName: string,
-  root_section_pf?: string,
+  rootSectionPF?: string,
   mode?: 'nav' | 'select',
   showDiscussions?: boolean,
   selectedIds?: number[]
@@ -200,6 +200,9 @@ const emit = defineEmits<{
   (e: 'select', payload: { section: Section, event: MouseEvent }): void;
 }>();
 
+const STORAGE_PREFIX = 'palimpsest:toc';
+
+
 interface TocEntry {
   section: Section;
   depth: number;
@@ -208,11 +211,26 @@ interface TocEntry {
   isDescendant?: boolean;
 }
 
-interface SummaryState {
-  expanded: boolean;
+interface TocState {
+  depth: number;
+  overrides: Record<string, boolean>; // path_full -> isCollapsed
+  summaries: Record<string, boolean>; // path_full -> isSummaryExpanded
 }
 
-const expandedSummaries = ref<Record<string, SummaryState>>({});
+const tocState = ref<TocState>({
+  depth: 1,
+  overrides: {},
+  summaries: {}
+});
+
+const CONSOLIDATED_STORAGE_KEY = computed(() => {
+  const root = props.rootSectionPF || 'all';
+  return `${STORAGE_PREFIX}:state:${props.machineName}:${root}`;
+});
+
+function saveState() {
+  localStorage.setItem(CONSOLIDATED_STORAGE_KEY.value, JSON.stringify(tocState.value));
+}
 
 const router = useRouter();
 const { loading, error, data, type, linkingRef, loadItem } = useStudyWorkspaceItem();
@@ -247,8 +265,8 @@ const allEntries = computed<TocEntry[]>(() => {
   const root = mainFlow.value?.tree;
   if (!root?.subsections?.length) return [];
 
-  if (props.root_section_pf) {
-    const path = findPath(root.subsections, props.root_section_pf);
+  if (props.rootSectionPF) {
+    const path = findPath(root.subsections, props.rootSectionPF);
     if (!path.length) return [];
 
     const entries: TocEntry[] = [];
@@ -279,26 +297,71 @@ const allEntries = computed<TocEntry[]>(() => {
   return walkTree(root.subsections, 0);
 });
 
-const collapsed = ref<string[]>([]);
 let initialized = false;
 
-watch(() => props.root_section_pf, () => {
+watch([() => props.rootSectionPF, () => props.machineName], () => {
   initialized = false;
 });
 
 watch(allEntries, (entries) => {
   if (!initialized && entries.length > 0) {
-    let threshold = 1;
-    if (props.root_section_pf) {
-      const targetEntry = entries.find(e => e.section.path_full === props.root_section_pf);
-      if (targetEntry) {
-        threshold = targetEntry.depth + 2;
+    const stored = localStorage.getItem(CONSOLIDATED_STORAGE_KEY.value);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        tocState.value = {
+          depth: typeof parsed.depth === 'number' ? parsed.depth : 1,
+          overrides: parsed.overrides || {},
+          summaries: parsed.summaries || {}
+        };
+      } catch (e) {
+        console.error('Failed to parse TOC state', e);
       }
-    }
+    } else {
+      // Legacy migration or default logic
+      let threshold = 1;
+      if (props.rootSectionPF) {
+        const targetEntry = entries.find(e => e.section.path_full === props.rootSectionPF);
+        if (targetEntry) {
+          threshold = targetEntry.depth + 2;
+        }
+      }
 
-    collapsed.value = entries
-      .filter(e => e.hasChildren && !e.isAncestor && e.depth >= threshold)
-      .map(e => e.section.path_full);
+      const newOverrides: Record<string, boolean> = {};
+      const newSummaries: Record<string, boolean> = {};
+
+      for (const entry of entries) {
+        const path = entry.section.path_full;
+
+        // Migration from old keys
+        const oldCollapsedKey = `${STORAGE_PREFIX}:collapsed:${props.machineName}:${props.rootSectionPF || 'all'}:${path}`;
+        const storedCollapsed = localStorage.getItem(oldCollapsedKey);
+        if (storedCollapsed !== null) {
+          const isCollapsedValue = storedCollapsed === 'true';
+          const defaultCollapsed = entry.depth >= threshold;
+          if (isCollapsedValue !== defaultCollapsed) {
+            newOverrides[path] = isCollapsedValue;
+          }
+          localStorage.removeItem(oldCollapsedKey);
+        }
+
+        const oldSummaryKey = `${STORAGE_PREFIX}:summary:${props.machineName}:${props.rootSectionPF || 'all'}:${path}`;
+        const storedSummary = localStorage.getItem(oldSummaryKey);
+        if (storedSummary !== null) {
+          if (storedSummary === 'true') {
+            newSummaries[path] = true;
+          }
+          localStorage.removeItem(oldSummaryKey);
+        }
+      }
+
+      tocState.value = {
+        depth: threshold,
+        overrides: newOverrides,
+        summaries: newSummaries
+      };
+      saveState();
+    }
     initialized = true;
   }
 }, { immediate: true });
@@ -306,7 +369,6 @@ watch(allEntries, (entries) => {
 function expandAncestorsOfSelected() {
   if (!props.selectedIds || props.selectedIds.length === 0) return;
 
-  const newCollapsed = [...collapsed.value];
   let changed = false;
 
   props.selectedIds.forEach(id => {
@@ -318,9 +380,16 @@ function expandAncestorsOfSelected() {
         if (currentPath) currentPath += '.';
         currentPath += parts[i];
 
-        const idx = newCollapsed.indexOf(currentPath);
-        if (idx !== -1) {
-          newCollapsed.splice(idx, 1);
+        const ancestorEntry = allEntries.value.find(e => e.section.path_full === currentPath);
+        if (!ancestorEntry) continue;
+
+        if (isCollapsed(currentPath)) {
+          const defaultCollapsed = ancestorEntry.depth >= tocState.value.depth;
+          if (defaultCollapsed) {
+            tocState.value.overrides[currentPath] = false;
+          } else {
+            delete tocState.value.overrides[currentPath];
+          }
           changed = true;
         }
       }
@@ -328,31 +397,79 @@ function expandAncestorsOfSelected() {
   });
 
   if (changed) {
-    collapsed.value = newCollapsed;
+    saveState();
   }
 }
 
 watch([() => props.selectedIds, allEntries], expandAncestorsOfSelected, { immediate: true });
 
 function isCollapsed(pathFull: string): boolean {
-  return collapsed.value.includes(pathFull);
+  if (tocState.value.overrides[pathFull] !== undefined) {
+    return tocState.value.overrides[pathFull];
+  }
+  const entry = allEntries.value.find(e => e.section.path_full === pathFull);
+  if (!entry) return false;
+  return entry.depth >= tocState.value.depth;
 }
 
 function toggle(pathFull: string) {
-  const idx = collapsed.value.indexOf(pathFull);
-  if (idx >= 0) collapsed.value.splice(idx, 1);
-  else collapsed.value.push(pathFull);
+  const currentState = isCollapsed(pathFull);
+  const newState = !currentState;
+
+  const entry = allEntries.value.find(e => e.section.path_full === pathFull);
+  if (!entry) return;
+
+  const defaultCollapsed = entry.depth >= tocState.value.depth;
+
+  if (newState === defaultCollapsed) {
+    delete tocState.value.overrides[pathFull];
+  } else {
+    tocState.value.overrides[pathFull] = newState;
+  }
+  saveState();
 }
 
 function toggleSummary(entry: TocEntry) {
   const path = entry.section.path_full;
-  
-  if (!expandedSummaries.value[path]) {
-    expandedSummaries.value[path] = { expanded: true };
+  if (tocState.value.summaries[path]) {
+    delete tocState.value.summaries[path];
   } else {
-    expandedSummaries.value[path].expanded = !expandedSummaries.value[path].expanded;
+    tocState.value.summaries[path] = true;
   }
+  saveState();
 }
+
+function expandAll() {
+  const maxDepth = allEntries.value.reduce((max, e) => Math.max(max, e.depth), 0);
+  tocState.value.depth = maxDepth + 1;
+  tocState.value.overrides = {};
+  saveState();
+}
+
+function collapseAll() {
+  tocState.value.depth = 0;
+  tocState.value.overrides = {};
+  saveState();
+}
+
+function expandToDepth(depth: number) {
+  tocState.value.depth = depth;
+  tocState.value.overrides = {};
+  saveState();
+}
+
+function collapseBelowDepth(depth: number) {
+  tocState.value.depth = depth;
+  tocState.value.overrides = {};
+  saveState();
+}
+
+defineExpose({
+  expandAll,
+  collapseAll,
+  expandToDepth,
+  collapseBelowDepth
+});
 
 function getConversationHref(ref: ConversationRef) {
   return router.resolve({
@@ -564,7 +681,7 @@ function handleContentUpdated(newContent: string) {
   grid-template-columns: 4.5rem 1.5rem 2fr 5rem 2fr;
   align-items: center;
   column-gap: 0.5rem;
-  padding: 0.375rem 1rem;
+  padding: 0.05rem 0.5rem;
   transition: background 0.1s;
   user-select: none;
 }

@@ -16,9 +16,7 @@
           >
             <sl-icon name="search" slot="prefix"></sl-icon>
           </sl-input>
-        </div>
-        <div class="search-input-group">
-        <sl-input
+          <sl-input
               v-model.number="numResults"
               type="number"
               min="1"
@@ -33,6 +31,9 @@
             <sl-option value="raw">Raw PostgreSQL expression</sl-option>
             <sl-option value="websearch">Web search expression</sl-option>
           </sl-select>
+          <sl-button v-if="isSearching" variant="neutral" outline @click="cancelSearch">
+            Cancel
+          </sl-button>
           <sl-button variant="primary" :loading="isSearching" :disabled="!searchQuery" @click="performSearch">
             Search
           </sl-button>
@@ -42,13 +43,11 @@
       <div class="search-content">
         <div class="search-config">
           <div class="scope-section">
-            <h3>Search Scope</h3>
-            <p class="description">Select the authors, books, or chapters to search within.</p>
             <CorpusScopeSelector @add-materials="handleAddMaterials" />
           </div>
 
           <div class="materials-section">
-            <h3>Selected Materials</h3>
+            <div class="column-header">Picked material</div>
             <div class="material-list">
               <div v-if="materials.length === 0" class="empty-material">
                 No material added yet. Use the selector above to scope your search.
@@ -88,6 +87,7 @@
           <div v-if="isSearching" class="search-loading">
             <sl-spinner></sl-spinner>
             <span>Searching corpus...</span>
+            <sl-button variant="text" size="small" @click="cancelSearch">Cancel search</sl-button>
           </div>
 
           <div v-else-if="searchResults.length > 0" class="results-list">
@@ -137,17 +137,30 @@ const materials = ref<CorpusMaterialItem[]>([]);
 const isSearching = ref(false);
 const searchResults = ref<SearchHit[]>([]);
 const searchError = ref<string | null>(null);
+const searchAbortController = ref<AbortController | null>(null);
+
+function cancelSearch() {
+  if (searchAbortController.value) {
+    searchAbortController.value.abort();
+    searchAbortController.value = null;
+  }
+}
 
 async function performSearch() {
   if (!searchQuery.value) return;
+
+  cancelSearch();
 
   isSearching.value = true;
   searchError.value = null;
   searchResults.value = [];
 
+  searchAbortController.value = new AbortController();
+
   try {
     const response = await apiFetch('/testbooks/api/v1/search/corpus/', {
       method: 'POST',
+      signal: searchAbortController.value.signal,
       body: JSON.stringify({
         expression: searchQuery.value,
         style: searchStyle.value,
@@ -167,10 +180,15 @@ async function performSearch() {
 
     const data: SearchResponse = await response.json();
     searchResults.value = data.hits;
-  } catch (err) {
-    searchError.value = err instanceof Error ? err.message : 'An error occurred during search';
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      console.log('Search aborted');
+    } else {
+      searchError.value = err instanceof Error ? err.message : 'An error occurred during search';
+    }
   } finally {
     isSearching.value = false;
+    searchAbortController.value = null;
   }
 }
 
@@ -211,7 +229,7 @@ function getItemLabel(item: CorpusMaterialItem) {
   box-sizing: border-box;
   width: 100%;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem;
 }
 
 .search-page {
@@ -221,12 +239,11 @@ function getItemLabel(item: CorpusMaterialItem) {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1rem;
 }
 
 .search-header {
   width: 100%;
-  max-width: 48rem;
   margin: 0 auto;
 }
 
@@ -240,7 +257,7 @@ function getItemLabel(item: CorpusMaterialItem) {
 }
 
 .num-results-input {
-  width: 120px;
+  width: 100px;
 }
 
 .style-selector {
@@ -297,12 +314,12 @@ function getItemLabel(item: CorpusMaterialItem) {
 .search-content {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1rem;
 }
 
 .search-config {
   display: flex;
-  gap: 2rem;
+  gap: 1rem;
   align-items: flex-start;
 }
 
@@ -338,17 +355,17 @@ h3 {
 .material-items {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 1rem;
+  gap: 0.25rem;
+  padding: 0.5rem;
 }
 
 .material-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0.75rem;
+  padding: 0.2rem 0.5rem;
   border-radius: var(--sl-border-radius-small);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .material-item--include {

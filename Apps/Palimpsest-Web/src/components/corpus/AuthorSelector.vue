@@ -147,13 +147,13 @@ function handleMenuSelect(event: CustomEvent) {
 }
 
 .author-item {
-  padding: 0.5rem;
+  padding: 0.2rem 0.5rem;
   cursor: pointer;
   transition: background-color var(--sl-transition-fast);
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .author-item:hover {
