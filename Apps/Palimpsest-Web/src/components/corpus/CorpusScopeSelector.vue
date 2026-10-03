@@ -42,9 +42,9 @@ import BookSelector from './BookSelector.vue';
 import SectionSelector from './SectionSelector.vue';
 import { useLibraryStore } from '../../stores/library';
 import type { 
-  CorpusMaterialItem, 
-  MaterialInclusionStrategy, 
-  MaterialSubtreeStrategy,
+  PickingStep,
+  PickStrategy,
+  PickExpansion,
   Section
 } from '../../types/library';
 
@@ -57,7 +57,7 @@ const props = defineProps<{
 const libraryStore = useLibraryStore();
 
 const emit = defineEmits<{
-  (e: 'add-materials', items: CorpusMaterialItem[]): void;
+  (e: 'add-materials', items: PickingStep[]): void;
 }>();
 
 const selectedAuthorIds = ref<number[]>(props.initialAuthors || []);
@@ -88,98 +88,113 @@ function handleBookSelectionChange(ids: number[]) {
 }
 
 function handleIncludeAuthors(ids: number[]) {
-  const items: CorpusMaterialItem[] = ids.map(id => {
+  const items: PickingStep[] = ids.map(id => {
     const author = libraryStore.authors.find(a => a.id === id);
     return {
       strategy: 'include',
-      type: 'author',
-      author: { id, abbrev: author?.abbrev || '' }
+      expansion: 'self',
+      properties: 'contents',
+      selection: [{
+        obj_kind: 'author',
+        id,
+        abbrev: author?.abbrev || ''
+      }]
     };
   });
   emit('add-materials', items);
 }
 
 function handleExcludeAuthors(ids: number[]) {
-  const items: CorpusMaterialItem[] = ids.map(id => {
+  const items: PickingStep[] = ids.map(id => {
     const author = libraryStore.authors.find(a => a.id === id);
     return {
       strategy: 'exclude',
-      type: 'author',
-      author: { id, abbrev: author?.abbrev || '' }
+      expansion: 'self',
+      properties: 'contents',
+      selection: [{
+        obj_kind: 'author',
+        id,
+        abbrev: author?.abbrev || ''
+      }]
     };
   });
   emit('add-materials', items);
 }
 
 function handleIncludeBooks(ids: number[]) {
-  const items: CorpusMaterialItem[] = ids.map(id => {
+  const items: PickingStep[] = ids.map(id => {
     const book = libraryStore.books.find(b => b.id === id);
     const author = libraryStore.authors.find(a => a.id === book?.by_author);
     return {
       strategy: 'include',
-      type: 'book',
-      book: { 
-        id, 
-        abbrev: book?.abbrev || '', 
+      expansion: 'self',
+      properties: 'contents',
+      selection: [{
+        obj_kind: 'book',
+        id,
+        abbrev: book?.abbrev || '',
         machine_name: book?.machine_name || '',
-        author_abbrev: author?.abbrev || ''
-      }
+        author_abbrev: author?.abbrev || null
+      }]
     };
   });
   emit('add-materials', items);
 }
 
 function handleExcludeBooks(ids: number[]) {
-  const items: CorpusMaterialItem[] = ids.map(id => {
+  const items: PickingStep[] = ids.map(id => {
     const book = libraryStore.books.find(b => b.id === id);
     const author = libraryStore.authors.find(a => a.id === book?.by_author);
     return {
       strategy: 'exclude',
-      type: 'book',
-      book: { 
-        id, 
-        abbrev: book?.abbrev || '', 
+      expansion: 'self',
+      properties: 'contents',
+      selection: [{
+        obj_kind: 'book',
+        id,
+        abbrev: book?.abbrev || '',
         machine_name: book?.machine_name || '',
-        author_abbrev: author?.abbrev || ''
-      }
+        author_abbrev: author?.abbrev || null
+      }]
     };
   });
   emit('add-materials', items);
 }
 
-function handleSectionAction(section: Section, strategy: MaterialInclusionStrategy, subtree: MaterialSubtreeStrategy) {
+function handleSectionAction(section: Section, strategy: PickStrategy, expansion: PickExpansion) {
   const book = libraryStore.books.find(b => b.machine_name === lastSelectedBookMachineName.value);
   const author = libraryStore.authors.find(a => a.id === book?.by_author);
   
-  const item: CorpusMaterialItem = {
+  const step: PickingStep = {
     strategy,
-    type: 'section',
-    section: {
+    expansion,
+    properties: 'contents',
+    selection: [{
+      obj_kind: 'section',
       id: section.id,
       path_full: section.path_full,
       path_coded: section.path_coded || section.path_full,
-      book_abbrev: book?.abbrev || '',
-      author_abbrev: author?.abbrev || '',
-      subtree_strategy: subtree
-    }
+      book_abbrev: book?.abbrev || null,
+      author_abbrev: author?.abbrev || null
+    }]
   };
-  emit('add-materials', [item]);
+  emit('add-materials', [step]);
 }
 
 function handleIncludeSingle(section: Section) {
-  handleSectionAction(section, 'include', 'node');
+  handleSectionAction(section, 'include', 'self');
 }
 
 function handleIncludeTree(section: Section) {
-  handleSectionAction(section, 'include', 'tree');
+  handleSectionAction(section, 'include', 'descendants');
 }
 
 function handleExcludeSingle(section: Section) {
-  handleSectionAction(section, 'exclude', 'node');
+  handleSectionAction(section, 'exclude', 'self');
 }
 
 function handleExcludeTree(section: Section) {
-  handleSectionAction(section, 'exclude', 'tree');
+  handleSectionAction(section, 'exclude', 'descendants');
 }
 </script>
 

@@ -117,7 +117,7 @@ import { ref } from 'vue';
 import { useDraft } from '../../composables/useDraft';
 import CorpusScopeSelector from './CorpusScopeSelector.vue';
 import { apiFetch } from '../../api';
-import type { CorpusMaterialItem } from '../../types/library';
+import type { PickingStep } from '../../types/library';
 import type { AskCorpusRequest, AskCorpusResponse, ConverseCorpusRequest, ConverseCorpusResponse } from '../../types/study';
 
 const props = defineProps<{
@@ -135,7 +135,7 @@ const emit = defineEmits<{
 }>();
 
 const showScopeSelector = ref(false);
-const materials = ref<CorpusMaterialItem[]>([]);
+const materials = ref<PickingStep[]>([]);
 
 const { draft: question, clear: clearQuestionDraft } = useDraft('palimpsest_draft_corpus_question');
 const loading = ref(false);
@@ -154,7 +154,8 @@ async function handleStartTalk() {
     question: question.value,
     system_prompt: `You are a ${selectedStyle.value} assistant. Use the provided context to answer the user question. Format as markdown.`,
     corpus: {
-      items: materials.value
+      op_kind: 'picking',
+      steps: materials.value
     }
   };
 
@@ -194,7 +195,8 @@ async function handleGetAnswer() {
     question: question.value,
     system_prompt: `You are a ${selectedStyle.value} assistant. Use the provided passages to answer the question. Format as markdown.`,
     corpus: {
-      items: materials.value
+      op_kind: 'picking',
+      steps: materials.value
     }
   };
 
@@ -225,7 +227,7 @@ function handleRequestClose(event: Event) {
   event.preventDefault();
 }
 
-function handleAddMaterials(newItems: CorpusMaterialItem[]) {
+function handleAddMaterials(newItems: PickingStep[]) {
   materials.value.push(...newItems);
 }
 
@@ -233,8 +235,10 @@ function removeMaterial(index: number) {
   materials.value.splice(index, 1);
 }
 
-function getItemIcon(item: CorpusMaterialItem) {
-  switch (item.type) {
+function getItemIcon(step: PickingStep) {
+  const item = step.selection[0];
+  if (!item) return 'dot';
+  switch (item.obj_kind) {
     case 'author': return 'person';
     case 'book': return 'book';
     case 'section': return 'hash';
@@ -242,16 +246,22 @@ function getItemIcon(item: CorpusMaterialItem) {
   }
 }
 
-function getItemLabel(item: CorpusMaterialItem) {
-  if (item.type === 'author' && item.author) {
-    return `Author: ${item.author.abbrev}`;
+function getItemLabel(step: PickingStep) {
+  const item = step.selection[0];
+  if (!item) return 'Unknown item';
+  
+  if (item.obj_kind === 'author') {
+    return `Author: ${item.abbrev}`;
   }
-  if (item.type === 'book' && item.book) {
-    return `Book: ${item.book.abbrev} (${item.book.author_abbrev})`;
+  if (item.obj_kind === 'book') {
+    const authorPart = item.author_abbrev ? ` (${item.author_abbrev})` : '';
+    return `Book: ${item.abbrev}${authorPart}`;
   }
-  if (item.type === 'section' && item.section) {
-    const subtree = item.section.subtree_strategy === 'tree' ? ' (and subchapters)' : '';
-    return `Chapter: ${item.section.path_coded} in ${item.section.book_abbrev} (${item.section.author_abbrev})${subtree}`;
+  if (item.obj_kind === 'section') {
+    const subtree = step.expansion === 'descendants' ? ' (and subchapters)' : '';
+    const bookPart = item.book_abbrev ? ` in ${item.book_abbrev}` : '';
+    const authorPart = item.author_abbrev ? ` (${item.author_abbrev})` : '';
+    return `Chapter: ${item.path_coded}${bookPart}${authorPart}${subtree}`;
   }
   return 'Unknown item';
 }

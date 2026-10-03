@@ -1,4 +1,4 @@
-import type { CorpusMaterial } from './library';
+import type { PickingOperator } from './library';
 
 export type ConversationGoal = 'C' | 'ST' | 'TWB';
 
@@ -93,7 +93,7 @@ export interface AskCorpusRequest {
   question: string;
   system_prompt: string;
   num_results?: number;
-  corpus: CorpusMaterial;
+  corpus: PickingOperator;
 }
 
 export interface CorpusHit {
@@ -113,7 +113,7 @@ export interface AskCorpusResponse {
 }
 
 export interface ConverseCorpusRequest {
-  corpus: CorpusMaterial;
+  corpus: PickingOperator;
   question: string;
   system_prompt?: string;
   num_results?: number;

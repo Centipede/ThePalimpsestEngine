@@ -1,4 +1,4 @@
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch } from 'vue';
 
 /**
  * A composable for managing persistent drafts in browser localStorage.
@@ -23,7 +23,7 @@ export function useDraft(key: string | (() => string), initialValue: string = ''
 
   // Also watch the key itself if it's a function (reactive)
   if (typeof key === 'function') {
-    watch(key, (newKey, oldKey) => {
+    watch(key, (newKey, _oldKey) => {
       // When key changes, load new value from storage
       draft.value = localStorage.getItem(newKey) || initialValue;
     });
