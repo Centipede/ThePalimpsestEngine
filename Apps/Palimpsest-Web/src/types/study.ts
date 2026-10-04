@@ -1,4 +1,4 @@
-import type {PickingOperator} from "./corpusquery.ts";
+import type {OperatorNode, PickingOperator} from "./corpusquery.ts";
 
 export type ConversationGoal = 'C' | 'ST' | 'TWB';
 
@@ -41,6 +41,7 @@ export interface Conversation {
   goal: ConversationGoal;
   system_prompt: string | null;
   model: string | null;
+  query_latest?: OperatorNode | null;
   conversation_history: Record<string, any>;
   metadata: SearchMetadata;
   context_dense: string | null;
@@ -55,6 +56,7 @@ export interface ConversationTurn {
   of_conversation: number;
   system_prompt: string | null;
   model: string | null;
+  query?: OperatorNode | null;
   question: string;
   question_note: string | null;
   question_summary: string | null;
@@ -75,9 +77,10 @@ export interface QuestionAnswer {
   owned_by: number | null;
   is_canned: boolean;
   title: string;
+  query?: OperatorNode | null;
   question: string | null;
-  answer: string | null;
   question_note: string | null;
+  answer: string | null;
   answer_note: string | null;
   metadata?: SearchMetadata;
   references?: QuestionAnswerRef[];
