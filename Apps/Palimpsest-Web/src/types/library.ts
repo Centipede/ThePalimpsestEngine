@@ -61,7 +61,6 @@ export interface Section {
     pageinfo?: PageInfo | null;
 }
 
-
 export interface Flow {
     name: string;
     properties: {
@@ -176,9 +175,37 @@ export interface SectionDetail extends Section {
     };
 }
 
+export interface SegmentInfo {
+    summary: Record<string, unknown>;
+    queries: Record<string, unknown>;
+}
+
+export interface CoverageSpec {
+    paragraph_first?: number;
+    paragraph_last?: number;
+    character_first?: number;
+    character_last?: number;
+}
+
+export interface Segment {
+    id: number;
+    path: string;
+    order_key: string;
+    path_id: string;
+    in_section: number;
+    coverage_spec: CoverageSpec;
+    is_root: boolean;
+    is_leaf: boolean;
+    is_fractional: boolean;
+    is_contiguous: boolean;
+    info: SegmentInfo;
+    subsegments: Segment[];
+}
+
 export interface SectionContentResponse {
     section: SectionDetail;
     contents: ContentBlock[];
+    segments: Segment[];
 }
 
 export interface BookStructure {

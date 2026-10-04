@@ -1,5 +1,10 @@
 <template>
-  <div :id="'block-' + block.path_id" class="content-block" :class="{ 'is-folded': isFolded }">
+  <div
+      :id="'block-' + block.path_id"
+      class="content-block"
+      :class="{ 'is-folded': isFolded }"
+      :style="{ '--block-border-color': borderColor }"
+  >
 
     <!-- Left outer: Block link -->
     <div class="block-info">
@@ -72,6 +77,7 @@ const props = defineProps<{
   index: number;
   foldTrigger?: FoldTrigger;
   availableHighlights?: ToolbarToggle[];
+  borderColor?: string;
 }>();
 
 const themeStore = useThemeStore();
@@ -161,7 +167,9 @@ watch(
   grid-gap: 0.5rem;
   align-items: first baseline;
   width: 100%;
-  padding: 0.5rem 0;
+  padding: 0.5rem 0 0.5rem 0.5rem;
+  border-left: 4px solid var(--block-border-color, transparent);
+  box-sizing: border-box;
 }
 
 .content-block.is-folded {
