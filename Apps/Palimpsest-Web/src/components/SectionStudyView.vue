@@ -254,6 +254,7 @@
               :index="index"
               :fold-trigger="paragraphFoldTrigger"
               :available-highlights="availableHighlights"
+              :border-color="blockBorderColors[index]"
           />
         </template>
 
@@ -295,6 +296,7 @@
                       :index="entry.index"
                       :fold-trigger="paragraphFoldTrigger"
                       :available-highlights="availableHighlights"
+                      :border-color="blockBorderColors[entry.index]"
                   />
                 </template>
               </div>
@@ -309,6 +311,7 @@
                   :index="entry.index"
                   :fold-trigger="paragraphFoldTrigger"
                   :available-highlights="availableHighlights"
+                  :border-color="blockBorderColors[entry.index]"
               />
             </div>
           </div>
@@ -348,6 +351,48 @@ const organiseMode = ref<'linear' | 'segmented'>('linear');
 const openSegments = ref<Record<number, boolean>>({});
 const showNotesDrawer = ref(false);
 const paragraphFoldTrigger = ref<FoldTrigger>({ command: 'expand-all', count: 0 });
+
+const SEGMENT_COLORS = [
+  'var(--sl-color-blue-500)',
+  'var(--sl-color-red-500)',
+  'var(--sl-color-green-500)',
+  'var(--sl-color-amber-500)',
+  'var(--sl-color-purple-500)',
+  'var(--sl-color-pink-500)',
+  'var(--sl-color-orange-500)',
+  'var(--sl-color-teal-500)',
+];
+
+const rootSegmentsWithColors = computed(() => {
+  if (!data.value?.segments) return [];
+  return data.value.segments
+      .filter(s => s.is_root)
+      .map((s, index) => ({
+        ...s,
+        color: SEGMENT_COLORS[index % SEGMENT_COLORS.length]
+      }));
+});
+
+const blockBorderColors = computed(() => {
+  const mapping: Record<number, string> = {};
+  if (!data.value?.contents) return mapping;
+
+  const roots = rootSegmentsWithColors.value;
+
+  data.value.contents.forEach((_, index) => {
+    const matchingSegment = roots.find(s => {
+      const first = s.coverage_spec.paragraph_first ?? -1;
+      const last = s.coverage_spec.paragraph_last ?? -1;
+      return index >= first && index <= last;
+    });
+
+    if (matchingSegment) {
+      mapping[index] = matchingSegment.color;
+    }
+  });
+
+  return mapping;
+});
 
 const availableInfoLeft = ref<ToolbarToggle[]>([
   { name: 'General', type: 'general', checked: true },
