@@ -117,8 +117,8 @@ import { ref } from 'vue';
 import { useDraft } from '../../composables/useDraft';
 import CorpusScopeSelector from './CorpusScopeSelector.vue';
 import { apiFetch } from '../../api';
-import type { PickingStep } from '../../types/library';
 import type { AskCorpusRequest, AskCorpusResponse, ConverseCorpusRequest, ConverseCorpusResponse } from '../../types/study';
+import type {PickingStep} from "../../types/corpusquery.ts";
 
 const props = defineProps<{
   open: boolean

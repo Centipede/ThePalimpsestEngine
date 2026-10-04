@@ -42,11 +42,9 @@ import BookSelector from './BookSelector.vue';
 import SectionSelector from './SectionSelector.vue';
 import { useLibraryStore } from '../../stores/library';
 import type { 
-  PickingStep,
-  PickStrategy,
-  PickExpansion,
   Section
 } from '../../types/library';
+import type {PickExpansion, PickingStep, PickStrategy} from "../../types/corpusquery.ts";
 
 const props = defineProps<{
   initialAuthors?: number[];

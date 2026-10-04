@@ -113,9 +113,10 @@ import { ref, onMounted } from 'vue';
 import { useHead } from '@unhead/vue';
 import CorpusScopeSelector from '../components/corpus/CorpusScopeSelector.vue';
 import SearchHitItem from '../components/corpus/SearchHitItem.vue';
-import type { PickingStep, SearchHit, SearchResponse, SearchStyle } from '../types/library';
+import type { SearchHit, SearchResponse, SearchStyle } from '../types/library';
 import { apiFetch } from '../api';
 import { useLibraryStore } from '../stores/library';
+import type {PickingStep} from "../types/corpusquery.ts";
 
 useHead({
   title: 'Search | Palimpsest Engine',

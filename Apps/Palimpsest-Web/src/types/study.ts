@@ -1,4 +1,4 @@
-import type { PickingOperator } from './library';
+import type {PickingOperator} from "./corpusquery.ts";
 
 export type ConversationGoal = 'C' | 'ST' | 'TWB';
 
