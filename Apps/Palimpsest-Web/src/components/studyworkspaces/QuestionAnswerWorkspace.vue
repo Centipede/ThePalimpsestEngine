@@ -7,6 +7,7 @@
       item-type="question_answer"
       :item-id="data.id"
       :metadata="data.metadata"
+      :query="data.query"
       @title-updated="$emit('title-updated', $event)"
       @pin-updated="$emit('pin-updated', $event)"
       @references-updated="$emit('references-updated')"

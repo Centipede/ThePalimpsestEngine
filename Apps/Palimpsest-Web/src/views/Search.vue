@@ -49,12 +49,12 @@
           <div class="materials-section">
             <div class="column-header">Picked material</div>
             <div class="material-list">
-              <div v-if="materials.length === 0" class="empty-material">
+              <div v-if="steps.length === 0" class="empty-material">
                 No material added yet. Use the selector above to scope your search.
               </div>
               <div v-else class="material-items">
                 <div
-                    v-for="(item, index) in materials"
+                    v-for="(item, index) in steps"
                     :key="index"
                     :class="['material-item', `material-item--${item.strategy}`]"
                 >
@@ -113,9 +113,10 @@ import { ref, onMounted } from 'vue';
 import { useHead } from '@unhead/vue';
 import CorpusScopeSelector from '../components/corpus/CorpusScopeSelector.vue';
 import SearchHitItem from '../components/corpus/SearchHitItem.vue';
-import type { CorpusMaterialItem, SearchHit, SearchResponse, SearchStyle } from '../types/library';
+import type { SearchHit, SearchResponse, SearchStyle } from '../types/library';
 import { apiFetch } from '../api';
 import { useLibraryStore } from '../stores/library';
+import type {PickingStep} from "../types/corpusquery.ts";
 
 useHead({
   title: 'Search | Palimpsest Engine',
@@ -133,7 +134,7 @@ onMounted(async () => {
 const searchQuery = ref('');
 const numResults = ref(100);
 const searchStyle = ref<SearchStyle>('plain');
-const materials = ref<CorpusMaterialItem[]>([]);
+const steps = ref<PickingStep[]>([]);
 const isSearching = ref(false);
 const searchResults = ref<SearchHit[]>([]);
 const searchError = ref<string | null>(null);
@@ -166,7 +167,8 @@ async function performSearch() {
         style: searchStyle.value,
         num_results: numResults.value,
         corpus: {
-          items: materials.value
+          op_kind: 'picking',
+          steps: steps.value
         }
       }),
       headers: {
@@ -192,16 +194,18 @@ async function performSearch() {
   }
 }
 
-function handleAddMaterials(newItems: CorpusMaterialItem[]) {
-  materials.value.push(...newItems);
+function handleAddMaterials(newItems: PickingStep[]) {
+  steps.value.push(...newItems);
 }
 
 function removeMaterial(index: number) {
-  materials.value.splice(index, 1);
+  steps.value.splice(index, 1);
 }
 
-function getItemIcon(item: CorpusMaterialItem) {
-  switch (item.type) {
+function getItemIcon(step: PickingStep) {
+  const item = step.selection[0];
+  if (!item) return 'dot';
+  switch (item.obj_kind) {
     case 'author': return 'person';
     case 'book': return 'book';
     case 'section': return 'hash';
@@ -209,16 +213,22 @@ function getItemIcon(item: CorpusMaterialItem) {
   }
 }
 
-function getItemLabel(item: CorpusMaterialItem) {
-  if (item.type === 'author' && item.author) {
-    return `Author: ${item.author.abbrev}`;
+function getItemLabel(step: PickingStep) {
+  const item = step.selection[0];
+  if (!item) return 'Unknown item';
+
+  if (item.obj_kind === 'author') {
+    return `Author: ${item.abbrev}`;
   }
-  if (item.type === 'book' && item.book) {
-    return `Book: ${item.book.abbrev} (${item.book.author_abbrev})`;
+  if (item.obj_kind === 'book') {
+    const authorPart = item.author_abbrev ? ` (${item.author_abbrev})` : '';
+    return `Book: ${item.abbrev}${authorPart}`;
   }
-  if (item.type === 'section' && item.section) {
-    const subtree = item.section.subtree_strategy === 'tree' ? ' (and subchapters)' : '';
-    return `Chapter: ${item.section.path_coded} in ${item.section.book_abbrev} (${item.section.author_abbrev})${subtree}`;
+  if (item.obj_kind === 'section') {
+    const subtree = step.expansion === 'descendants' ? ' (and subchapters)' : '';
+    const bookPart = item.book_abbrev ? ` in ${item.book_abbrev}` : '';
+    const authorPart = item.author_abbrev ? ` (${item.author_abbrev})` : '';
+    return `Chapter: ${item.path_coded}${bookPart}${authorPart}${subtree}`;
   }
   return 'Unknown item';
 }

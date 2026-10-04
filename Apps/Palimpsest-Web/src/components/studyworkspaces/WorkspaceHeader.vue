@@ -79,7 +79,20 @@
       </ul>
     </div>
 
-    <div v-if="metadata && metadata.sections && metadata.sections.length > 0" class="references-section search-scope-section">
+    <div v-if="query" class="references-section search-scope-section query-blocks-section">
+      <h4 class="references-title">Query Blocks</h4>
+      <sl-details summary="Nested View" class="query-details">
+        <div class="query-view-container">
+          <OperatorNodeView :node="query" view-style="nested" />
+        </div>
+      </sl-details>
+      <sl-details summary="Compact View" class="query-details">
+        <div class="query-view-container">
+          <OperatorNodeView :node="query" view-style="compact" />
+        </div>
+      </sl-details>
+    </div>
+    <div v-else-if="metadata && metadata.sections && metadata.sections.length > 0" class="references-section search-scope-section">
       <h4 class="references-title">Search Scope</h4>
       <ul class="references-list">
         <li v-for="sec in metadata.sections" :key="sec.id" class="reference-item">
@@ -100,9 +113,11 @@
 import { ref, onMounted, nextTick, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import type { BaseRef, SearchMetadata } from '../../types/study';
+import type { OperatorNode } from '../../types/corpusquery';
 import type { SectionDetail } from '../../types/library';
 import { apiFetch } from '../../api';
 import ReferenceSelectorDialog from './ReferenceSelectorDialog.vue';
+import OperatorNodeView from '../corpus/OperatorNodeView.vue';
 
 const props = defineProps<{
   title: string | null;
@@ -111,6 +126,7 @@ const props = defineProps<{
   itemType: 'conversation' | 'question_answer' | 'studynote';
   itemId: number;
   metadata?: SearchMetadata | null;
+  query?: OperatorNode | null;
 }>();
 
 const emit = defineEmits<{
@@ -376,6 +392,26 @@ watch(() => props.allRefs, fetchSectionTitles, { deep: true });
 
 .search-scope-section {
   margin-top: 1rem;
+}
+
+.query-details {
+  margin-bottom: 0.5rem;
+}
+
+.query-details::part(base) {
+  border: 1px solid var(--sl-color-neutral-200);
+  border-radius: var(--sl-border-radius-medium);
+  background-color: var(--sl-color-neutral-0);
+}
+
+.query-details::part(header) {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.query-view-container {
+  padding: 0.5rem;
 }
 
 .section-header {
