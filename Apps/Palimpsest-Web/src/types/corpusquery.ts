@@ -3,6 +3,7 @@ export type OperatorKind =
     | 'union'
     | 'intersection'
     | 'conversion'
+    | 'representation'
     | 'picking'
     | 'search_postgres_fts'
     | 'search_fuzzy_search'
@@ -14,6 +15,23 @@ export type ObjectKind =
     | 'qa'
     | 'conversation'
     | 'entity';
+
+export type DataKind = 'entitylists' | 'querysets';
+
+export type ConversionKind = 'self' | 'children' | 'descendants' | 'parent' | 'ancestors';
+
+export interface ConversionOperator {
+    op_kind: 'conversion';
+    conversion?: ConversionKind;
+    input_types: ObjectKind[];
+    output_type: ObjectKind;
+}
+
+export interface RepresentationOperator {
+    op_kind: 'representation';
+    representation?: DataKind;
+}
+
 export type PickStrategy = 'include' | 'exclude';
 export type PickExpansion = 'self' | 'children' | 'descendants';
 export type PickProperties =
@@ -51,8 +69,8 @@ export type PickedObject = PickedAuthor | PickedBook | PickedSection;
 
 export interface PickingStep {
     strategy: PickStrategy;
-    expansion: PickExpansion;
-    properties: PickProperties;
+    expansion?: PickExpansion;
+    properties?: PickProperties;
     selection: PickedObject[];
 }
 
@@ -107,6 +125,35 @@ export type OperatorNode =
     | UnionOperator
     | PickingOperator
     | IntersectionOperator
+    | ConversionOperator
     | SearchPostgresFTS
     | SearchFuzzySearch
     | SearchSemanticVector;
+
+export interface EntityListsData {
+    data_kind: 'entitylists';
+    author_ids?: number[];
+    book_ids?: number[];
+    section_ids?: number[];
+    segment_ids?: number[];
+    content_ids?: number[];
+    section_inforecord_ids?: number[];
+    segment_inforecord_ids?: number[];
+    content_inforecord_ids?: number[];
+    qa_ids?: number[];
+    conversation_ids?: number[];
+    conversation_turn_ids?: number[];
+    article_ids?: number[];
+    entity_ids?: number[];
+}
+
+export interface QuerysetsData {
+    data_kind: 'querysets';
+    author_qs: any;
+    book_qs: any;
+    section_qs: any;
+    segment_qs: any;
+    content_qs: any;
+}
+
+export type DataNode = EntityListsData | QuerysetsData;
