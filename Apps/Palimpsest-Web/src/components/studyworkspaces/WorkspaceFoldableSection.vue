@@ -1,39 +1,55 @@
 <template>
-  <sl-details class="workspace-section" :open="initiallyOpen ?? false">
+  <sl-details
+    class="workspace-section"
+    :open="initiallyOpen ?? false"
+    @sl-show="handleShow"
+    @sl-hide="handleHide"
+  >
     <div slot="summary" class="section-summary">
-      <span class="section-label">{{ label }}</span>
-      <span v-if="note && !isEditing" class="note-preview">
-        {{ truncateNote(note) }}
-      </span>
+      <div class="header-left">
+        <span class="section-label">{{ label }}</span>
+        <div class="note-area">
+          <div v-if="!isEditing" class="note-display">
+            <span v-if="note" class="note-text">{{ note }}</span>
+            <span v-else-if="isOpen" class="note-placeholder">Add note...</span>
+          </div>
+          <div v-else class="note-edit" @click.stop>
+            <sl-textarea
+              ref="noteInput"
+              v-model="editedNote"
+              :loading="isSaving"
+              :disabled="isSaving"
+              placeholder="Type your note here..."
+              size="small"
+              resize="auto"
+              @keydown.esc="cancelEditing"
+            ></sl-textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-actions" v-if="isOpen" @click.stop>
+        <template v-if="!isEditing">
+          <sl-button size="small" variant="text" @click="startEditing">
+            <sl-icon slot="prefix" name="pencil"></sl-icon>
+            Edit
+          </sl-button>
+          <slot name="actions"></slot>
+        </template>
+        <template v-else>
+          <sl-button size="small" variant="success" :loading="isSaving" @click="saveNote">
+            <sl-icon slot="prefix" name="check-lg"></sl-icon>
+            Save
+          </sl-button>
+          <sl-button size="small" variant="danger" :disabled="isSaving" @click="cancelEditing">
+            <sl-icon slot="prefix" name="x-lg"></sl-icon>
+            Cancel
+          </sl-button>
+        </template>
+      </div>
     </div>
 
     <div class="section-content">
-      <div class="note-container">
-        <div v-if="!isEditing" class="note-display" @click="startEditing">
-          <span v-if="note" class="note-text">{{ note }}</span>
-          <span v-else class="note-placeholder">Add note...</span>
-          <sl-icon name="pencil" class="edit-icon"></sl-icon>
-        </div>
-        <div v-else class="note-edit">
-          <sl-textarea
-            ref="noteInput"
-            v-model="editedNote"
-            :loading="isSaving"
-            :disabled="isSaving"
-            placeholder="Type your note here..."
-            @sl-blur="saveNote"
-            @keydown.esc="cancelEditing"
-          ></sl-textarea>
-          <div class="edit-actions">
-            <sl-button size="small" variant="primary" :loading="isSaving" @click="saveNote">Save</sl-button>
-            <sl-button size="small" @click="cancelEditing">Cancel</sl-button>
-          </div>
-        </div>
-        <div v-if="!isEditing && $slots.actions" class="extra-actions">
-          <slot name="actions"></slot>
-        </div>
-      </div>
-      
       <div class="markdown-content" v-html="marked.parse(content || '')"></div>
     </div>
   </sl-details>
@@ -62,10 +78,17 @@ const isEditing = ref(false);
 const editedNote = ref('');
 const isSaving = ref(false);
 const noteInput = ref<any>(null);
+const isOpen = ref(props.initiallyOpen ?? false);
 
-function truncateNote(text: string, length = 200) {
-  if (text.length <= length) return text;
-  return text.substring(0, length) + '...';
+function handleShow() {
+  isOpen.value = true;
+}
+
+function handleHide() {
+  isOpen.value = false;
+  if (isEditing.value) {
+    cancelEditing();
+  }
 }
 
 function startEditing() {
@@ -133,9 +156,31 @@ async function saveNote() {
 
 .section-summary {
   display: flex;
-  align-items: center;
+  justify-content: space-between;
+  align-items: flex-start;
   gap: 1rem;
   flex: 1;
+  min-width: 0;
+}
+
+.header-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.note-area {
+  flex: 1;
+  min-width: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .section-label {
@@ -145,37 +190,15 @@ async function saveNote() {
   color: var(--sl-color-neutral-500);
   letter-spacing: 0.05em;
   white-space: nowrap;
-}
-
-.note-preview {
-  font-size: 0.875rem;
-  color: var(--sl-color-neutral-400);
-  font-style: italic;
+  padding-top: 0.125rem;
 }
 
 .section-content {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-}
-
-.note-container {
-  background-color: var(--sl-color-neutral-50);
-  padding: 0.75rem;
-  border-radius: var(--sl-border-radius-medium);
-  border: 1px dashed var(--sl-color-neutral-200);
-}
-
-.extra-actions {
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--sl-color-neutral-200);
-  display: flex;
-  justify-content: flex-end;
 }
 
 .note-display {
-  cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -184,39 +207,21 @@ async function saveNote() {
 }
 
 .note-text {
-  font-size: 0.9375rem;
-  color: var(--sl-color-neutral-700);
-  line-height: 1.5;
+  font-size: 0.875rem;
+  color: var(--sl-color-neutral-600);
+  line-height: 1.4;
   white-space: pre-wrap;
 }
 
 .note-placeholder {
-  font-size: 0.9375rem;
-  color: var(--sl-color-neutral-400);
-  font-style: italic;
-}
-
-.edit-icon {
   font-size: 0.875rem;
   color: var(--sl-color-neutral-400);
-  opacity: 0;
-  transition: opacity var(--sl-transition-fast);
-  margin-top: 0.25rem;
-}
-
-.note-display:hover .edit-icon {
-  opacity: 1;
+  font-style: italic;
 }
 
 .note-edit {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-}
-
-.edit-actions {
-  display: flex;
-  justify-content: flex-end;
   gap: 0.5rem;
 }
 
