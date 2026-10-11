@@ -13,7 +13,10 @@ export const useFacetsStore = defineStore('facets', {
     getFacetById: (state) => (id: number) => {
       return state.facetQueries.find((f) => f.id === id);
     },
-    getFacetByMachineName: (state) => (name: string) => {
+    getFacetBySingularName: (state) => (name: string) => {
+      return state.facetQueries.find((f) => f.machine_name_singular === name);
+    },
+    getFacetByPluralName: (state) => (name: string) => {
       return state.facetQueries.find((f) => f.machine_name_plural === name);
     },
   },
@@ -21,6 +24,7 @@ export const useFacetsStore = defineStore('facets', {
   actions: {
     async fetchFacetQueries(force = false) {
       if (!force && this.facetQueries.length > 0) return;
+      if (!force && this.isLoading) return;
 
       this.isLoading = true;
       this.error = '';

@@ -337,12 +337,16 @@ import TableOfContents from './TableOfContents.vue';
 import CorpusStudyDialog from './corpus/CorpusStudyDialog.vue';
 import StudyWorkspaceDialog from './studyworkspaces/StudyWorkspaceDialog.vue';
 import {useLibraryStore} from "../stores/library.ts";
+import {useFacetsStore} from "../stores/facets.ts";
 
 const props = defineProps<{
   machineName: string;
   sectionPath: string;
   bookStructure?: BookStructure;
 }>();
+
+const facetsStore = useFacetsStore();
+facetsStore.fetchFacetQueries(); // Make ready for content blocks
 
 const data = ref<SectionContentResponse | null>(null);
 const loading = ref(true);

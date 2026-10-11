@@ -49,7 +49,12 @@
 
       <!-- Right inner: Entities -->
       <div class="block-entities">
-        <small v-if="entitiesFuzzy"><i>{{ entitiesFuzzy }}</i></small>
+        <div v-for="group in sortedOccurrencesByFacet" :key="group.facetName">
+          <small>
+            <span v-if="group.facet">{{ group.facet.symbol }}</span>
+            <i>{{ group.occurrences.map(o => o.name).join(' ') }}</i>
+          </small>
+        </div>
       </div>
     </template>
 
@@ -68,9 +73,10 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import type { ContentBlock, ContentSummary, ContentEntities, FoldTrigger, Highlight, ContentEmphasis, ToolbarToggle } from '../types/library';
+import type { ContentBlock, ContentSummary, FoldTrigger, Highlight, ContentEmphasis, ToolbarToggle, FindingOccurrence } from '../types/library';
 import { computeSegments, searchForFragments } from '../utils/text';
 import { useThemeStore } from '../stores/theme';
+import { useFacetsStore } from '../stores/facets';
 
 const props = defineProps<{
   block: ContentBlock;
@@ -81,6 +87,7 @@ const props = defineProps<{
 }>();
 
 const themeStore = useThemeStore();
+const facetsStore = useFacetsStore();
 
 watch(
     () => props.availableHighlights,
@@ -112,9 +119,33 @@ const summaryText = computed(() => {
   return (record?.content_js as ContentSummary)?.summary;
 });
 
-const entitiesFuzzy = computed(() => {
-  const record = props.block.inforecords.find(r => r.kind === 'named_entities');
-  return (record?.content_js as ContentEntities)?.entities?.fuzzy_answer;
+
+const sortedOccurrencesByFacet = computed(() => {
+  if (!props.block.finding_occurrences?.length) return [];
+
+  // Group by of_facet
+  const groups: Record<string, FindingOccurrence[]> = {};
+  props.block.finding_occurrences.forEach(occ => {
+    const facetName = occ.of_facet || 'unknown';
+    if (!groups[facetName]) groups[facetName] = [];
+    groups[facetName].push(occ);
+  });
+
+  // Map to objects with facet info and sort by facet ID
+  return Object.entries(groups)
+    .map(([facetName, occurrences]) => {
+      const facet = facetsStore.getFacetBySingularName(facetName);
+      return {
+        facetName,
+        facet,
+        occurrences
+      };
+    })
+    .sort((a, b) => {
+      const idA = a.facet?.id ?? Infinity;
+      const idB = b.facet?.id ?? Infinity;
+      return idA - idB;
+    });
 });
 
 const firstPage = computed(() => {
