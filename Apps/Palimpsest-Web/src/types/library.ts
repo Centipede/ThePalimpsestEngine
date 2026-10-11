@@ -176,6 +176,19 @@ export interface FacetQuery {
 }
 
 /**
+ * Represents an identity found for a facet, typically linked to Wikidata/Wikipedia.
+ */
+export interface FoundIdentity {
+    id: number;
+    of_facet: number | FacetQuery | null;
+    wikidata_qid: string;
+    wikipedia_url: string | null;
+    wikimedia_commons_url: string | null;
+    name: string;
+    properties: Record<string, any> | null;
+}
+
+/**
  * Represents a specific mention of a finding in a content block.
  */
 export interface FindingOccurrence {
@@ -194,9 +207,9 @@ export interface FindingOccurrence {
  */
 export interface FindingContext {
     id: number;
-    of_facet?: string;
     name: string;
-    unique_id: number | null;
+    of_facet?: string;
+    of_identity: number | null;
     occurrences: FindingOccurrence[];
 }
 

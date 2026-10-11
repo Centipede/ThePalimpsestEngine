@@ -192,7 +192,8 @@
 
       <SummaryInfoRecord v-if="showSummary" :machine-name="props.machineName" :section-path="props.sectionPath"/>
       <SectionSegmentsOverview v-if="showSegmentsOverview && data.section.info?.summary?.paragraph_segments" :segments="data.section.info.summary.paragraph_segments"/>
-      <SectionEntities v-if="showEntities && data.section.info?.entities" :entities="data.section.info.entities"/>
+      <SectionFindings v-if="showEntities && data.section.info?.facets" :facets="data.section.info.facets"/>
+      <SectionEntities v-else-if="showEntities && data.section.info?.entities" :entities="data.section.info.entities"/>
 
       <CorpusStudyDialog
           v-model:open="corpusDialog.open"
@@ -332,6 +333,7 @@ import SectionNoteView from './studynotes/SectionNoteView.vue';
 import SummaryInfoRecord from './SummaryInfoRecord.vue';
 import SectionSegmentsOverview from './SectionSegmentsOverview.vue';
 import SectionEntities from './SectionEntities.vue';
+import SectionFindings from './SectionFindings.vue';
 import ContentBlockView from './ContentBlockView.vue';
 import TableOfContents from './TableOfContents.vue';
 import CorpusStudyDialog from './corpus/CorpusStudyDialog.vue';

@@ -52,7 +52,15 @@
         <div v-for="group in sortedOccurrencesByFacet" :key="group.facetName">
           <small>
             <span v-if="group.facet">{{ group.facet.symbol }}</span>
-            <i>{{ group.occurrences.map(o => o.name).join(' ') }}</i>
+            <i>
+              <span
+                  v-for="occurrence in group.occurrences"
+                  :key="occurrence.id"
+                  :title="`${occurrence.description}\n\n${occurrence.quote}`"
+              >
+                {{ occurrence.name }}{{ ' ' }}
+              </span>
+            </i>
           </small>
         </div>
       </div>
