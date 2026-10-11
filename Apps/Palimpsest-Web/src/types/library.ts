@@ -78,6 +78,7 @@ export interface ContentBlock {
     content_json: any;
     inforecords: InfoRecord[];
     pageinfo?: PageInfo | null;
+    finding_occurrences?: FindingOccurrence[];
 }
 
 export interface InfoRecord {
@@ -157,6 +158,53 @@ export interface SectionEntities {
     unlinkable_count: number;
 }
 
+/**
+ * Represents a site-wide facet of interest that the system can query for automatically.
+ */
+export interface FacetQuery {
+    id: number;
+    name: string;
+    machine_name_singular: string;
+    machine_name_plural: string;
+    symbol: string;
+    prose_description: string | null;
+    query_block: string | null;
+    query_section: string | null;
+    extraction_schema: Record<string, any> | null;
+    by_books: number[];
+    by_topics: number[];
+}
+
+/**
+ * Represents a specific mention of a finding in a content block.
+ */
+export interface FindingOccurrence {
+    id: number;
+    name: string;
+    description: string;
+    quote: string;
+    in_block_pi: string;
+    on_page: number | null;
+    of_facet?: string;
+    of_context: number | null;
+}
+
+/**
+ * Represents a grouped finding within a section.
+ */
+export interface FindingContext {
+    id: number;
+    of_facet?: string;
+    name: string;
+    unique_id: number | null;
+    occurrences: FindingOccurrence[];
+}
+
+/**
+ * Grouped findings by facet (e.g., "people", "places").
+ */
+export type FindingFacetMap = Record<string, FindingContext[]>;
+
 export interface SectionDetail extends Section {
     title_html: string;
     of_book: number;
@@ -172,6 +220,7 @@ export interface SectionDetail extends Section {
     info?: {
         summary?: SectionSummary;
         entities?: SectionEntities;
+        facets?: FindingFacetMap;
     };
 }
 
