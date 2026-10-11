@@ -5,17 +5,35 @@
         <p class="category-title">{{ facetGroup.label }}</p>
         <div class="entities-list">
           <template v-for="finding in facetGroup.linked" :key="`linked-${finding.id}`">
-            <div class="entity-item" :title="formatTooltip(finding)">
-              {{ facetGroup.symbol }} {{ finding.name }}
-            </div>
+            <sl-details class="entity-details">
+              <div slot="summary">{{ facetGroup.symbol }} {{ finding.name }}</div>
+              <div class="occurrences-list">
+                <template v-if="finding.occurrences.length > 0">
+                  <div v-for="occurrence in finding.occurrences" :key="occurrence.id" class="occurrence-item">
+                    <blockquote class="occurrence-quote">{{ occurrence.quote }}</blockquote>
+                    <div class="occurrence-description">{{ occurrence.description }}</div>
+                  </div>
+                </template>
+                <div v-else class="no-occurrences">No occurrences found.</div>
+              </div>
+            </sl-details>
           </template>
           
           <hr v-if="facetGroup.linked.length > 0 && facetGroup.unlinked.length > 0" />
 
           <template v-for="finding in facetGroup.unlinked" :key="`unlinked-${finding.id}`">
-            <div class="entity-item" :title="formatTooltip(finding)">
-              {{ facetGroup.symbol }} {{ finding.name }}
-            </div>
+            <sl-details class="entity-details">
+              <div slot="summary">{{ facetGroup.symbol }} {{ finding.name }}</div>
+              <div class="occurrences-list">
+                <template v-if="finding.occurrences.length > 0">
+                  <div v-for="occurrence in finding.occurrences" :key="occurrence.id" class="occurrence-item">
+                    <blockquote class="occurrence-quote">{{ occurrence.quote }}</blockquote>
+                    <div class="occurrence-description">{{ occurrence.description }}</div>
+                  </div>
+                </template>
+                <div v-else class="no-occurrences">No occurrences found.</div>
+              </div>
+            </sl-details>
           </template>
         </div>
       </div>
@@ -25,7 +43,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { FindingFacetMap, FindingContext } from '../types/library';
+import type { FindingFacetMap } from '../types/library';
 import { useFacetsStore } from '../stores/facets';
 
 const props = defineProps<{
@@ -59,12 +77,6 @@ const sortedFacets = computed(() => {
     })
     .sort((a, b) => a.facetId - b.facetId);
 });
-
-const formatTooltip = (finding: FindingContext) => {
-  return finding.occurrences
-    .map(o => `${o.quote}\n(${o.description})`)
-    .join('\n\n');
-};
 </script>
 
 <style scoped>
@@ -91,11 +103,52 @@ const formatTooltip = (finding: FindingContext) => {
   font-size: 0.85rem;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.1rem;
 }
 
-.entity-item {
-  padding: 0.2rem 0;
+.entity-details::part(base) {
+  border: none;
+  background: none;
+}
+
+.entity-details::part(header) {
+  padding: 0.1rem 0;
+  cursor: pointer;
+}
+
+.entity-details::part(header):hover {
+  background-color: var(--sl-color-neutral-100);
+}
+
+.entity-details::part(content) {
+  padding: 0.4rem 0 0.6rem 1rem;
+}
+
+.occurrences-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  border-left: 2px solid var(--sl-color-neutral-200);
+  padding-left: 0.75rem;
+}
+
+.occurrence-quote {
+  margin: 0;
+  font-style: italic;
+  color: var(--sl-color-neutral-700);
+  line-height: 1.4;
+}
+
+.occurrence-description {
+  font-size: 0.75rem;
+  color: var(--sl-color-neutral-500);
+  margin-top: 0.2rem;
+}
+
+.no-occurrences {
+  font-size: 0.75rem;
+  color: var(--sl-color-neutral-400);
+  font-style: italic;
 }
 
 hr {
