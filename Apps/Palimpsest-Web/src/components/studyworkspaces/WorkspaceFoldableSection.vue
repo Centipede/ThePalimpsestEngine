@@ -13,7 +13,7 @@
             <span v-if="note" class="note-text">{{ note }}</span>
             <span v-else-if="isOpen" class="note-placeholder">Add note...</span>
           </div>
-          <div v-else class="note-edit" @click.stop>
+          <div v-else class="note-edit" @click.stop @keydown.stop @keyup.stop>
             <sl-textarea
               ref="noteInput"
               v-model="editedNote"
@@ -28,7 +28,7 @@
         </div>
       </div>
 
-      <div class="header-actions" v-if="isOpen" @click.stop>
+      <div class="header-actions" v-if="isOpen" @click.stop @keydown.stop @keyup.stop>
         <template v-if="!isEditing">
           <sl-button size="small" variant="text" @click="startEditing">
             <sl-icon slot="prefix" name="pencil"></sl-icon>
