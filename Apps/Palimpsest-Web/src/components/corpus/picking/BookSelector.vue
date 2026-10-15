@@ -5,6 +5,7 @@
       placeholder="Filter books..."
       size="small"
       clearable
+      @sl-clear="searchQuery = ''"
     >
       <sl-icon name="search" slot="prefix"></sl-icon>
     </sl-input>
