@@ -6,10 +6,20 @@
         <span class="node-kind">{{ isSearchSequence(node) ? 'Search' : node.op_kind }}</span>
         
         <div class="node-actions">
-          <sl-button variant="text" size="small" @click="$emit('edit-node', node)">
+          <sl-button 
+            v-if="!(depth === 0 && node.op_kind === 'union')" 
+            variant="text" 
+            size="small" 
+            @click="$emit('edit-node', node)"
+          >
             <sl-icon name="pencil" slot="prefix"></sl-icon>
           </sl-button>
-          <sl-button variant="text" size="small" @click="$emit('delete-node', node)">
+          <sl-button 
+            v-if="depth > 0" 
+            variant="text" 
+            size="small" 
+            @click="$emit('delete-node', node)"
+          >
             <sl-icon name="trash" slot="prefix"></sl-icon>
           </sl-button>
         </div>
@@ -47,7 +57,11 @@
 
       <!-- Recursive Content for Logical Operators -->
       <div v-else-if="isLogicalOp(node)" class="logical-content">
+        <div v-if="node.operators.length === 0" class="empty-content">
+          No operators in this {{ node.op_kind }}.
+        </div>
         <OperatorTreeEditor 
+          v-else
           v-for="(child, index) in node.operators" 
           :key="index"
           :node="child" 
@@ -238,7 +252,7 @@ function deleteChild(node: SequenceOperator | UnionOperator | IntersectionOperat
   opacity: 0.7;
 }
 
-.empty-steps {
+.empty-steps, .empty-content {
   font-size: 0.75rem;
   color: var(--color-text-muted);
   font-style: italic;

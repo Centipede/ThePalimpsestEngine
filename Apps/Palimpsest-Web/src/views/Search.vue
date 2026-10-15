@@ -49,10 +49,7 @@
           <div class="materials-section">
             <div class="column-header">Picked material</div>
             <div class="material-list">
-              <div v-if="corpus.steps.length === 0" class="empty-material">
-                No material added yet. Use the selector above to scope your search.
-              </div>
-              <div v-else class="material-items">
+              <div class="material-items">
                 <OperatorTreeEditor :node="corpus" />
               </div>
             </div>
@@ -320,13 +317,6 @@ h3 {
   padding: 0.5rem;
 }
 
-.empty-material {
-  padding: 2rem;
-  font-size: 0.9rem;
-  color: var(--color-text-dimmed);
-  font-style: italic;
-  text-align: center;
-}
 
 @media (max-width: 900px) {
   .search-layout {

@@ -68,6 +68,7 @@ function handleBookSelectionChange(ids: number[]) {
 
 function addSteps(steps: PickingStep[]) {
   props.node.steps.push(...steps);
+  console.log('picking op steps: ', props.node.steps);
 }
 
 function handleIncludeAuthors(ids: number[]) {

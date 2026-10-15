@@ -52,10 +52,7 @@
             </div>
 
             <div class="material-list">
-              <div v-if="corpusQuery.operators.length === 0" class="empty-material">
-                No material added yet. Click the buttons above to add chapters or search queries.
-              </div>
-              <div v-else class="material-items">
+              <div class="material-items">
                 <OperatorTreeEditor :node="corpusQuery" @edit-node="handleEditNode" />
               </div>
             </div>
@@ -76,7 +73,7 @@
       :label="getEditorLabel()"
       class="editor-dialog"
       @sl-request-close="handleEditorCancel"
-      @sl-after-hide="handleEditorAfterHide"
+      @sl-after-hide.self="handleEditorAfterHide"
       style="--width: 90vw;"
     >
       <div class="editor-container">
@@ -550,13 +547,6 @@ function handleRequestClose(event: Event) {
   opacity: 0.7;
 }
 
-.empty-material {
-  padding: 2rem;
-  font-size: 0.85rem;
-  color: var(--color-text-dimmed);
-  font-style: italic;
-  text-align: center;
-}
 
 .editor-container {
   min-height: 400px;
