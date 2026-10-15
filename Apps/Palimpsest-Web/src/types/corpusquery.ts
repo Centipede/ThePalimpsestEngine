@@ -126,6 +126,7 @@ export type OperatorNode =
     | PickingOperator
     | IntersectionOperator
     | ConversionOperator
+    | RepresentationOperator
     | SearchPostgresFTS
     | SearchFuzzySearch
     | SearchSemanticVector;

@@ -52,24 +52,7 @@
             </div>
 
             <div class="material-list">
-              <div v-if="materials.length === 0" class="empty-material">
-                No material added yet. Use the buttons above to scope your study.
-              </div>
-              <div v-else class="material-items">
-                <div 
-                  v-for="(item, index) in materials" 
-                  :key="index"
-                  :class="['material-item', `material-item--${item.strategy}`]"
-                >
-                  <div class="item-content">
-                    <sl-icon :name="getItemIcon(item)" class="item-icon"></sl-icon>
-                    <span class="item-label">{{ getItemLabel(item) }}</span>
-                  </div>
-                  <sl-button variant="text" size="small" @click="removeMaterial(index)">
-                    <sl-icon name="x-lg" slot="prefix"></sl-icon>
-                  </sl-button>
-                </div>
-              </div>
+              <OperatorTreeEditor :node="corpusQuery" />
             </div>
           </div>
         </div>
@@ -90,11 +73,8 @@
       @sl-after-hide="showScopeSelector = false"
       style="--width: 90vw;"
     >
-      <CorpusScopeSelector
-        :initial-authors="initialAuthors"
-        :initial-books="initialBooks"
-        :initial-sections="initialSections"
-        @add-materials="handleAddMaterials"
+      <PickingOp
+        :node="corpusQuery"
       />
       <sl-button slot="footer" variant="primary" @click="showScopeSelector = false">Done</sl-button>
     </sl-dialog>
@@ -104,7 +84,7 @@
       slot="footer" 
       variant="success" 
       :loading="loading"
-      :disabled="materials.length === 0 || !question"
+      :disabled="corpusQuery.steps.length === 0 || !question"
       @click="type === 'talk' ? handleStartTalk() : handleGetAnswer()"
     >
       {{ type === 'talk' ? 'Start Talk' : 'Get Answer' }}
@@ -115,10 +95,11 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useDraft } from '../../composables/useDraft';
-import CorpusScopeSelector from './CorpusScopeSelector.vue';
+import PickingOp from './picking/PickingOp.vue';
+import OperatorTreeEditor from './OperatorTreeEditor.vue';
 import { apiFetch } from '../../api';
 import type { AskCorpusRequest, AskCorpusResponse, ConverseCorpusRequest, ConverseCorpusResponse } from '../../types/study';
-import type {PickingStep} from "../../types/corpusquery.ts";
+import type { PickingOperator } from "../../types/corpusquery.ts";
 
 const props = defineProps<{
   open: boolean
@@ -135,7 +116,10 @@ const emit = defineEmits<{
 }>();
 
 const showScopeSelector = ref(false);
-const materials = ref<PickingStep[]>([]);
+const corpusQuery = ref<PickingOperator>({
+  op_kind: 'picking',
+  steps: []
+});
 
 const { draft: question, clear: clearQuestionDraft } = useDraft('palimpsest_draft_corpus_question');
 const loading = ref(false);
@@ -145,7 +129,7 @@ const selectedModel = ref('gpt-5.6-luna');
 const selectedStyle = ref('scholarly');
 
 async function handleStartTalk() {
-  if (!question.value || materials.value.length === 0) return;
+  if (!question.value || corpusQuery.value.steps.length === 0) return;
 
   loading.value = true;
   error.value = null;
@@ -153,10 +137,7 @@ async function handleStartTalk() {
   const request: ConverseCorpusRequest = {
     question: question.value,
     system_prompt: `You are a ${selectedStyle.value} assistant. Use the provided context to answer the user question. Format as markdown.`,
-    corpus: {
-      op_kind: 'picking',
-      steps: materials.value
-    }
+    corpus: corpusQuery.value
   };
 
   try {
@@ -184,7 +165,7 @@ async function handleStartTalk() {
 
 
 async function handleGetAnswer() {
-  if (!question.value || materials.value.length === 0) return;
+  if (!question.value || corpusQuery.value.steps.length === 0) return;
 
   loading.value = true;
   error.value = null;
@@ -194,10 +175,7 @@ async function handleGetAnswer() {
     style: selectedStyle.value,
     question: question.value,
     system_prompt: `You are a ${selectedStyle.value} assistant. Use the provided passages to answer the question. Format as markdown.`,
-    corpus: {
-      op_kind: 'picking',
-      steps: materials.value
-    }
+    corpus: corpusQuery.value
   };
 
   try {
@@ -226,46 +204,6 @@ async function handleGetAnswer() {
 function handleRequestClose(event: Event) {
   event.preventDefault();
 }
-
-function handleAddMaterials(newItems: PickingStep[]) {
-  materials.value.push(...newItems);
-}
-
-function removeMaterial(index: number) {
-  materials.value.splice(index, 1);
-}
-
-function getItemIcon(step: PickingStep) {
-  const item = step.selection[0];
-  if (!item) return 'dot';
-  switch (item.obj_kind) {
-    case 'author': return 'person';
-    case 'book': return 'book';
-    case 'section': return 'hash';
-    default: return 'dot';
-  }
-}
-
-function getItemLabel(step: PickingStep) {
-  const item = step.selection[0];
-  if (!item) return 'Unknown item';
-  
-  if (item.obj_kind === 'author') {
-    return `Author: ${item.abbrev}`;
-  }
-  if (item.obj_kind === 'book') {
-    const authorPart = item.author_abbrev ? ` (${item.author_abbrev})` : '';
-    return `Book: ${item.abbrev}${authorPart}`;
-  }
-  if (item.obj_kind === 'section') {
-    const subtree = step.expansion === 'descendants' ? ' (and subchapters)' : '';
-    const bookPart = item.book_abbrev ? ` in ${item.book_abbrev}` : '';
-    const authorPart = item.author_abbrev ? ` (${item.author_abbrev})` : '';
-    return `Chapter: ${item.path_coded}${bookPart}${authorPart}${subtree}`;
-  }
-  return 'Unknown item';
-}
-
 </script>
 
 <style scoped>

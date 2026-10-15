@@ -98,7 +98,7 @@ const props = defineProps<{
   viewStyle: 'nested' | 'compact';
 }>();
 
-const libraryStore = useLibraryStore();
+useLibraryStore();
 
 const isGroupOperator = computed(() => 
   ['sequence', 'union', 'intersection'].includes(props.node.op_kind)

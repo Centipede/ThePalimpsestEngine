@@ -37,9 +37,9 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import AuthorSelector from './AuthorSelector.vue';
-import BookSelector from './BookSelector.vue';
-import SectionSelector from './SectionSelector.vue';
+import AuthorSelector from './picking/AuthorSelector.vue';
+import BookSelector from './picking/BookSelector.vue';
+import SectionSelector from './picking/SectionSelector.vue';
 import { useLibraryStore } from '../../stores/library';
 import type { 
   Section

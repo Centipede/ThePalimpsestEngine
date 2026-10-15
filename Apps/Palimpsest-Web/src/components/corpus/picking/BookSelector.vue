@@ -1,24 +1,24 @@
 <template>
-  <div class="author-selector">
+  <div class="book-selector">
     <sl-input
       v-model="searchQuery"
-      placeholder="Filter authors..."
+      placeholder="Filter books..."
       size="small"
       clearable
     >
       <sl-icon name="search" slot="prefix"></sl-icon>
     </sl-input>
 
-    <div class="author-list">
+    <div class="book-list">
       <div
-        v-for="author in filteredAuthors"
-        :key="author.id"
-        :class="['author-item', { 'is-selected': selectedIds.includes(author.id) }]"
-        @click="toggleSelection(author.id)"
-        @contextmenu.prevent="handleContextMenu(author, $event)"
+        v-for="book in filteredBooks"
+        :key="book.id"
+        :class="['book-item', { 'is-selected': selectedIds.includes(book.id) }]"
+        @click="toggleSelection(book.id)"
+        @contextmenu.prevent="handleContextMenu(book, $event)"
       >
-        <span class="author-name">{{ author.full_name }}</span>
-        <span v-if="author.abbrev" class="author-abbrev">({{ author.abbrev }})</span>
+        <span class="book-title">{{ book.title }}</span>
+        <span v-if="book.abbrev" class="book-abbrev">({{ book.abbrev }})</span>
       </div>
     </div>
 
@@ -26,8 +26,8 @@
       <div slot="trigger" class="context-menu-anchor"></div>
       <sl-menu @sl-select="handleMenuSelect">
         <template v-if="mode === 'corpus'">
-          <sl-menu-item value="include">Include Author</sl-menu-item>
-          <sl-menu-item value="exclude">Exclude Author</sl-menu-item>
+          <sl-menu-item value="include">Include Book</sl-menu-item>
+          <sl-menu-item value="exclude">Exclude Book</sl-menu-item>
           <sl-divider v-if="selectedIds.length > 0"></sl-divider>
           <sl-menu-item v-if="selectedIds.length > 0" value="include-selected">
             Include Selected ({{ selectedIds.length }})
@@ -37,8 +37,8 @@
           </sl-menu-item>
         </template>
         <template v-else-if="mode === 'reference'">
-          <sl-menu-item value="add" disabled>Add here</sl-menu-item>
-          <sl-menu-item value="move" disabled>Move here</sl-menu-item>
+          <sl-menu-item value="add">Add here</sl-menu-item>
+          <sl-menu-item value="move">Move here</sl-menu-item>
         </template>
       </sl-menu>
     </sl-dropdown>
@@ -47,11 +47,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useLibraryStore } from '../../stores/library';
-import type { Author } from '../../types/library';
+import { useLibraryStore } from '../../../stores/library';
+import type { Book } from '../../../types/library';
 
 const props = withDefaults(defineProps<{
   selectedIds: number[];
+  authorIds: number[];
   mode?: 'corpus' | 'reference';
 }>(), {
   mode: 'corpus'
@@ -59,27 +60,37 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:selectedIds', ids: number[]): void;
-  (e: 'includeAuthors', ids: number[]): void;
-  (e: 'excludeAuthors', ids: number[]): void;
-  (e: 'reference-action', payload: { action: 'add' | 'move', type: 'author', item: Author }): void;
+  (e: 'includeBooks', ids: number[]): void;
+  (e: 'excludeBooks', ids: number[]): void;
+  (e: 'reference-action', payload: { action: 'add' | 'move', type: 'book', item: Book }): void;
 }>();
 
 const libraryStore = useLibraryStore();
 const searchQuery = ref('');
 const dropdown = ref<any>(null);
-const contextAuthor = ref<Author | null>(null);
+const contextBook = ref<Book | null>(null);
 
 onMounted(() => {
-  libraryStore.fetchAuthors();
+  libraryStore.fetchBooks();
 });
 
-const filteredAuthors = computed(() => {
+const filteredBooks = computed(() => {
+  let books = libraryStore.books;
+
+  // Filter by author if any selected
+  if (props.authorIds.length > 0) {
+    books = books.filter(b => props.authorIds.includes(b.by_author));
+  }
+
   const query = searchQuery.value.toLowerCase().trim();
-  if (!query) return libraryStore.authors;
-  return libraryStore.authors.filter(a =>
-    a.full_name.toLowerCase().includes(query) ||
-    a.abbrev.toLowerCase().includes(query)
-  );
+  if (query) {
+    books = books.filter(b =>
+      b.title.toLowerCase().includes(query) ||
+      b.abbrev.toLowerCase().includes(query)
+    );
+  }
+
+  return books;
 });
 
 function toggleSelection(id: number) {
@@ -93,8 +104,8 @@ function toggleSelection(id: number) {
   emit('update:selectedIds', newSelection);
 }
 
-function handleContextMenu(author: Author, event: MouseEvent) {
-  contextAuthor.value = author;
+function handleContextMenu(book: Book, event: MouseEvent) {
+  contextBook.value = book;
   
   const anchor = dropdown.value?.querySelector('.context-menu-anchor') as HTMLElement | null;
   if (!anchor || !dropdown.value) return;
@@ -111,22 +122,22 @@ function handleContextMenu(author: Author, event: MouseEvent) {
 function handleMenuSelect(event: CustomEvent) {
   const action = event.detail.item.value;
   
-  if (action === 'include' && contextAuthor.value) {
-    emit('includeAuthors', [contextAuthor.value.id]);
-  } else if (action === 'exclude' && contextAuthor.value) {
-    emit('excludeAuthors', [contextAuthor.value.id]);
+  if (action === 'include' && contextBook.value) {
+    emit('includeBooks', [contextBook.value.id]);
+  } else if (action === 'exclude' && contextBook.value) {
+    emit('excludeBooks', [contextBook.value.id]);
   } else if (action === 'include-selected') {
-    emit('includeAuthors', props.selectedIds);
+    emit('includeBooks', props.selectedIds);
   } else if (action === 'exclude-selected') {
-    emit('excludeAuthors', props.selectedIds);
-  } else if ((action === 'add' || action === 'move') && contextAuthor.value) {
-    emit('reference-action', { action, type: 'author', item: contextAuthor.value });
+    emit('excludeBooks', props.selectedIds);
+  } else if ((action === 'add' || action === 'move') && contextBook.value) {
+    emit('reference-action', { action, type: 'book', item: contextBook.value });
   }
 }
 </script>
 
 <style scoped>
-.author-selector {
+.book-selector {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -139,14 +150,14 @@ function handleMenuSelect(event: CustomEvent) {
   height: 1px;
 }
 
-.author-list {
+.book-list {
   flex: 1;
   overflow-y: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--sl-border-radius-medium);
 }
 
-.author-item {
+.book-item {
   padding: 0.2rem 0.5rem;
   cursor: pointer;
   transition: background-color var(--sl-transition-fast);
@@ -156,25 +167,25 @@ function handleMenuSelect(event: CustomEvent) {
   font-size: 0.85rem;
 }
 
-.author-item:hover {
+.book-item:hover {
   background-color: var(--color-bg-muted);
 }
 
-.author-item.is-selected {
+.book-item.is-selected {
   background-color: var(--color-bg-selected);
   color: white;
 }
 
-[data-theme="dark"] .author-item.is-selected {
+[data-theme="dark"] .book-item.is-selected {
   background-color: var(--color-bg-selected);
   color: var(--color-text);
 }
 
-.author-name {
+.book-title {
   flex: 1;
 }
 
-.author-abbrev {
+.book-abbrev {
   font-size: 0.8rem;
   color: var(--color-text-muted);
 }
