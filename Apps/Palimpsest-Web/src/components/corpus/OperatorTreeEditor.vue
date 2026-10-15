@@ -2,18 +2,29 @@
   <div class="operator-tree-editor" :style="{ paddingLeft: depth > 0 ? '0.5rem' : '0' }">
     <div class="operator-node-row">
       <div class="operator-node-header">
-        <sl-icon :name="getNodeIcon(node)" class="node-icon"></sl-icon>
-        <span class="node-kind">{{ node.op_kind }}</span>
+        <sl-icon :name="isSearchSequence(node) ? 'search' : getNodeIcon(node)" class="node-icon"></sl-icon>
+        <span class="node-kind">{{ isSearchSequence(node) ? 'Search' : node.op_kind }}</span>
         
         <div class="node-actions">
+          <sl-button variant="text" size="small" @click="$emit('edit-node', node)">
+            <sl-icon name="pencil" slot="prefix"></sl-icon>
+          </sl-button>
           <sl-button variant="text" size="small" @click="$emit('delete-node', node)">
             <sl-icon name="trash" slot="prefix"></sl-icon>
           </sl-button>
         </div>
       </div>
 
+      <!-- Search Sequence Unified View -->
+      <div v-if="isSearchSequence(node)" class="search-sequence-content">
+        <div class="search-summary">
+          <span class="query-text">"{{ getSearchNode(node as SequenceOperator)?.query }}"</span>
+          <span class="scope-text">in specified scope</span>
+        </div>
+      </div>
+
       <!-- Picking Operator Content -->
-      <div v-if="node.op_kind === 'picking'" class="picking-content">
+      <div v-else-if="node.op_kind === 'picking'" class="picking-content">
         <div v-if="node.steps.length === 0" class="empty-steps">
           No steps in this picking operator.
         </div>
@@ -42,6 +53,7 @@
           :node="child" 
           :depth="depth + 1"
           @delete-node="deleteChild(node, index)"
+          @edit-node="$emit('edit-node', $event)"
         />
       </div>
     </div>
@@ -55,7 +67,8 @@ import type {
   PickingOperator,
   SequenceOperator,
   UnionOperator,
-  IntersectionOperator
+  IntersectionOperator,
+  SearchPostgresFTS
 } from "../../types/corpusquery.ts";
 import OperatorTreeEditor from './OperatorTreeEditor.vue';
 
@@ -68,10 +81,20 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   (e: 'delete-node', node: OperatorNode): void;
+  (e: 'edit-node', node: OperatorNode): void;
 }>();
 
 function isLogicalOp(node: OperatorNode): node is SequenceOperator | UnionOperator | IntersectionOperator {
+  if (isSearchSequence(node)) return false;
   return ['sequence', 'union', 'intersection'].includes(node.op_kind);
+}
+
+function isSearchSequence(node: OperatorNode): node is SequenceOperator {
+  return node.op_kind === 'sequence' && node.operators.some(op => op.op_kind.startsWith('search_'));
+}
+
+function getSearchNode(node: SequenceOperator): SearchPostgresFTS | undefined {
+  return node.operators.find(op => op.op_kind.startsWith('search_')) as SearchPostgresFTS;
 }
 
 function getNodeIcon(node: OperatorNode) {
@@ -229,5 +252,28 @@ function deleteChild(node: SequenceOperator | UnionOperator | IntersectionOperat
   border-left: 1px dashed var(--color-border);
   margin-left: 1rem;
   padding-left: 0.25rem;
+}
+
+.search-sequence-content {
+  padding: 0.5rem 0.5rem;
+}
+
+.search-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.query-text {
+  font-weight: 600;
+  font-family: var(--sl-font-mono);
+  color: var(--sl-color-primary-600);
+}
+
+.scope-text {
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-size: 0.75rem;
 }
 </style>

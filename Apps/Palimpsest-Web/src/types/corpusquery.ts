@@ -12,6 +12,7 @@ export type ObjectKind =
     | 'author'
     | 'book'
     | 'section'
+    | 'content'
     | 'qa'
     | 'conversation'
     | 'entity';

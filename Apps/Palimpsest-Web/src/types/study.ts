@@ -1,4 +1,4 @@
-import type {OperatorNode, PickingOperator} from "./corpusquery.ts";
+import type {OperatorNode} from "./corpusquery.ts";
 
 export type ConversationGoal = 'C' | 'ST' | 'TWB';
 
@@ -96,7 +96,7 @@ export interface AskCorpusRequest {
   question: string;
   system_prompt: string;
   num_results?: number;
-  corpus: PickingOperator;
+  graph: OperatorNode;
 }
 
 export interface CorpusHit {
@@ -116,7 +116,7 @@ export interface AskCorpusResponse {
 }
 
 export interface ConverseCorpusRequest {
-  corpus: PickingOperator;
+  graph: OperatorNode;
   question: string;
   system_prompt?: string;
   num_results?: number;

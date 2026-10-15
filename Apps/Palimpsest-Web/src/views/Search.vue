@@ -101,7 +101,7 @@ import { ref, onMounted } from 'vue';
 import { useHead } from '@unhead/vue';
 import PickingOp from '../components/corpus/picking/PickingOp.vue';
 import OperatorTreeEditor from '../components/corpus/OperatorTreeEditor.vue';
-import SearchHitItem from '../components/corpus/SearchHitItem.vue';
+import SearchHitItem from '../components/SearchHitItem.vue';
 import type { SearchHit, SearchResponse, SearchStyle } from '../types/library';
 import { apiFetch } from '../api';
 import { useLibraryStore } from '../stores/library';

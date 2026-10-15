@@ -1,7 +1,23 @@
 <template>
   <div class="operator-node-view" :class="[`style-${viewStyle}`, `kind-${node.op_kind}`]">
+    <!-- Search Sequence Unified View -->
+    <template v-if="isSearchSequence">
+      <div class="leaf-header">
+        <sl-badge :variant="viewStyle === 'compact' ? 'neutral' : 'primary'" :pill="viewStyle !== 'compact'" :size="viewStyle === 'compact' ? 'small' : 'medium'">
+          <sl-icon v-if="viewStyle === 'compact'" name="search" class="compact-icon"></sl-icon>
+          Search
+        </sl-badge>
+      </div>
+      <div class="leaf-content">
+        <div class="search-query" :class="{ 'compact-query': viewStyle === 'compact' }">"{{ (searchNodeInSequence as any).query }}"</div>
+        <div class="search-scope-note" v-if="viewStyle !== 'compact'">
+           <sl-icon name="layers-half"></sl-icon> Scoped Search
+        </div>
+      </div>
+    </template>
+
     <!-- Group Operators -->
-    <template v-if="isGroupOperator">
+    <template v-else-if="isGroupOperator">
       <div class="group-header">
         <sl-badge :variant="viewStyle === 'compact' ? 'neutral' : 'primary'" :pill="viewStyle !== 'compact'" :size="viewStyle === 'compact' ? 'small' : 'medium'">
           <sl-icon v-if="viewStyle === 'compact'" :name="groupIcon" class="compact-icon"></sl-icon>
@@ -100,8 +116,18 @@ const props = defineProps<{
 
 useLibraryStore();
 
+const isSearchSequence = computed(() => 
+  props.node.op_kind === 'sequence' && 
+  (props.node as any).operators?.some((op: any) => op.op_kind.startsWith('search_'))
+);
+
+const searchNodeInSequence = computed(() => {
+  if (!isSearchSequence.value) return null;
+  return (props.node as any).operators.find((op: any) => op.op_kind.startsWith('search_'));
+});
+
 const isGroupOperator = computed(() => 
-  ['sequence', 'union', 'intersection'].includes(props.node.op_kind)
+  ['sequence', 'union', 'intersection'].includes(props.node.op_kind) && !isSearchSequence.value
 );
 
 const groupLabel = computed(() => {
@@ -236,6 +262,15 @@ function getItemLabel(item: PickedObject) {
 
 .search-meta {
   font-size: 0.8rem;
+}
+
+.search-scope-note {
+  font-size: 0.75rem;
+  color: var(--sl-color-neutral-500);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
 }
 
 .conversion-details {
