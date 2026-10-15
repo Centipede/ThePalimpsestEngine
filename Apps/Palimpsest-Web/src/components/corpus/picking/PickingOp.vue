@@ -197,6 +197,17 @@ function handleExcludeTree(section: Section) {
   min-width: 200px;
 }
 
+@media (max-width: 768px) {
+  .picking-op {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .selector-column {
+    height: 300px;
+  }
+}
+
 .selector-column--wide {
   flex: 3;
 }
