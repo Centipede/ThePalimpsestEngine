@@ -32,7 +32,13 @@
 
     <div class="scope-header">Search Scope</div>
     <div class="scope-container">
-      <PickingOp v-if="pickingNode" :node="pickingNode" />
+      <PickingOp
+        v-if="pickingNode"
+        :node="pickingNode"
+        :initial-authors="initialAuthors"
+        :initial-books="initialBooks"
+        :initial-sections="initialSections"
+      />
     </div>
   </div>
 </template>
@@ -44,6 +50,9 @@ import PickingOp from './picking/PickingOp.vue';
 
 const props = defineProps<{
   node: SequenceOperator;
+  initialAuthors?: number[];
+  initialBooks?: number[];
+  initialSections?: number[];
 }>();
 
 // We expect the sequence to be: Picking -> Conversion -> Representation -> Search

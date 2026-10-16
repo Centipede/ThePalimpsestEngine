@@ -1,57 +1,77 @@
 <template>
-  <div class="picking-op">
-    <div class="selector-column">
-      <div class="column-header">Authors</div>
-      <AuthorSelector
-        :selected-ids="selectedAuthorIds"
-        @update:selected-ids="selectedAuthorIds = $event"
-        @include-authors="handleIncludeAuthors"
-        @exclude-authors="handleExcludeAuthors"
-      />
+  <div class="picking-op-container">
+    <div class="picking-op__summary" v-if="props.node.steps.length > 0">
+      <OperatorNodeView :node="props.node" view-style="compact"/>
     </div>
+    <div class="picking-op">
+      <div class="selector-column">
+        <div class="column-header">Authors</div>
+        <AuthorSelector
+          :selected-ids="selectedAuthorIds"
+          @update:selected-ids="selectedAuthorIds = $event"
+          @include-authors="handleIncludeAuthors"
+          @exclude-authors="handleExcludeAuthors"
+        />
+      </div>
 
-    <div class="selector-column">
-      <div class="column-header">Books</div>
-      <BookSelector
-        :author-ids="selectedAuthorIds"
-        :selected-ids="selectedBookIds"
-        @update:selected-ids="handleBookSelectionChange"
-        @include-books="handleIncludeBooks"
-        @exclude-books="handleExcludeBooks"
-      />
-    </div>
+      <div class="selector-column">
+        <div class="column-header">Books</div>
+        <BookSelector
+          :author-ids="selectedAuthorIds"
+          :selected-ids="selectedBookIds"
+          @update:selected-ids="handleBookSelectionChange"
+          @include-books="handleIncludeBooks"
+          @exclude-books="handleExcludeBooks"
+        />
+      </div>
 
-    <div class="selector-column selector-column--wide">
-      <div class="column-header">Chapters</div>
-      <SectionSelector
-        :machine-name="lastSelectedBookMachineName"
-        @include-single="handleIncludeSingle"
-        @include-tree="handleIncludeTree"
-        @exclude-single="handleExcludeSingle"
-        @exclude-tree="handleExcludeTree"
-      />
+      <div class="selector-column selector-column--wide">
+        <div class="column-header">Chapters</div>
+        <SectionSelector
+          :machine-name="lastSelectedBookMachineName"
+          :selected-ids="initialSections"
+          @include-single="handleIncludeSingle"
+          @include-tree="handleIncludeTree"
+          @exclude-single="handleExcludeSingle"
+          @exclude-tree="handleExcludeTree"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import AuthorSelector from './AuthorSelector.vue';
 import BookSelector from './BookSelector.vue';
 import SectionSelector from './SectionSelector.vue';
 import { useLibraryStore } from '../../../stores/library';
 import type { Section } from '../../../types/library';
 import type { PickingOperator, PickingStep, PickStrategy, PickExpansion } from "../../../types/corpusquery.ts";
+import OperatorNodeView from "../OperatorNodeView.vue";
 
 const props = defineProps<{
   node: PickingOperator;
+  initialAuthors?: number[];
+  initialBooks?: number[];
+  initialSections?: number[];
 }>();
 
 const libraryStore = useLibraryStore();
 
-const selectedAuthorIds = ref<number[]>([]);
-const selectedBookIds = ref<number[]>([]);
+const selectedAuthorIds = ref<number[]>(props.initialAuthors || []);
+const selectedBookIds = ref<number[]>(props.initialBooks || []);
 const lastSelectedBookMachineName = ref<string | null>(null);
+
+onMounted(() => {
+  if (selectedBookIds.value.length > 0) {
+    const lastId = selectedBookIds.value[selectedBookIds.value.length - 1];
+    const book = libraryStore.books.find(b => b.id === lastId);
+    if (book) {
+      lastSelectedBookMachineName.value = book.machine_name;
+    }
+  }
+});
 
 function handleBookSelectionChange(ids: number[]) {
   selectedBookIds.value = ids;
@@ -182,6 +202,19 @@ function handleExcludeTree(section: Section) {
 </script>
 
 <style scoped>
+.picking-op-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.picking-op__summary {
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
 .picking-op {
   display: flex;
   gap: 1rem;

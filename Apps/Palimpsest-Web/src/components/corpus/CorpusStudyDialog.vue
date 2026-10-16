@@ -79,10 +79,16 @@
       <div class="editor-container">
         <PickingOp
           v-if="editingNode && isPicking(editingNode)"
+          :initial-authors="initialAuthors"
+          :initial-books="initialBooks"
+          :initial-sections="initialSections"
           :node="getPickingNode(editingNode)!"
         />
         <SearchOp
           v-else-if="editingNode && isSearch(editingNode)"
+          :initial-authors="initialAuthors"
+          :initial-books="initialBooks"
+          :initial-sections="initialSections"
           :node="editingNode as SequenceOperator"
         />
       </div>
@@ -159,49 +165,6 @@ onMounted(async () => {
     libraryStore.fetchAuthors(),
     libraryStore.fetchBooks()
   ]);
-
-  if (props.initialAuthors?.length || props.initialBooks?.length || props.initialSections?.length) {
-    const initialPicking: PickingOperator = {
-      op_kind: 'picking',
-      steps: []
-    };
-
-    if (props.initialAuthors?.length) {
-      props.initialAuthors.forEach(id => {
-        const author = libraryStore.authors.find(a => a.id === id);
-        initialPicking.steps.push({
-          strategy: 'include',
-          expansion: 'self',
-          properties: 'contents',
-          selection: [{ obj_kind: 'author', id, abbrev: author?.abbrev || '' }]
-        });
-      });
-    }
-
-    if (props.initialBooks?.length) {
-      props.initialBooks.forEach(id => {
-        const book = libraryStore.books.find(b => b.id === id);
-        const author = libraryStore.authors.find(a => a.id === book?.by_author);
-        initialPicking.steps.push({
-          strategy: 'include',
-          expansion: 'self',
-          properties: 'contents',
-          selection: [{ 
-            obj_kind: 'book', 
-            id, 
-            abbrev: book?.abbrev || '',
-            machine_name: book?.machine_name || '',
-            author_abbrev: author?.abbrev || null
-          }]
-        });
-      });
-    }
-
-    initialPickingSteps.value = initialPicking.steps;
-    // if (initialPicking.steps.length > 0) {
-    //   corpusQuery.value.operators.push(initialPicking);
-    // }
-  }
 });
 
 const { draft: question, clear: clearQuestionDraft } = useDraft('palimpsest_draft_corpus_question');
@@ -210,8 +173,6 @@ const error = ref<string | null>(null);
 
 const selectedModel = ref('gpt-5.6-luna');
 const selectedStyle = ref('scholarly');
-
-const initialPickingSteps = ref<PickingStep[]>([]);
 
 function isSearch(node: OperatorNode): node is SequenceOperator {
   return node.op_kind === 'sequence' && node.group_purpose === 'searching';
@@ -262,7 +223,7 @@ function handleAddChapters() {
 function handleAddSearch() {
   const pickingOp: PickingOperator = {
     op_kind: 'picking',
-    steps: JSON.parse(JSON.stringify(initialPickingSteps.value))
+    steps: []
   };
   const conversionOp: ConversionOperator = {
     op_kind: 'conversion',
