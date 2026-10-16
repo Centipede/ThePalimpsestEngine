@@ -2,8 +2,8 @@
   <div class="operator-tree-editor" :style="{ paddingLeft: depth > 0 ? '0.5rem' : '0' }">
     <div class="operator-node-row">
       <div class="operator-node-header">
-        <sl-icon :name="isSearchSequence(node) ? 'search' : getNodeIcon(node)" class="node-icon"></sl-icon>
-        <span class="node-kind">{{ isSearchSequence(node) ? 'Search' : node.op_kind }}</span>
+        <sl-icon :name="isSearch(node) ? 'search' : (isPicking(node) ? 'hand-index-thumb' : getNodeIcon(node))" class="node-icon"></sl-icon>
+        <span class="node-kind">{{ isSearch(node) ? 'Search' : (isPicking(node) ? 'Picking' : node.op_kind) }}</span>
         
         <div class="node-actions">
           <sl-button 
@@ -26,21 +26,21 @@
       </div>
 
       <!-- Search Sequence Unified View -->
-      <div v-if="isSearchSequence(node)" class="search-sequence-content">
+      <div v-if="isSearch(node)" class="search-sequence-content">
         <div class="search-summary">
-          <span class="query-text">"{{ getSearchNode(node as SequenceOperator)?.query }}"</span>
+          <span class="query-text">"{{ getSearchNode(node)?.query }}"</span>
           <span class="scope-text">in specified scope</span>
         </div>
       </div>
 
-      <!-- Picking Operator Content -->
-      <div v-else-if="node.op_kind === 'picking'" class="picking-content">
-        <div v-if="node.steps.length === 0" class="empty-steps">
+      <!-- Picking Content (Raw or Wrapped) -->
+      <div v-else-if="isPicking(node)" class="picking-content">
+        <div v-if="getPickingNode(node)?.steps.length === 0" class="empty-steps">
           No steps in this picking operator.
         </div>
         <div v-else class="picking-steps">
           <div 
-            v-for="(step, index) in node.steps" 
+            v-for="(step, index) in getPickingNode(node)?.steps" 
             :key="index"
             :class="['picking-step', `picking-step--${step.strategy}`]"
           >
@@ -99,16 +99,31 @@ const emit = defineEmits<{
 }>();
 
 function isLogicalOp(node: OperatorNode): node is SequenceOperator | UnionOperator | IntersectionOperator {
-  if (isSearchSequence(node)) return false;
+  if (isSearch(node) || isPicking(node)) return false;
   return ['sequence', 'union', 'intersection'].includes(node.op_kind);
 }
 
-function isSearchSequence(node: OperatorNode): node is SequenceOperator {
-  return node.op_kind === 'sequence' && node.operators.some(op => op.op_kind.startsWith('search_'));
+function isSearch(node: OperatorNode): node is SequenceOperator {
+  return node.op_kind === 'sequence' && node.group_purpose === 'searching';
 }
 
-function getSearchNode(node: SequenceOperator): SearchPostgresFTS | undefined {
-  return node.operators.find(op => op.op_kind.startsWith('search_')) as SearchPostgresFTS;
+function isPicking(node: OperatorNode): boolean {
+  return (node.op_kind === 'sequence' && node.group_purpose === 'picking') || node.op_kind === 'picking';
+}
+
+function getSearchNode(node: OperatorNode): SearchPostgresFTS | undefined {
+  if (node.op_kind === 'sequence') {
+    return node.operators.find(op => op.op_kind.startsWith('search_')) as SearchPostgresFTS;
+  }
+  return undefined;
+}
+
+function getPickingNode(node: OperatorNode): PickingOperator | undefined {
+  if (node.op_kind === 'sequence' && node.group_purpose === 'picking') {
+    return node.operators.find(op => op.op_kind === 'picking') as PickingOperator;
+  }
+  if (node.op_kind === 'picking') return node;
+  return undefined;
 }
 
 function getNodeIcon(node: OperatorNode) {
@@ -157,8 +172,11 @@ function getStepLabel(step: PickingStep) {
   return 'Unknown item';
 }
 
-function removeStep(node: PickingOperator, index: number) {
-  node.steps.splice(index, 1);
+function removeStep(node: OperatorNode, index: number) {
+  const pickingNode = getPickingNode(node);
+  if (pickingNode) {
+    pickingNode.steps.splice(index, 1);
+  }
 }
 
 function deleteChild(node: SequenceOperator | UnionOperator | IntersectionOperator, index: number) {

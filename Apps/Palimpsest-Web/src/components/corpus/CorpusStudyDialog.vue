@@ -78,11 +78,11 @@
     >
       <div class="editor-container">
         <PickingOp
-          v-if="editingNode?.op_kind === 'picking'"
-          :node="editingNode"
+          v-if="editingNode && isPicking(editingNode)"
+          :node="getPickingNode(editingNode)!"
         />
         <SearchOp
-          v-else-if="editingNode && isSearchSequence(editingNode)"
+          v-else-if="editingNode && isSearch(editingNode)"
           :node="editingNode as SequenceOperator"
         />
       </div>
@@ -213,8 +213,20 @@ const selectedStyle = ref('scholarly');
 
 const initialPickingSteps = ref<PickingStep[]>([]);
 
-function isSearchSequence(node: OperatorNode): node is SequenceOperator {
-  return node.op_kind === 'sequence' && node.operators.some(op => op.op_kind.startsWith('search_'));
+function isSearch(node: OperatorNode): node is SequenceOperator {
+  return node.op_kind === 'sequence' && node.group_purpose === 'searching';
+}
+
+function isPicking(node: OperatorNode): boolean {
+  return (node.op_kind === 'sequence' && node.group_purpose === 'picking') || node.op_kind === 'picking';
+}
+
+function getPickingNode(node: OperatorNode): PickingOperator | undefined {
+  if (node.op_kind === 'sequence' && node.group_purpose === 'picking') {
+    return node.operators.find(op => op.op_kind === 'picking') as PickingOperator;
+  }
+  if (node.op_kind === 'picking') return node;
+  return undefined;
 }
 
 function isValidOp(node: OperatorNode | null): boolean {
@@ -225,16 +237,21 @@ function isValidOp(node: OperatorNode | null): boolean {
   }
 
   if (node.op_kind === 'sequence' || node.op_kind === 'union' || node.op_kind === 'intersection') {
-    return node.operators.every(isValidOp);
+    return node.operators.length > 0 && node.operators.every(isValidOp);
   }
 
   return true;
 }
 
 function handleAddChapters() {
-  const newNode: PickingOperator = {
-    op_kind: 'picking',
-    steps: []
+  const newNode: SequenceOperator = {
+    op_kind: 'sequence',
+    group_name: 'Chapters',
+    group_purpose: 'picking',
+    operators: [{
+      op_kind: 'picking',
+      steps: []
+    }]
   };
   isAdding.value = true;
   originalEditingNode.value = null;
@@ -268,6 +285,8 @@ function handleAddSearch() {
 
   const newNode: SequenceOperator = {
     op_kind: 'sequence',
+    group_name: 'search-fts',
+    group_purpose: 'searching',
     operators: [pickingOp, conversionOp, representationOp, searchOp]
   };
   
@@ -313,8 +332,8 @@ function handleEditorAfterHide() {
 
 function getEditorLabel() {
   if (!editingNode.value) return 'Edit Material';
-  if (editingNode.value.op_kind === 'picking') return 'Add Chapters';
-  if (isSearchSequence(editingNode.value)) return 'Add via Search';
+  if (isPicking(editingNode.value)) return 'Add Chapters';
+  if (isSearch(editingNode.value)) return 'Add via Search';
   return 'Edit Operator';
 }
 

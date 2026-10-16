@@ -8,6 +8,7 @@ export type OperatorKind =
     | 'search_postgres_fts'
     | 'search_fuzzy_search'
     | 'search_semantic_vector';
+
 export type ObjectKind =
     | 'author'
     | 'book'
@@ -34,7 +35,9 @@ export interface RepresentationOperator {
 }
 
 export type PickStrategy = 'include' | 'exclude';
+
 export type PickExpansion = 'self' | 'children' | 'descendants';
+
 export type PickProperties =
     | 'section_representation_v1'
     | 'section_summaries_v1'
@@ -108,16 +111,22 @@ export interface SearchSemanticVector extends SearchOperatorBase {
 
 export interface SequenceOperator {
     op_kind: 'sequence';
+    group_name?: string;
+    group_purpose?: string;
     operators: OperatorNode[];
 }
 
 export interface UnionOperator {
     op_kind: 'union';
+    group_name?: string;
+    group_purpose?: string;
     operators: OperatorNode[];
 }
 
 export interface IntersectionOperator {
     op_kind: 'intersection';
+    group_name?: string;
+    group_purpose?: string;
     operators: OperatorNode[];
 }
 

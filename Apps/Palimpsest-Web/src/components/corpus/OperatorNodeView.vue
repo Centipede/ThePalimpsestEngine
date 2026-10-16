@@ -35,7 +35,7 @@
     </template>
 
     <!-- Picking Operator -->
-    <template v-else-if="node.op_kind === 'picking'">
+    <template v-else-if="pickingNode">
       <div class="leaf-header">
         <sl-badge :variant="viewStyle === 'compact' ? 'neutral' : 'success'" :pill="viewStyle !== 'compact'" :size="viewStyle === 'compact' ? 'small' : 'medium'">
           <sl-icon v-if="viewStyle === 'compact'" name="hand-index-thumb" class="compact-icon"></sl-icon>
@@ -43,7 +43,7 @@
         </sl-badge>
       </div>
       <div class="leaf-content">
-        <div v-for="(step, idx) in node.steps" :key="idx" class="picking-step">
+        <div v-for="(step, idx) in pickingNode.steps" :key="idx" class="picking-step">
           <sl-badge :variant="step.strategy === 'include' ? 'success' : 'warning'" size="small">
             {{ step.strategy === 'include' ? '+' : '-' }}
           </sl-badge>
@@ -117,8 +117,11 @@ const props = defineProps<{
 useLibraryStore();
 
 const isSearchSequence = computed(() => 
-  props.node.op_kind === 'sequence' && 
-  (props.node as any).operators?.some((op: any) => op.op_kind.startsWith('search_'))
+  props.node.op_kind === 'sequence' && (props.node as any).group_purpose === 'searching'
+);
+
+const isPickingSequence = computed(() => 
+  props.node.op_kind === 'sequence' && (props.node as any).group_purpose === 'picking'
 );
 
 const searchNodeInSequence = computed(() => {
@@ -126,8 +129,18 @@ const searchNodeInSequence = computed(() => {
   return (props.node as any).operators.find((op: any) => op.op_kind.startsWith('search_'));
 });
 
+const pickingNode = computed(() => {
+  if (props.node.op_kind === 'picking') return props.node as any;
+  if (props.node.op_kind === 'sequence' && (props.node as any).group_purpose === 'picking') {
+    return (props.node as any).operators?.find((op: any) => op.op_kind === 'picking');
+  }
+  return null;
+});
+
 const isGroupOperator = computed(() => 
-  ['sequence', 'union', 'intersection'].includes(props.node.op_kind) && !isSearchSequence.value
+  ['sequence', 'union', 'intersection'].includes(props.node.op_kind) && 
+  !isSearchSequence.value && 
+  !isPickingSequence.value
 );
 
 const groupLabel = computed(() => {
