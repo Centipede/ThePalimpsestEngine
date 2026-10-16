@@ -286,41 +286,50 @@ function getItemLabel(item: PickedObject) {
 
 /* Compact Style */
 .style-compact {
-  display: inline-flex;
+  display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.5rem;
   flex-wrap: wrap;
-  padding: 0.15rem 0.25rem;
-  border: 1px solid var(--sl-color-neutral-100);
-  border-radius: var(--sl-border-radius-small);
-  background-color: var(--sl-color-neutral-50);
-  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--sl-color-neutral-200);
+  border-radius: var(--sl-border-radius-medium);
+  background-color: var(--sl-color-neutral-0);
+  font-size: 0.75rem;
 }
 
 .style-compact .group-children {
-  display: inline-flex;
+  display: flex;
   flex-direction: row;
-  gap: 0.25rem;
+  gap: 0.5rem;
   align-items: center;
-  padding-left: 0.25rem;
+  padding-left: 0.5rem;
   border-left: 1px solid var(--sl-color-neutral-300);
+  flex-wrap: wrap;
 }
 
 .style-compact .leaf-content {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .style-compact .picking-step {
   display: inline-flex;
-  gap: 0.15rem;
+  align-items: center;
+  gap: 0.25rem;
   margin-bottom: 0;
 }
 
 .style-compact .compact-selection-item {
   --sl-border-radius-small: 2px;
+  border: 1px solid var(--sl-color-neutral-200);
+}
+
+.style-compact .expansion-note {
+  font-size: 0.7rem;
+  color: var(--sl-color-neutral-500);
 }
 
 .style-compact .compact-query {
