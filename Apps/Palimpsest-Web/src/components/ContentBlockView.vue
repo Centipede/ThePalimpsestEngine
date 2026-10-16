@@ -186,13 +186,13 @@ const segments = computed(() => {
   return computeSegments(props.block.content_text, allHighlights.value, themeStore.isDark);
 });
 
-watch(
-    segments,
-    (newSegments) => {
-      console.log(`Segments for block ${props.block.path_id}:`, newSegments);
-    },
-    { immediate: true }
-);
+// watch(
+//     segments,
+//     (newSegments) => {
+//       console.log(`Segments for block ${props.block.path_id}:`, newSegments);
+//     },
+//     { immediate: true }
+// );
 
 
 

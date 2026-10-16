@@ -59,9 +59,9 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { useLibraryStore } from '../../stores/library';
-import { apiFetch } from '../../api';
-import type { SearchHit, ContentBlock, SurroundingContentResponse } from '../../types/library';
+import { useLibraryStore } from '../stores/library';
+import { apiFetch } from '../api';
+import type { SearchHit, ContentBlock, SurroundingContentResponse } from '../types/library';
 
 const props = defineProps<{
   hit: SearchHit;

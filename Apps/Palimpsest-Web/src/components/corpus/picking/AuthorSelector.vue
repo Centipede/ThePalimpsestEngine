@@ -5,6 +5,7 @@
       placeholder="Filter authors..."
       size="small"
       clearable
+      @sl-clear="searchQuery = ''"
     >
       <sl-icon name="search" slot="prefix"></sl-icon>
     </sl-input>
@@ -47,8 +48,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useLibraryStore } from '../../stores/library';
-import type { Author } from '../../types/library';
+import { useLibraryStore } from '../../../stores/library';
+import type { Author } from '../../../types/library';
 
 const props = withDefaults(defineProps<{
   selectedIds: number[];

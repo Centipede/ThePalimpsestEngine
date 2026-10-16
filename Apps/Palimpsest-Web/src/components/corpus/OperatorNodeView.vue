@@ -1,7 +1,23 @@
 <template>
   <div class="operator-node-view" :class="[`style-${viewStyle}`, `kind-${node.op_kind}`]">
+    <!-- Search Sequence Unified View -->
+    <template v-if="isSearchSequence">
+      <div class="leaf-header">
+        <sl-badge :variant="viewStyle === 'compact' ? 'neutral' : 'primary'" :pill="viewStyle !== 'compact'" :size="viewStyle === 'compact' ? 'small' : 'medium'">
+          <sl-icon v-if="viewStyle === 'compact'" name="search" class="compact-icon"></sl-icon>
+          Search
+        </sl-badge>
+      </div>
+      <div class="leaf-content">
+        <div class="search-query" :class="{ 'compact-query': viewStyle === 'compact' }">"{{ (searchNodeInSequence as any).query }}"</div>
+        <div class="search-scope-note" v-if="viewStyle !== 'compact'">
+           <sl-icon name="layers-half"></sl-icon> Scoped Search
+        </div>
+      </div>
+    </template>
+
     <!-- Group Operators -->
-    <template v-if="isGroupOperator">
+    <template v-else-if="isGroupOperator">
       <div class="group-header">
         <sl-badge :variant="viewStyle === 'compact' ? 'neutral' : 'primary'" :pill="viewStyle !== 'compact'" :size="viewStyle === 'compact' ? 'small' : 'medium'">
           <sl-icon v-if="viewStyle === 'compact'" :name="groupIcon" class="compact-icon"></sl-icon>
@@ -19,7 +35,7 @@
     </template>
 
     <!-- Picking Operator -->
-    <template v-else-if="node.op_kind === 'picking'">
+    <template v-else-if="pickingNode">
       <div class="leaf-header">
         <sl-badge :variant="viewStyle === 'compact' ? 'neutral' : 'success'" :pill="viewStyle !== 'compact'" :size="viewStyle === 'compact' ? 'small' : 'medium'">
           <sl-icon v-if="viewStyle === 'compact'" name="hand-index-thumb" class="compact-icon"></sl-icon>
@@ -27,7 +43,7 @@
         </sl-badge>
       </div>
       <div class="leaf-content">
-        <div v-for="(step, idx) in node.steps" :key="idx" class="picking-step">
+        <div v-for="(step, idx) in pickingNode.steps" :key="idx" class="picking-step">
           <sl-badge :variant="step.strategy === 'include' ? 'success' : 'warning'" size="small">
             {{ step.strategy === 'include' ? '+' : '-' }}
           </sl-badge>
@@ -98,10 +114,33 @@ const props = defineProps<{
   viewStyle: 'nested' | 'compact';
 }>();
 
-const libraryStore = useLibraryStore();
+useLibraryStore();
+
+const isSearchSequence = computed(() => 
+  props.node.op_kind === 'sequence' && (props.node as any).group_purpose === 'searching'
+);
+
+const isPickingSequence = computed(() => 
+  props.node.op_kind === 'sequence' && (props.node as any).group_purpose === 'picking'
+);
+
+const searchNodeInSequence = computed(() => {
+  if (!isSearchSequence.value) return null;
+  return (props.node as any).operators.find((op: any) => op.op_kind.startsWith('search_'));
+});
+
+const pickingNode = computed(() => {
+  if (props.node.op_kind === 'picking') return props.node as any;
+  if (props.node.op_kind === 'sequence' && (props.node as any).group_purpose === 'picking') {
+    return (props.node as any).operators?.find((op: any) => op.op_kind === 'picking');
+  }
+  return null;
+});
 
 const isGroupOperator = computed(() => 
-  ['sequence', 'union', 'intersection'].includes(props.node.op_kind)
+  ['sequence', 'union', 'intersection'].includes(props.node.op_kind) && 
+  !isSearchSequence.value && 
+  !isPickingSequence.value
 );
 
 const groupLabel = computed(() => {
@@ -238,6 +277,15 @@ function getItemLabel(item: PickedObject) {
   font-size: 0.8rem;
 }
 
+.search-scope-note {
+  font-size: 0.75rem;
+  color: var(--sl-color-neutral-500);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
 .conversion-details {
   display: flex;
   align-items: center;
@@ -251,41 +299,50 @@ function getItemLabel(item: PickedObject) {
 
 /* Compact Style */
 .style-compact {
-  display: inline-flex;
+  display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.5rem;
   flex-wrap: wrap;
-  padding: 0.15rem 0.25rem;
-  border: 1px solid var(--sl-color-neutral-100);
-  border-radius: var(--sl-border-radius-small);
-  background-color: var(--sl-color-neutral-50);
-  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--sl-color-neutral-200);
+  border-radius: var(--sl-border-radius-medium);
+  background-color: var(--sl-color-neutral-0);
+  font-size: 0.75rem;
 }
 
 .style-compact .group-children {
-  display: inline-flex;
+  display: flex;
   flex-direction: row;
-  gap: 0.25rem;
+  gap: 0.5rem;
   align-items: center;
-  padding-left: 0.25rem;
+  padding-left: 0.5rem;
   border-left: 1px solid var(--sl-color-neutral-300);
+  flex-wrap: wrap;
 }
 
 .style-compact .leaf-content {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .style-compact .picking-step {
   display: inline-flex;
-  gap: 0.15rem;
+  align-items: center;
+  gap: 0.25rem;
   margin-bottom: 0;
 }
 
 .style-compact .compact-selection-item {
   --sl-border-radius-small: 2px;
+  border: 1px solid var(--sl-color-neutral-200);
+}
+
+.style-compact .expansion-note {
+  font-size: 0.7rem;
+  color: var(--sl-color-neutral-500);
 }
 
 .style-compact .compact-query {

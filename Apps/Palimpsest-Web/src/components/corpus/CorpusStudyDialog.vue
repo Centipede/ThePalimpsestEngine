@@ -40,11 +40,11 @@
             <div class="panel-header">
               <span class="panel-title">Current material added</span>
               <div class="panel-actions">
-                <sl-button size="small" @click="showScopeSelector = true">
+                <sl-button size="small" @click="handleAddChapters">
                   <sl-icon slot="prefix" name="plus"></sl-icon>
                   Add chapters...
                 </sl-button>
-                <sl-button size="small" disabled>
+                <sl-button size="small" @click="handleAddSearch">
                   <sl-icon slot="prefix" name="search"></sl-icon>
                   Add via search...
                 </sl-button>
@@ -52,23 +52,8 @@
             </div>
 
             <div class="material-list">
-              <div v-if="materials.length === 0" class="empty-material">
-                No material added yet. Use the buttons above to scope your study.
-              </div>
-              <div v-else class="material-items">
-                <div 
-                  v-for="(item, index) in materials" 
-                  :key="index"
-                  :class="['material-item', `material-item--${item.strategy}`]"
-                >
-                  <div class="item-content">
-                    <sl-icon :name="getItemIcon(item)" class="item-icon"></sl-icon>
-                    <span class="item-label">{{ getItemLabel(item) }}</span>
-                  </div>
-                  <sl-button variant="text" size="small" @click="removeMaterial(index)">
-                    <sl-icon name="x-lg" slot="prefix"></sl-icon>
-                  </sl-button>
-                </div>
+              <div class="material-items">
+                <OperatorTreeEditor :node="corpusQuery" @edit-node="handleEditNode" />
               </div>
             </div>
           </div>
@@ -84,19 +69,31 @@
     </div>
 
     <sl-dialog
-      :open="showScopeSelector"
-      label="Add Material"
-      class="scope-selector-dialog"
-      @sl-after-hide="showScopeSelector = false"
+      :open="showEditor"
+      :label="getEditorLabel()"
+      class="editor-dialog"
+      @sl-request-close="handleEditorCancel"
+      @sl-after-hide.self="handleEditorAfterHide"
       style="--width: 90vw;"
     >
-      <CorpusScopeSelector
-        :initial-authors="initialAuthors"
-        :initial-books="initialBooks"
-        :initial-sections="initialSections"
-        @add-materials="handleAddMaterials"
-      />
-      <sl-button slot="footer" variant="primary" @click="showScopeSelector = false">Done</sl-button>
+      <div class="editor-container">
+        <PickingOp
+          v-if="editingNode && isPicking(editingNode)"
+          :initial-authors="initialAuthors"
+          :initial-books="initialBooks"
+          :initial-sections="initialSections"
+          :node="getPickingNode(editingNode)!"
+        />
+        <SearchOp
+          v-else-if="editingNode && isSearch(editingNode)"
+          :initial-authors="initialAuthors"
+          :initial-books="initialBooks"
+          :initial-sections="initialSections"
+          :node="editingNode as SequenceOperator"
+        />
+      </div>
+      <sl-button slot="footer" variant="text" @click="handleEditorCancel">Cancel</sl-button>
+      <sl-button slot="footer" variant="primary" @click="handleEditorDone">Done</sl-button>
     </sl-dialog>
 
     <sl-button slot="footer" variant="primary" @click="$emit('update:open', false)">Close</sl-button>
@@ -104,7 +101,7 @@
       slot="footer" 
       variant="success" 
       :loading="loading"
-      :disabled="materials.length === 0 || !question"
+      :disabled="corpusQuery.operators.length === 0 || !question"
       @click="type === 'talk' ? handleStartTalk() : handleGetAnswer()"
     >
       {{ type === 'talk' ? 'Start Talk' : 'Get Answer' }}
@@ -113,12 +110,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import {ref, onMounted, watch} from 'vue';
 import { useDraft } from '../../composables/useDraft';
-import CorpusScopeSelector from './CorpusScopeSelector.vue';
+import PickingOp from './picking/PickingOp.vue';
+import SearchOp from './SearchOp.vue';
+import OperatorTreeEditor from './OperatorTreeEditor.vue';
 import { apiFetch } from '../../api';
+import { useLibraryStore } from '../../stores/library';
 import type { AskCorpusRequest, AskCorpusResponse, ConverseCorpusRequest, ConverseCorpusResponse } from '../../types/study';
-import type {PickingStep} from "../../types/corpusquery.ts";
+import type {
+  OperatorNode,
+  PickingOperator,
+  UnionOperator,
+  SequenceOperator,
+  ConversionOperator,
+  RepresentationOperator,
+  SearchPostgresFTS, PickingStep
+} from "../../types/corpusquery.ts";
 
 const props = defineProps<{
   open: boolean
@@ -134,8 +142,30 @@ const emit = defineEmits<{
   (e: 'qa-created', id: number): void;
 }>();
 
-const showScopeSelector = ref(false);
-const materials = ref<PickingStep[]>([]);
+const libraryStore = useLibraryStore();
+
+const showEditor = ref(false);
+const isAdding = ref(false);
+const editingNode = ref<OperatorNode | null>(null);
+const originalEditingNode = ref<OperatorNode | null>(null);
+
+const corpusQuery = ref<UnionOperator>({
+  op_kind: 'union',
+  operators: []
+});
+
+watch(corpusQuery, () => {
+  console.log('Corpus query changed:', corpusQuery.value);
+
+}, { deep: true }
+)
+
+onMounted(async () => {
+  await Promise.all([
+    libraryStore.fetchAuthors(),
+    libraryStore.fetchBooks()
+  ]);
+});
 
 const { draft: question, clear: clearQuestionDraft } = useDraft('palimpsest_draft_corpus_question');
 const loading = ref(false);
@@ -144,8 +174,132 @@ const error = ref<string | null>(null);
 const selectedModel = ref('gpt-5.6-luna');
 const selectedStyle = ref('scholarly');
 
+function isSearch(node: OperatorNode): node is SequenceOperator {
+  return node.op_kind === 'sequence' && node.group_purpose === 'searching';
+}
+
+function isPicking(node: OperatorNode): boolean {
+  return (node.op_kind === 'sequence' && node.group_purpose === 'picking') || node.op_kind === 'picking';
+}
+
+function getPickingNode(node: OperatorNode): PickingOperator | undefined {
+  if (node.op_kind === 'sequence' && node.group_purpose === 'picking') {
+    return node.operators.find(op => op.op_kind === 'picking') as PickingOperator;
+  }
+  if (node.op_kind === 'picking') return node;
+  return undefined;
+}
+
+function isValidOp(node: OperatorNode | null): boolean {
+  if (!node) return false;
+
+  if (node.op_kind === 'picking') {
+    return node.steps.length > 0;
+  }
+
+  if (node.op_kind === 'sequence' || node.op_kind === 'union' || node.op_kind === 'intersection') {
+    return node.operators.length > 0 && node.operators.every(isValidOp);
+  }
+
+  return true;
+}
+
+function handleAddChapters() {
+  const newNode: SequenceOperator = {
+    op_kind: 'sequence',
+    group_name: 'Chapters',
+    group_purpose: 'picking',
+    operators: [{
+      op_kind: 'picking',
+      steps: []
+    }]
+  };
+  isAdding.value = true;
+  originalEditingNode.value = null;
+  editingNode.value = newNode;
+  showEditor.value = true;
+}
+
+function handleAddSearch() {
+  const pickingOp: PickingOperator = {
+    op_kind: 'picking',
+    steps: []
+  };
+  const conversionOp: ConversionOperator = {
+    op_kind: 'conversion',
+    conversion: 'descendants',
+    input_types: ['author', 'book', 'section'],
+    output_type: 'section'
+  };
+  const representationOp: RepresentationOperator = {
+    op_kind: 'representation',
+    representation: 'querysets'
+  };
+  const searchOp: SearchPostgresFTS = {
+    op_kind: 'search_postgres_fts',
+    query: '',
+    fts_style: 'plain',
+    num_results: 100,
+    input_types: ['section'],
+    output_type: 'searchblock'
+  };
+
+  const newNode: SequenceOperator = {
+    op_kind: 'sequence',
+    group_name: 'search-fts',
+    group_purpose: 'searching',
+    operators: [pickingOp, conversionOp, representationOp, searchOp]
+  };
+  
+  isAdding.value = true;
+  originalEditingNode.value = null;
+  editingNode.value = newNode;
+  showEditor.value = true;
+}
+
+function handleEditNode(node: OperatorNode) {
+  isAdding.value = false;
+  originalEditingNode.value = node;
+  editingNode.value = JSON.parse(JSON.stringify(node));
+  showEditor.value = true;
+}
+
+function handleEditorDone() {
+  if (!isValidOp(editingNode.value)) {
+    handleEditorCancel();
+    return;
+  }
+
+  if (isAdding.value && editingNode.value) {
+    corpusQuery.value.operators.push(editingNode.value as any);
+  } else if (!isAdding.value && editingNode.value && originalEditingNode.value) {
+    const index = corpusQuery.value.operators.indexOf(originalEditingNode.value as any);
+    if (index !== -1) {
+      corpusQuery.value.operators[index] = editingNode.value as any;
+    }
+  }
+  showEditor.value = false;
+}
+
+function handleEditorCancel() {
+  showEditor.value = false;
+}
+
+function handleEditorAfterHide() {
+  editingNode.value = null;
+  originalEditingNode.value = null;
+  isAdding.value = false;
+}
+
+function getEditorLabel() {
+  if (!editingNode.value) return 'Edit Material';
+  if (isPicking(editingNode.value)) return 'Add Chapters';
+  if (isSearch(editingNode.value)) return 'Add via Search';
+  return 'Edit Operator';
+}
+
 async function handleStartTalk() {
-  if (!question.value || materials.value.length === 0) return;
+  if (!question.value || corpusQuery.value.operators.length === 0) return;
 
   loading.value = true;
   error.value = null;
@@ -153,10 +307,7 @@ async function handleStartTalk() {
   const request: ConverseCorpusRequest = {
     question: question.value,
     system_prompt: `You are a ${selectedStyle.value} assistant. Use the provided context to answer the user question. Format as markdown.`,
-    corpus: {
-      op_kind: 'picking',
-      steps: materials.value
-    }
+    graph: corpusQuery.value
   };
 
   try {
@@ -184,7 +335,7 @@ async function handleStartTalk() {
 
 
 async function handleGetAnswer() {
-  if (!question.value || materials.value.length === 0) return;
+  if (!question.value || corpusQuery.value.operators.length === 0) return;
 
   loading.value = true;
   error.value = null;
@@ -194,10 +345,7 @@ async function handleGetAnswer() {
     style: selectedStyle.value,
     question: question.value,
     system_prompt: `You are a ${selectedStyle.value} assistant. Use the provided passages to answer the question. Format as markdown.`,
-    corpus: {
-      op_kind: 'picking',
-      steps: materials.value
-    }
+    graph: corpusQuery.value
   };
 
   try {
@@ -226,46 +374,6 @@ async function handleGetAnswer() {
 function handleRequestClose(event: Event) {
   event.preventDefault();
 }
-
-function handleAddMaterials(newItems: PickingStep[]) {
-  materials.value.push(...newItems);
-}
-
-function removeMaterial(index: number) {
-  materials.value.splice(index, 1);
-}
-
-function getItemIcon(step: PickingStep) {
-  const item = step.selection[0];
-  if (!item) return 'dot';
-  switch (item.obj_kind) {
-    case 'author': return 'person';
-    case 'book': return 'book';
-    case 'section': return 'hash';
-    default: return 'dot';
-  }
-}
-
-function getItemLabel(step: PickingStep) {
-  const item = step.selection[0];
-  if (!item) return 'Unknown item';
-  
-  if (item.obj_kind === 'author') {
-    return `Author: ${item.abbrev}`;
-  }
-  if (item.obj_kind === 'book') {
-    const authorPart = item.author_abbrev ? ` (${item.author_abbrev})` : '';
-    return `Book: ${item.abbrev}${authorPart}`;
-  }
-  if (item.obj_kind === 'section') {
-    const subtree = step.expansion === 'descendants' ? ' (and subchapters)' : '';
-    const bookPart = item.book_abbrev ? ` in ${item.book_abbrev}` : '';
-    const authorPart = item.author_abbrev ? ` (${item.author_abbrev})` : '';
-    return `Chapter: ${item.path_coded}${bookPart}${authorPart}${subtree}`;
-  }
-  return 'Unknown item';
-}
-
 </script>
 
 <style scoped>
@@ -419,13 +527,9 @@ function getItemLabel(step: PickingStep) {
   opacity: 0.7;
 }
 
-.empty-material {
-  padding: 2rem;
-  font-size: 0.85rem;
-  color: var(--color-text-dimmed);
-  font-style: italic;
-  text-align: center;
-  align-self: center;
+
+.editor-container {
+  min-height: 400px;
 }
 
 .error-panel {

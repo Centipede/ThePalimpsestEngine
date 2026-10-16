@@ -1,52 +1,57 @@
 <template>
-  <div class="corpus-scope-selector">
-    <div class="selector-column">
-      <div class="column-header">Authors</div>
-      <AuthorSelector
-        :selected-ids="selectedAuthorIds"
-        @update:selected-ids="selectedAuthorIds = $event"
-        @include-authors="handleIncludeAuthors"
-        @exclude-authors="handleExcludeAuthors"
-      />
+  <div class="picking-op-container">
+    <div class="picking-op__summary" v-if="props.node.steps.length > 0">
+      <OperatorNodeView :node="props.node" view-style="compact"/>
     </div>
+    <div class="picking-op">
+      <div class="selector-column">
+        <div class="column-header">Authors</div>
+        <AuthorSelector
+          :selected-ids="selectedAuthorIds"
+          @update:selected-ids="selectedAuthorIds = $event"
+          @include-authors="handleIncludeAuthors"
+          @exclude-authors="handleExcludeAuthors"
+        />
+      </div>
 
-    <div class="selector-column">
-      <div class="column-header">Books</div>
-      <BookSelector
-        :author-ids="selectedAuthorIds"
-        :selected-ids="selectedBookIds"
-        @update:selected-ids="handleBookSelectionChange"
-        @include-books="handleIncludeBooks"
-        @exclude-books="handleExcludeBooks"
-      />
-    </div>
+      <div class="selector-column">
+        <div class="column-header">Books</div>
+        <BookSelector
+          :author-ids="selectedAuthorIds"
+          :selected-ids="selectedBookIds"
+          @update:selected-ids="handleBookSelectionChange"
+          @include-books="handleIncludeBooks"
+          @exclude-books="handleExcludeBooks"
+        />
+      </div>
 
-    <div class="selector-column selector-column--wide">
-      <div class="column-header">Chapters</div>
-      <SectionSelector
-        :machine-name="lastSelectedBookMachineName"
-        :selected-ids="initialSections"
-        @include-single="handleIncludeSingle"
-        @include-tree="handleIncludeTree"
-        @exclude-single="handleExcludeSingle"
-        @exclude-tree="handleExcludeTree"
-      />
+      <div class="selector-column selector-column--wide">
+        <div class="column-header">Chapters</div>
+        <SectionSelector
+          :machine-name="lastSelectedBookMachineName"
+          :selected-ids="initialSections"
+          @include-single="handleIncludeSingle"
+          @include-tree="handleIncludeTree"
+          @exclude-single="handleExcludeSingle"
+          @exclude-tree="handleExcludeTree"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, onMounted } from 'vue';
 import AuthorSelector from './AuthorSelector.vue';
 import BookSelector from './BookSelector.vue';
 import SectionSelector from './SectionSelector.vue';
-import { useLibraryStore } from '../../stores/library';
-import type { 
-  Section
-} from '../../types/library';
-import type {PickExpansion, PickingStep, PickStrategy} from "../../types/corpusquery.ts";
+import { useLibraryStore } from '../../../stores/library';
+import type { Section } from '../../../types/library';
+import type { PickingOperator, PickingStep, PickStrategy, PickExpansion } from "../../../types/corpusquery.ts";
+import OperatorNodeView from "../OperatorNodeView.vue";
 
 const props = defineProps<{
+  node: PickingOperator;
   initialAuthors?: number[];
   initialBooks?: number[];
   initialSections?: number[];
@@ -54,23 +59,19 @@ const props = defineProps<{
 
 const libraryStore = useLibraryStore();
 
-const emit = defineEmits<{
-  (e: 'add-materials', items: PickingStep[]): void;
-}>();
-
 const selectedAuthorIds = ref<number[]>(props.initialAuthors || []);
 const selectedBookIds = ref<number[]>(props.initialBooks || []);
 const lastSelectedBookMachineName = ref<string | null>(null);
 
-watch(() => libraryStore.books, (books) => {
-  if (props.initialBooks && props.initialBooks.length > 0 && !lastSelectedBookMachineName.value) {
-    const bookId = props.initialBooks[props.initialBooks.length - 1];
-    const book = books.find(b => b.id === bookId);
+onMounted(() => {
+  if (selectedBookIds.value.length > 0) {
+    const lastId = selectedBookIds.value[selectedBookIds.value.length - 1];
+    const book = libraryStore.books.find(b => b.id === lastId);
     if (book) {
       lastSelectedBookMachineName.value = book.machine_name;
     }
   }
-}, { immediate: true });
+});
 
 function handleBookSelectionChange(ids: number[]) {
   selectedBookIds.value = ids;
@@ -83,6 +84,10 @@ function handleBookSelectionChange(ids: number[]) {
   } else {
     lastSelectedBookMachineName.value = null;
   }
+}
+
+function addSteps(steps: PickingStep[]) {
+  props.node.steps.push(...steps);
 }
 
 function handleIncludeAuthors(ids: number[]) {
@@ -99,7 +104,7 @@ function handleIncludeAuthors(ids: number[]) {
       }]
     };
   });
-  emit('add-materials', items);
+  addSteps(items);
 }
 
 function handleExcludeAuthors(ids: number[]) {
@@ -116,7 +121,7 @@ function handleExcludeAuthors(ids: number[]) {
       }]
     };
   });
-  emit('add-materials', items);
+  addSteps(items);
 }
 
 function handleIncludeBooks(ids: number[]) {
@@ -136,7 +141,7 @@ function handleIncludeBooks(ids: number[]) {
       }]
     };
   });
-  emit('add-materials', items);
+  addSteps(items);
 }
 
 function handleExcludeBooks(ids: number[]) {
@@ -156,13 +161,13 @@ function handleExcludeBooks(ids: number[]) {
       }]
     };
   });
-  emit('add-materials', items);
+  addSteps(items);
 }
 
 function handleSectionAction(section: Section, strategy: PickStrategy, expansion: PickExpansion) {
   const book = libraryStore.books.find(b => b.machine_name === lastSelectedBookMachineName.value);
   const author = libraryStore.authors.find(a => a.id === book?.by_author);
-  
+
   const step: PickingStep = {
     strategy,
     expansion,
@@ -176,7 +181,7 @@ function handleSectionAction(section: Section, strategy: PickStrategy, expansion
       author_abbrev: author?.abbrev || null
     }]
   };
-  emit('add-materials', [step]);
+  addSteps([step]);
 }
 
 function handleIncludeSingle(section: Section) {
@@ -197,22 +202,24 @@ function handleExcludeTree(section: Section) {
 </script>
 
 <style scoped>
-.corpus-scope-selector {
+.picking-op-container {
   display: flex;
-  gap: 0.5rem;
-  height: 60vh;
+  flex-direction: column;
+  gap: 1rem;
   width: 100%;
 }
 
-@media (max-width: 768px) {
-  .corpus-scope-selector {
-    flex-direction: column;
-    height: auto;
-  }
-  
-  .selector-column {
-    height: 300px;
-  }
+.picking-op__summary {
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.picking-op {
+  display: flex;
+  gap: 1rem;
+  height: 400px;
+  width: 100%;
 }
 
 .selector-column {
@@ -227,4 +234,13 @@ function handleExcludeTree(section: Section) {
   flex: 3;
 }
 
+.column-header {
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  letter-spacing: 0.05em;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--color-border);
+}
 </style>

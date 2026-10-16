@@ -43,29 +43,14 @@
       <div class="search-content">
         <div class="search-config">
           <div class="scope-section">
-            <CorpusScopeSelector @add-materials="handleAddMaterials" />
+            <PickingOp :node="corpus" />
           </div>
 
           <div class="materials-section">
             <div class="column-header">Picked material</div>
             <div class="material-list">
-              <div v-if="steps.length === 0" class="empty-material">
-                No material added yet. Use the selector above to scope your search.
-              </div>
-              <div v-else class="material-items">
-                <div
-                    v-for="(item, index) in steps"
-                    :key="index"
-                    :class="['material-item', `material-item--${item.strategy}`]"
-                >
-                  <div class="item-content">
-                    <sl-icon :name="getItemIcon(item)" class="item-icon"></sl-icon>
-                    <span class="item-label">{{ getItemLabel(item) }}</span>
-                  </div>
-                  <sl-button variant="text" size="small" @click="removeMaterial(index)">
-                    <sl-icon name="x-lg" slot="prefix"></sl-icon>
-                  </sl-button>
-                </div>
+              <div class="material-items">
+                <OperatorTreeEditor :node="corpus" />
               </div>
             </div>
           </div>
@@ -111,12 +96,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useHead } from '@unhead/vue';
-import CorpusScopeSelector from '../components/corpus/CorpusScopeSelector.vue';
-import SearchHitItem from '../components/corpus/SearchHitItem.vue';
+import PickingOp from '../components/corpus/picking/PickingOp.vue';
+import OperatorTreeEditor from '../components/corpus/OperatorTreeEditor.vue';
+import SearchHitItem from '../components/SearchHitItem.vue';
 import type { SearchHit, SearchResponse, SearchStyle } from '../types/library';
 import { apiFetch } from '../api';
 import { useLibraryStore } from '../stores/library';
-import type {PickingStep} from "../types/corpusquery.ts";
+import type { PickingOperator } from "../types/corpusquery.ts";
 
 useHead({
   title: 'Search | Palimpsest Engine',
@@ -134,7 +120,10 @@ onMounted(async () => {
 const searchQuery = ref('');
 const numResults = ref(100);
 const searchStyle = ref<SearchStyle>('plain');
-const steps = ref<PickingStep[]>([]);
+const corpus = ref<PickingOperator>({
+  op_kind: 'picking',
+  steps: []
+});
 const isSearching = ref(false);
 const searchResults = ref<SearchHit[]>([]);
 const searchError = ref<string | null>(null);
@@ -166,10 +155,7 @@ async function performSearch() {
         expression: searchQuery.value,
         style: searchStyle.value,
         num_results: numResults.value,
-        corpus: {
-          op_kind: 'picking',
-          steps: steps.value
-        }
+        corpus: corpus.value
       }),
       headers: {
         'Content-Type': 'application/json'
@@ -194,44 +180,6 @@ async function performSearch() {
   }
 }
 
-function handleAddMaterials(newItems: PickingStep[]) {
-  steps.value.push(...newItems);
-}
-
-function removeMaterial(index: number) {
-  steps.value.splice(index, 1);
-}
-
-function getItemIcon(step: PickingStep) {
-  const item = step.selection[0];
-  if (!item) return 'dot';
-  switch (item.obj_kind) {
-    case 'author': return 'person';
-    case 'book': return 'book';
-    case 'section': return 'hash';
-    default: return 'dot';
-  }
-}
-
-function getItemLabel(step: PickingStep) {
-  const item = step.selection[0];
-  if (!item) return 'Unknown item';
-
-  if (item.obj_kind === 'author') {
-    return `Author: ${item.abbrev}`;
-  }
-  if (item.obj_kind === 'book') {
-    const authorPart = item.author_abbrev ? ` (${item.author_abbrev})` : '';
-    return `Book: ${item.abbrev}${authorPart}`;
-  }
-  if (item.obj_kind === 'section') {
-    const subtree = step.expansion === 'descendants' ? ' (and subchapters)' : '';
-    const bookPart = item.book_abbrev ? ` in ${item.book_abbrev}` : '';
-    const authorPart = item.author_abbrev ? ` (${item.author_abbrev})` : '';
-    return `Chapter: ${item.path_coded}${bookPart}${authorPart}${subtree}`;
-  }
-  return 'Unknown item';
-}
 </script>
 
 <style scoped>
@@ -369,55 +317,6 @@ h3 {
   padding: 0.5rem;
 }
 
-.material-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.2rem 0.5rem;
-  border-radius: var(--sl-border-radius-small);
-  font-size: 0.85rem;
-}
-
-.material-item--include {
-  background-color: var(--sl-color-success-50);
-  border-left: 4px solid var(--sl-color-success-600);
-  color: var(--sl-color-success-900);
-}
-
-[data-theme="dark"] .material-item--include {
-  background-color: var(--sl-color-success-950);
-  color: var(--sl-color-success-200);
-}
-
-.material-item--exclude {
-  background-color: var(--sl-color-warning-50);
-  border-left: 4px solid var(--sl-color-warning-600);
-  color: var(--sl-color-warning-900);
-}
-
-[data-theme="dark"] .material-item--exclude {
-  background-color: var(--sl-color-warning-950);
-  color: var(--sl-color-warning-200);
-}
-
-.item-content {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.item-icon {
-  font-size: 1.1rem;
-  opacity: 0.7;
-}
-
-.empty-material {
-  padding: 2rem;
-  font-size: 0.9rem;
-  color: var(--color-text-dimmed);
-  font-style: italic;
-  text-align: center;
-}
 
 @media (max-width: 900px) {
   .search-layout {
