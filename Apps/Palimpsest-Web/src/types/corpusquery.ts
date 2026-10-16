@@ -16,7 +16,8 @@ export type ObjectKind =
     | 'content'
     | 'qa'
     | 'conversation'
-    | 'entity';
+    | 'entity'
+    | 'searchblock';
 
 export type DataKind = 'entitylists' | 'querysets';
 

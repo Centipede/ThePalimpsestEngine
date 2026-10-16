@@ -29,7 +29,26 @@
       <div v-if="isSearch(node)" class="search-sequence-content">
         <div class="search-summary">
           <span class="query-text">"{{ getSearchNode(node)?.query }}"</span>
-          <span class="scope-text">in specified scope</span>
+          <span v-if="!getPickingNode(node) || getPickingNode(node)?.steps.length === 0" class="scope-text">
+            in specified scope
+          </span>
+        </div>
+
+        <!-- Picking steps within Search -->
+        <div v-if="getPickingNode(node) && getPickingNode(node)!.steps.length > 0" class="picking-steps">
+          <div 
+            v-for="(step, index) in getPickingNode(node)?.steps" 
+            :key="index"
+            :class="['picking-step', `picking-step--${step.strategy}`]"
+          >
+            <div class="step-main">
+              <sl-icon :name="getStepIcon(step)" class="step-icon"></sl-icon>
+              <span class="step-label">{{ getStepLabel(step) }}</span>
+            </div>
+            <sl-button variant="text" size="small" @click="removeStep(node, index)">
+              <sl-icon name="x-lg" slot="prefix"></sl-icon>
+            </sl-button>
+          </div>
         </div>
       </div>
 
@@ -119,7 +138,7 @@ function getSearchNode(node: OperatorNode): SearchPostgresFTS | undefined {
 }
 
 function getPickingNode(node: OperatorNode): PickingOperator | undefined {
-  if (node.op_kind === 'sequence' && node.group_purpose === 'picking') {
+  if (node.op_kind === 'sequence') {
     return node.operators.find(op => op.op_kind === 'picking') as PickingOperator;
   }
   if (node.op_kind === 'picking') return node;

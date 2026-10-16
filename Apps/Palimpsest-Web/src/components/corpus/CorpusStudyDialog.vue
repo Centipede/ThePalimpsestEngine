@@ -241,7 +241,7 @@ function handleAddSearch() {
     fts_style: 'plain',
     num_results: 100,
     input_types: ['section'],
-    output_type: 'content'
+    output_type: 'searchblock'
   };
 
   const newNode: SequenceOperator = {
