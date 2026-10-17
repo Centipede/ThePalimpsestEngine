@@ -37,6 +37,10 @@
             Exclude Selected ({{ selectedIds.length }})
           </sl-menu-item>
         </template>
+        <template v-else-if="mode === 'reference'">
+          <sl-menu-item value="add">Add here</sl-menu-item>
+          <sl-menu-item value="move">Move here</sl-menu-item>
+        </template>
       </sl-menu>
     </sl-dropdown>
   </div>
@@ -57,6 +61,7 @@ const emit = defineEmits<{
   (e: 'update:selectedIds', ids: number[]): void;
   (e: 'includeTopics', ids: number[]): void;
   (e: 'excludeTopics', ids: number[]): void;
+  (e: 'reference-action', payload: { action: 'add' | 'move', type: 'topic', item: FlattenedTopic }): void;
 }>();
 
 const libraryStore = useLibraryStore();
@@ -114,6 +119,8 @@ function handleMenuSelect(event: CustomEvent) {
     emit('includeTopics', props.selectedIds);
   } else if (action === 'exclude-selected') {
     emit('excludeTopics', props.selectedIds);
+  } else if ((action === 'add' || action === 'move') && contextTopic.value) {
+    emit('reference-action', { action, type: 'topic', item: contextTopic.value });
   }
 }
 </script>

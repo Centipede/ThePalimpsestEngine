@@ -179,11 +179,14 @@ export interface FacetQuery {
     machine_name_plural: string;
     symbol: string;
     prose_description: string | null;
-    query_block: string | null;
-    query_section: string | null;
+    query_block_lang: Record<string, string> | null;
+    query_section_lang: Record<string, string> | null;
     extraction_schema: Record<string, any> | null;
     by_books: number[];
     by_topics: number[];
+    // Stats included when ?stats=1 is used
+    occurrences_count?: number;
+    contexts_count?: number;
 }
 
 /**

@@ -8,6 +8,7 @@ import { useAuth } from '../composables/useAuth';
 import BookStudyView from "../components/BookStudyView.vue";
 import SectionStudyView from "../components/SectionStudyView.vue";
 import AdminFacets from "../views/AdminFacets.vue";
+import AdminFacetDetail from "../views/AdminFacetDetail.vue";
 
 export const router = createRouter({
     history: createWebHistory(),
@@ -16,6 +17,7 @@ export const router = createRouter({
         { path: '/admin', component: AdminHome,
         children: [
             { path: 'facets', component: AdminFacets },
+            { path: 'facets/:id', component: AdminFacetDetail, props: true },
         ]},
         { path: '/study', component: StudyHome },
         { path: '/search', component: Search },
