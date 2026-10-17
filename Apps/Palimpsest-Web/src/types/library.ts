@@ -33,6 +33,7 @@ export interface Book {
     by_author1: number | null;
     by_author2: number | null;
     by_author3: number | null;
+    topics: number[];
     question_answers?: QuestionAnswerRef[];
     conversations?: ConversationRef[];
     studynotes?: StudyNoteRef[];

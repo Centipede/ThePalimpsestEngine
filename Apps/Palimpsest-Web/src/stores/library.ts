@@ -125,5 +125,30 @@ export const useLibraryStore = defineStore('library', {
         this.isLoadingTopics = false;
       }
     },
+
+    async updateBook(machine_name: string, data: Partial<Book>) {
+      this.isLoadingBooks = true;
+      this.error = '';
+      try {
+        const res = await apiFetch(`/testbooks/api/v1/book/${machine_name}/`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const updatedBook = await res.json();
+        const index = this.books.findIndex((b) => b.machine_name === machine_name);
+        if (index !== -1) {
+          this.books[index] = updatedBook;
+        }
+        return updatedBook;
+      } catch (e) {
+        this.error = e instanceof Error ? e.message : 'Failed to update book';
+        console.error(this.error);
+        throw e;
+      } finally {
+        this.isLoadingBooks = false;
+      }
+    },
   },
 });
