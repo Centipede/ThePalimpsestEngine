@@ -17,6 +17,7 @@ export type ObjectKind =
     | 'qa'
     | 'conversation'
     | 'entity'
+    | 'topic'
     | 'searchblock';
 
 export type DataKind = 'entitylists' | 'querysets';
@@ -70,7 +71,14 @@ export interface PickedSection {
     author_abbrev?: string | null;
 }
 
-export type PickedObject = PickedAuthor | PickedBook | PickedSection;
+export interface PickedTopic {
+    obj_kind: 'topic';
+    id: number;
+    name: string;
+    path: string;
+}
+
+export type PickedObject = PickedTopic | PickedAuthor | PickedBook | PickedSection;
 
 export interface PickingStep {
     strategy: PickStrategy;
@@ -157,6 +165,7 @@ export interface EntityListsData {
     conversation_turn_ids?: number[];
     article_ids?: number[];
     entity_ids?: number[];
+    topic_ids?: number[];
 }
 
 export interface QuerysetsData {

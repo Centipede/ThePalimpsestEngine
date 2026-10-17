@@ -7,12 +7,16 @@ import StudyWorkspaceView from '../views/StudyWorkspaceView.vue';
 import { useAuth } from '../composables/useAuth';
 import BookStudyView from "../components/BookStudyView.vue";
 import SectionStudyView from "../components/SectionStudyView.vue";
+import AdminFacets from "../views/AdminFacets.vue";
 
 export const router = createRouter({
     history: createWebHistory(),
     routes: [
         { path: '/', component: UnauthorizedView },
-        { path: '/admin', component: AdminHome },
+        { path: '/admin', component: AdminHome,
+        children: [
+            { path: 'facets', component: AdminFacets },
+        ]},
         { path: '/study', component: StudyHome },
         { path: '/search', component: Search },
         {

@@ -125,7 +125,7 @@ import type {
   SequenceOperator,
   ConversionOperator,
   RepresentationOperator,
-  SearchPostgresFTS, PickingStep
+  SearchPostgresFTS
 } from "../../types/corpusquery.ts";
 
 const props = defineProps<{

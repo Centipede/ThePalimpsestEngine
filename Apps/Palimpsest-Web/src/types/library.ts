@@ -1,5 +1,16 @@
 import type {ConversationRef, QuestionAnswerRef, StudyNoteRef} from './study';
 
+
+export interface Topic {
+    id: number;
+    path: string;
+    library_code: string | null;
+    name: string;
+    prose_description: string | null;
+    parent: number | null;
+    children: Topic[];
+}
+
 export interface Author {
     id: number;
     full_name: string;
@@ -346,6 +357,3 @@ export interface SurroundingContentItem {
 }
 
 export type SurroundingContentResponse = SurroundingContentItem[];
-
-
-
