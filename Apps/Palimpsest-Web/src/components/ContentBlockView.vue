@@ -9,7 +9,13 @@
     <!-- Left outer: Block link -->
     <div class="block-info">
       <div class="block-link" :title="block.path_id">
-        ¶ {{ index + 1 }}
+        <router-link v-if="blockLink" :to="blockLink" class="block-link__marker">
+          ¶ {{ index + 1 }}
+        </router-link>
+        <span v-else>
+          ¶ {{ index + 1 }}
+        </span>
+
         <sl-icon-button
             :name="isFolded ? 'chevron-right' : 'chevron-down'"
             label="Toggle Content"
@@ -92,6 +98,7 @@ const props = defineProps<{
   foldTrigger?: FoldTrigger;
   availableHighlights?: ToolbarToggle[];
   borderColor?: string;
+  blockLink?: string;
 }>();
 
 const themeStore = useThemeStore();
@@ -230,6 +237,16 @@ const segments = computed(() => {
 .block-link {
   color: var(--sl-color-success-700);
   text-decoration: none;
+}
+
+.block-link__marker {
+  color: inherit;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.block-link__marker:hover {
+  text-decoration: underline;
 }
 
 .block-summary {

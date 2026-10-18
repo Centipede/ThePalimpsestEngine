@@ -183,6 +183,17 @@
 
       </div>
 
+      <div v-if="isStaff" class="section-admin-actions">
+        <div class="admin-actions-spacer-left"></div>
+        <div class="admin-actions-content">
+          <sl-button variant="warning" size="small" @click="gatherSectionInfo">
+            <sl-icon slot="prefix" name="gear"></sl-icon>
+            Gather info
+          </sl-button>
+        </div>
+        <div class="admin-actions-spacer-right"></div>
+      </div>
+
       <TableOfContents
           v-if="showTableOfContents && props.bookStructure"
           :book-structure="props.bookStructure"
@@ -246,76 +257,81 @@
       </header>
 
       <article class="section-study__content">
+        <router-view v-if="route.params.block_id"></router-view>
+        <template v-else>
+          <template v-if="organiseMode === 'linear'">
+            <ContentBlockStudyView
+                v-for="(block, index) in data.contents"
+                :key="block.path_id"
+                :block="block"
+                :index="index"
+                :fold-trigger="paragraphFoldTrigger"
+                :available-highlights="availableHighlights"
+                :border-color="blockBorderColors[index]"
+                :block-link="getBlockLink(block.path_id)"
+            />
+          </template>
 
-        <template v-if="organiseMode === 'linear'">
-          <ContentBlockView
-              v-for="(block, index) in data.contents"
-              :key="block.path_id"
-              :block="block"
-              :index="index"
-              :fold-trigger="paragraphFoldTrigger"
-              :available-highlights="availableHighlights"
-              :border-color="blockBorderColors[index]"
-          />
-        </template>
-
-        <template v-else-if="organiseMode === 'segmented'">
-          <div class="segments-container">
-            <sl-details
-                v-for="(seg, idx) in segmentedData.segments"
-                :key="idx"
-                class="segment-details"
-                :open="!!openSegments[idx]"
-                @sl-show="toggleSegment(idx, true)"
-                @sl-hide="toggleSegment(idx, false)"
-            >
-              <div slot="summary" class="segment-summary-header">
-                <div class="segment-header">
-                  <sl-badge variant="success" pill class="segment-range-badge">{{ seg.ranges.join(', ') }}</sl-badge>
-                  <span class="segment-caption">{{ seg.caption }}</span>
-                </div>
-                <p v-if="seg.description && !openSegments[idx]" class="segment-description">{{ seg.description }}</p>
-              </div>
-
-              <div class="segment-content">
-                <template
-                    v-for="(entry, blockIdx) in seg.blocks"
-                    :key="entry.block.path_id"
-                >
-                  <div
-                      v-if="blockIdx > 0 && entry.index - seg.blocks[blockIdx - 1].index > 1"
-                      class="skipped-blocks"
-                  >
-                    <i>
-                      … skipped {{ skippedBlockCount(entry.index, seg.blocks[blockIdx - 1].index) }}
-                      {{ skippedBlockCount(entry.index, seg.blocks[blockIdx - 1].index) === 1 ? 'paragraph' : 'paragraphs' }} …
-                    </i>
+          <template v-else-if="organiseMode === 'segmented'">
+            <div class="segments-container">
+              <sl-details
+                  v-for="(seg, idx) in segmentedData.segments"
+                  :key="idx"
+                  class="segment-details"
+                  :open="!!openSegments[idx]"
+                  @sl-show="toggleSegment(idx, true)"
+                  @sl-hide="toggleSegment(idx, false)"
+              >
+                <div slot="summary" class="segment-summary-header">
+                  <div class="segment-header">
+                    <sl-badge variant="success" pill class="segment-range-badge">{{ seg.ranges.join(', ') }}</sl-badge>
+                    <span class="segment-caption">{{ seg.caption }}</span>
                   </div>
+                  <p v-if="seg.description && !openSegments[idx]" class="segment-description">{{ seg.description }}</p>
+                </div>
 
-                  <ContentBlockView
-                      :block="entry.block"
-                      :index="entry.index"
-                      :fold-trigger="paragraphFoldTrigger"
-                      :available-highlights="availableHighlights"
-                      :border-color="blockBorderColors[entry.index]"
-                  />
-                </template>
+                <div class="segment-content">
+                  <template
+                      v-for="(entry, blockIdx) in seg.blocks"
+                      :key="entry.block.path_id"
+                  >
+                    <div
+                        v-if="blockIdx > 0 && entry.index - seg.blocks[blockIdx - 1].index > 1"
+                        class="skipped-blocks"
+                    >
+                      <i>
+                        … skipped {{ skippedBlockCount(entry.index, seg.blocks[blockIdx - 1].index) }}
+                        {{ skippedBlockCount(entry.index, seg.blocks[blockIdx - 1].index) === 1 ? 'paragraph' : 'paragraphs' }} …
+                      </i>
+                    </div>
+
+                    <ContentBlockStudyView
+                        :block="entry.block"
+                        :index="entry.index"
+                        :fold-trigger="paragraphFoldTrigger"
+                        :available-highlights="availableHighlights"
+                        :border-color="blockBorderColors[entry.index]"
+                        :block-link="getBlockLink(entry.block.path_id)"
+                    />
+                  </template>
+                </div>
+              </sl-details>
+
+              <div v-if="segmentedData.orphans.length > 0" class="orphans-section">
+                <h3 class="orphans-title">Other Paragraphs</h3>
+                <ContentBlockStudyView
+                    v-for="entry in segmentedData.orphans"
+                    :key="entry.block.path_id"
+                    :block="entry.block"
+                    :index="entry.index"
+                    :fold-trigger="paragraphFoldTrigger"
+                    :available-highlights="availableHighlights"
+                    :border-color="blockBorderColors[entry.index]"
+                    :block-link="getBlockLink(entry.block.path_id)"
+                />
               </div>
-            </sl-details>
-
-            <div v-if="segmentedData.orphans.length > 0" class="orphans-section">
-              <h3 class="orphans-title">Other Paragraphs</h3>
-              <ContentBlockView
-                  v-for="entry in segmentedData.orphans"
-                  :key="entry.block.path_id"
-                  :block="entry.block"
-                  :index="entry.index"
-                  :fold-trigger="paragraphFoldTrigger"
-                  :available-highlights="availableHighlights"
-                  :border-color="blockBorderColors[entry.index]"
-              />
             </div>
-          </div>
+          </template>
         </template>
 
       </article>
@@ -324,8 +340,10 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, ref, watch} from 'vue';
+import {computed, onMounted, ref, watch, provide} from 'vue';
 import { useHead } from '@unhead/vue';
+import { useRoute } from 'vue-router';
+import { useAuth } from '../composables/useAuth';
 import {apiFetch} from '../api';
 import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle} from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
@@ -334,7 +352,7 @@ import SummaryInfoRecord from './SummaryInfoRecord.vue';
 import SectionSegmentsOverview from './SectionSegmentsOverview.vue';
 import SectionEntities from './SectionEntities.vue';
 import SectionFindings from './SectionFindings.vue';
-import ContentBlockView from './ContentBlockView.vue';
+import ContentBlockStudyView from './ContentBlockStudyView.vue';
 import TableOfContents from './TableOfContents.vue';
 import CorpusStudyDialog from './corpus/CorpusStudyDialog.vue';
 import StudyWorkspaceDialog from './studyworkspaces/StudyWorkspaceDialog.vue';
@@ -347,10 +365,14 @@ const props = defineProps<{
   bookStructure?: BookStructure;
 }>();
 
+const { isStaff } = useAuth();
+const route = useRoute();
+
 const facetsStore = useFacetsStore();
 facetsStore.fetchFacetQueries(); // Make ready for content blocks
 
 const data = ref<SectionContentResponse | null>(null);
+provide('sectionData', data);
 const loading = ref(true);
 const error = ref('');
 const organiseMode = ref<'linear' | 'segmented'>('linear');
@@ -530,6 +552,14 @@ function collapseAllSegments() {
 
 function skippedBlockCount(currentIndex: number, previousIndex: number) {
   return Math.max(0, currentIndex - previousIndex - 1);
+}
+
+const getBlockLink = (blockPathId: string) => {
+  return `/study/${props.machineName}/section/${props.sectionPath}/content/${blockPathId}`;
+};
+
+function gatherSectionInfo() {
+  console.log('Gathering section info for:', props.sectionPath);
 }
 
 const parseRanges = (ranges: string[]): Set<number> => {
@@ -918,6 +948,22 @@ watch(() => props.sectionPath, fetchSection);
 
 .section-study__toolbar sl-icon-button {
   font-size: 1.1rem;
+}
+
+.section-admin-actions {
+  display: grid;
+  grid-template-columns: 80px 1fr 4fr 1fr 80px;
+  grid-gap: 0.5rem;
+  margin-top: -0.5rem;
+  margin-bottom: 1rem;
+}
+
+.admin-actions-content {
+  grid-column: 2 / span 3;
+  display: flex;
+  gap: 0.5rem;
+  padding: 8px 0;
+  border-bottom: 2px dashed var(--sl-color-warning-400);
 }
 
 .toolbar-infoleft {

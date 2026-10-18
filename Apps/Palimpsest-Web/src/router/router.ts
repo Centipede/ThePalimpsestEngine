@@ -7,6 +7,7 @@ import StudyWorkspaceView from '../views/StudyWorkspaceView.vue';
 import { useAuth } from '../composables/useAuth';
 import BookStudyView from "../components/BookStudyView.vue";
 import SectionStudyView from "../components/SectionStudyView.vue";
+import BlockOnlyStudyView from "../components/BlockOnlyStudyView.vue";
 import AdminFacets from "../views/AdminFacets.vue";
 import AdminFacetDetail from "../views/AdminFacetDetail.vue";
 
@@ -35,6 +36,12 @@ export const router = createRouter({
                         machineName: route.params.machine_name,
                         sectionPath: route.params.path_full,
                     }),
+                    children: [
+                        {
+                            path: 'content/:block_id',
+                            component: BlockOnlyStudyView,
+                        }
+                    ]
                 },
             ],
         },
