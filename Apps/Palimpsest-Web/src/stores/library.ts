@@ -1,18 +1,28 @@
 import { defineStore } from 'pinia';
 import { apiFetch } from '../api';
-import type { Author, Book } from '../types/library';
+import type { Author, Book, Topic } from '../types/library';
 
 export interface BookByAuthor {
   author: string;
   books: Book[];
 }
 
+export interface FlattenedTopic {
+  id: number;
+  name: string;
+  path: string;
+  fullPath: string;
+  topic: Topic;
+}
+
 export const useLibraryStore = defineStore('library', {
   state: () => ({
     authors: [] as Author[],
     books: [] as Book[],
+    topics: [] as Topic[],
     isLoadingAuthors: false,
     isLoadingBooks: false,
+    isLoadingTopics: false,
     error: '' as string,
   }),
 
@@ -38,6 +48,29 @@ export const useLibraryStore = defineStore('library', {
         author: state.authors.find((a) => a.id === authorId)?.abbrev || 'Unknown',
         books: groupedBooks,
       }));
+    },
+
+    flattenedTopics: (state): FlattenedTopic[] => {
+      const result: FlattenedTopic[] = [];
+
+      const flatten = (topics: Topic[], parentPath = '') => {
+        for (const topic of topics) {
+          const fullPath = parentPath ? `${parentPath} > ${topic.name}` : topic.name;
+          result.push({
+            id: topic.id,
+            name: topic.name,
+            path: topic.path,
+            fullPath,
+            topic,
+          });
+          if (topic.children && topic.children.length > 0) {
+            flatten(topic.children, fullPath);
+          }
+        }
+      };
+
+      flatten(state.topics);
+      return result;
     },
   },
 
@@ -71,6 +104,48 @@ export const useLibraryStore = defineStore('library', {
       } catch (e) {
         this.error = e instanceof Error ? e.message : 'Failed to load books';
         console.error(this.error);
+      } finally {
+        this.isLoadingBooks = false;
+      }
+    },
+
+    async fetchTopics(force = false) {
+      if (!force && this.topics.length > 0) return;
+
+      this.isLoadingTopics = true;
+      this.error = '';
+      try {
+        const res = await apiFetch('/testbooks/api/v1/topic/?tree=1');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        this.topics = await res.json();
+      } catch (e) {
+        this.error = e instanceof Error ? e.message : 'Failed to load topics';
+        console.error(this.error);
+      } finally {
+        this.isLoadingTopics = false;
+      }
+    },
+
+    async updateBook(machine_name: string, data: Partial<Book>) {
+      this.isLoadingBooks = true;
+      this.error = '';
+      try {
+        const res = await apiFetch(`/testbooks/api/v1/book/${machine_name}/`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const updatedBook = await res.json();
+        const index = this.books.findIndex((b) => b.machine_name === machine_name);
+        if (index !== -1) {
+          this.books[index] = updatedBook;
+        }
+        return updatedBook;
+      } catch (e) {
+        this.error = e instanceof Error ? e.message : 'Failed to update book';
+        console.error(this.error);
+        throw e;
       } finally {
         this.isLoadingBooks = false;
       }

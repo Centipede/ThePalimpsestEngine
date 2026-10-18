@@ -183,6 +183,32 @@
 
       </div>
 
+      <div v-if="isStaff" class="section-admin-actions">
+        <div class="admin-actions-spacer-left"></div>
+        <div class="admin-actions-content">
+          <sl-button variant="warning" size="small" :loading="isGathering" @click="gatherSectionInfo">
+            <sl-icon slot="prefix" name="gear"></sl-icon>
+            Gather info
+          </sl-button>
+
+          <sl-divider vertical></sl-divider>
+
+          <div class="minuscule-form">
+            <sl-button variant="danger" size="small" :loading="isRemoving" @click="removeRecords">
+              <sl-icon slot="prefix" name="trash"></sl-icon>
+              Remove
+            </sl-button>
+            <div class="checkbox-group">
+              <sl-checkbox size="small" :checked="deleteOptions.section_summaries" @sl-change="deleteOptions.section_summaries = $event.target.checked">S:sum</sl-checkbox>
+              <sl-checkbox size="small" :checked="deleteOptions.section_findings" @sl-change="deleteOptions.section_findings = $event.target.checked">S:find</sl-checkbox>
+              <sl-checkbox size="small" :checked="deleteOptions.content_summaries" @sl-change="deleteOptions.content_summaries = $event.target.checked">C:sum</sl-checkbox>
+              <sl-checkbox size="small" :checked="deleteOptions.content_findings" @sl-change="deleteOptions.content_findings = $event.target.checked">C:find</sl-checkbox>
+            </div>
+          </div>
+        </div>
+        <div class="admin-actions-spacer-right"></div>
+      </div>
+
       <TableOfContents
           v-if="showTableOfContents && props.bookStructure"
           :book-structure="props.bookStructure"
@@ -246,76 +272,87 @@
       </header>
 
       <article class="section-study__content">
+        <router-view v-if="route.params.block_id"></router-view>
+        <template v-else>
+          <template v-if="organiseMode === 'linear'">
+            <ContentBlockView
+                v-for="(block, index) in data.contents"
+                :key="block.path_id"
+                :block="block"
+                :index="index"
+                :machine-name="props.machineName"
+                :section-path="props.sectionPath"
+                :fold-trigger="paragraphFoldTrigger"
+                :available-highlights="availableHighlights"
+                :border-color="blockBorderColors[index]"
+                :block-link="getBlockLink(block.path_id)"
+            />
+          </template>
 
-        <template v-if="organiseMode === 'linear'">
-          <ContentBlockView
-              v-for="(block, index) in data.contents"
-              :key="block.path_id"
-              :block="block"
-              :index="index"
-              :fold-trigger="paragraphFoldTrigger"
-              :available-highlights="availableHighlights"
-              :border-color="blockBorderColors[index]"
-          />
-        </template>
-
-        <template v-else-if="organiseMode === 'segmented'">
-          <div class="segments-container">
-            <sl-details
-                v-for="(seg, idx) in segmentedData.segments"
-                :key="idx"
-                class="segment-details"
-                :open="!!openSegments[idx]"
-                @sl-show="toggleSegment(idx, true)"
-                @sl-hide="toggleSegment(idx, false)"
-            >
-              <div slot="summary" class="segment-summary-header">
-                <div class="segment-header">
-                  <sl-badge variant="success" pill class="segment-range-badge">{{ seg.ranges.join(', ') }}</sl-badge>
-                  <span class="segment-caption">{{ seg.caption }}</span>
-                </div>
-                <p v-if="seg.description && !openSegments[idx]" class="segment-description">{{ seg.description }}</p>
-              </div>
-
-              <div class="segment-content">
-                <template
-                    v-for="(entry, blockIdx) in seg.blocks"
-                    :key="entry.block.path_id"
-                >
-                  <div
-                      v-if="blockIdx > 0 && entry.index - seg.blocks[blockIdx - 1].index > 1"
-                      class="skipped-blocks"
-                  >
-                    <i>
-                      … skipped {{ skippedBlockCount(entry.index, seg.blocks[blockIdx - 1].index) }}
-                      {{ skippedBlockCount(entry.index, seg.blocks[blockIdx - 1].index) === 1 ? 'paragraph' : 'paragraphs' }} …
-                    </i>
+          <template v-else-if="organiseMode === 'segmented'">
+            <div class="segments-container">
+              <sl-details
+                  v-for="(seg, idx) in segmentedData.segments"
+                  :key="idx"
+                  class="segment-details"
+                  :open="!!openSegments[idx]"
+                  @sl-show="toggleSegment(idx, true)"
+                  @sl-hide="toggleSegment(idx, false)"
+              >
+                <div slot="summary" class="segment-summary-header">
+                  <div class="segment-header">
+                    <sl-badge variant="success" pill class="segment-range-badge">{{ seg.ranges.join(', ') }}</sl-badge>
+                    <span class="segment-caption">{{ seg.caption }}</span>
                   </div>
+                  <p v-if="seg.description && !openSegments[idx]" class="segment-description">{{ seg.description }}</p>
+                </div>
 
-                  <ContentBlockView
-                      :block="entry.block"
-                      :index="entry.index"
-                      :fold-trigger="paragraphFoldTrigger"
-                      :available-highlights="availableHighlights"
-                      :border-color="blockBorderColors[entry.index]"
-                  />
-                </template>
+                <div class="segment-content">
+                  <template
+                      v-for="(entry, blockIdx) in seg.blocks"
+                      :key="entry.block.path_id"
+                  >
+                    <div
+                        v-if="blockIdx > 0 && entry.index - seg.blocks[blockIdx - 1].index > 1"
+                        class="skipped-blocks"
+                    >
+                      <i>
+                        … skipped {{ skippedBlockCount(entry.index, seg.blocks[blockIdx - 1].index) }}
+                        {{ skippedBlockCount(entry.index, seg.blocks[blockIdx - 1].index) === 1 ? 'paragraph' : 'paragraphs' }} …
+                      </i>
+                    </div>
+
+                    <ContentBlockView
+                        :block="entry.block"
+                        :index="entry.index"
+                        :machine-name="props.machineName"
+                        :section-path="props.sectionPath"
+                        :fold-trigger="paragraphFoldTrigger"
+                        :available-highlights="availableHighlights"
+                        :border-color="blockBorderColors[entry.index]"
+                        :block-link="getBlockLink(entry.block.path_id)"
+                    />
+                  </template>
+                </div>
+              </sl-details>
+
+              <div v-if="segmentedData.orphans.length > 0" class="orphans-section">
+                <h3 class="orphans-title">Other Paragraphs</h3>
+                <ContentBlockView
+                    v-for="entry in segmentedData.orphans"
+                    :key="entry.block.path_id"
+                    :block="entry.block"
+                    :index="entry.index"
+                    :machine-name="props.machineName"
+                    :section-path="props.sectionPath"
+                    :fold-trigger="paragraphFoldTrigger"
+                    :available-highlights="availableHighlights"
+                    :border-color="blockBorderColors[entry.index]"
+                    :block-link="getBlockLink(entry.block.path_id)"
+                />
               </div>
-            </sl-details>
-
-            <div v-if="segmentedData.orphans.length > 0" class="orphans-section">
-              <h3 class="orphans-title">Other Paragraphs</h3>
-              <ContentBlockView
-                  v-for="entry in segmentedData.orphans"
-                  :key="entry.block.path_id"
-                  :block="entry.block"
-                  :index="entry.index"
-                  :fold-trigger="paragraphFoldTrigger"
-                  :available-highlights="availableHighlights"
-                  :border-color="blockBorderColors[entry.index]"
-              />
             </div>
-          </div>
+          </template>
         </template>
 
       </article>
@@ -324,8 +361,10 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, ref, watch} from 'vue';
+import {computed, onMounted, ref, watch, provide} from 'vue';
 import { useHead } from '@unhead/vue';
+import { useRoute } from 'vue-router';
+import { useAuth } from '../composables/useAuth';
 import {apiFetch} from '../api';
 import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle} from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
@@ -347,10 +386,14 @@ const props = defineProps<{
   bookStructure?: BookStructure;
 }>();
 
+const { isStaff } = useAuth();
+const route = useRoute();
+
 const facetsStore = useFacetsStore();
 facetsStore.fetchFacetQueries(); // Make ready for content blocks
 
 const data = ref<SectionContentResponse | null>(null);
+provide('sectionData', data);
 const loading = ref(true);
 const error = ref('');
 const organiseMode = ref<'linear' | 'segmented'>('linear');
@@ -457,6 +500,15 @@ const showSummary = ref(false);
 const showSegmentsOverview = ref(false);
 const showEntities = ref(false);
 
+const isGathering = ref(false);
+const isRemoving = ref(false);
+const deleteOptions = ref({
+  section_summaries: false,
+  section_findings: false,
+  content_summaries: false,
+  content_findings: false,
+});
+
 const corpusDialog = ref({
   open: false,
   type: 'ask' as 'ask' | 'talk'
@@ -530,6 +582,44 @@ function collapseAllSegments() {
 
 function skippedBlockCount(currentIndex: number, previousIndex: number) {
   return Math.max(0, currentIndex - previousIndex - 1);
+}
+
+const getBlockLink = (blockPathId: string) => {
+  return `/study/${props.machineName}/section/${props.sectionPath}/content/${blockPathId}`;
+};
+
+async function gatherSectionInfo() {
+  isGathering.value = true;
+  try {
+    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/maintenance/job/start_gather_info`, {
+      method: 'POST'
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  } catch (e) {
+    console.error('Failed to start gather info job:', e);
+  } finally {
+    isGathering.value = false;
+  }
+}
+
+async function removeRecords() {
+  isRemoving.value = true;
+  try {
+    const params = new URLSearchParams();
+    if (deleteOptions.value.section_summaries) params.append('section_summaries', '1');
+    if (deleteOptions.value.section_findings) params.append('section_findings', '1');
+    if (deleteOptions.value.content_summaries) params.append('content_summaries', '1');
+    if (deleteOptions.value.content_findings) params.append('content_findings', '1');
+
+    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/maintenance/remove_records?${params.toString()}`, {
+      method: 'POST'
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  } catch (e) {
+    console.error('Failed to remove records:', e);
+  } finally {
+    isRemoving.value = false;
+  }
 }
 
 const parseRanges = (ranges: string[]): Set<number> => {
@@ -918,6 +1008,39 @@ watch(() => props.sectionPath, fetchSection);
 
 .section-study__toolbar sl-icon-button {
   font-size: 1.1rem;
+}
+
+.section-admin-actions {
+  display: grid;
+  grid-template-columns: 80px 1fr 4fr 1fr 80px;
+  grid-gap: 0.5rem;
+  margin-top: -0.5rem;
+  margin-bottom: 1rem;
+}
+
+.admin-actions-content {
+  grid-column: 2 / span 3;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 8px 0;
+  border-bottom: 2px dashed var(--sl-color-warning-400);
+}
+
+.minuscule-form {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.checkbox-group {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.checkbox-group sl-checkbox::part(label) {
+  font-size: 0.75rem;
+  line-height: 1;
 }
 
 .toolbar-infoleft {

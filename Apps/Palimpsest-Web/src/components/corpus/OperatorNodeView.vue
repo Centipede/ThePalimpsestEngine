@@ -106,7 +106,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { OperatorNode, PickedObject } from '../../types/corpusquery';
+import type {OperatorNode, PickedObject, PickingOperator} from '../../types/corpusquery';
 import { useLibraryStore } from '../../stores/library';
 
 const props = defineProps<{
@@ -129,7 +129,7 @@ const searchNodeInSequence = computed(() => {
   return (props.node as any).operators.find((op: any) => op.op_kind.startsWith('search_'));
 });
 
-const pickingNode = computed(() => {
+const pickingNode = computed<PickingOperator | null>(() => {
   if (props.node.op_kind === 'picking') return props.node as any;
   if (props.node.op_kind === 'sequence' && (props.node as any).group_purpose === 'picking') {
     return (props.node as any).operators?.find((op: any) => op.op_kind === 'picking');
@@ -186,6 +186,7 @@ function getItemIcon(item: PickedObject) {
     case 'author': return 'person';
     case 'book': return 'book';
     case 'section': return 'hash';
+    case 'topic': return 'tag';
     default: return 'dot';
   }
 }
@@ -199,6 +200,9 @@ function getItemLabel(item: PickedObject) {
   }
   if (item.obj_kind === 'section') {
     return item.path_coded;
+  }
+  if (item.obj_kind === 'topic') {
+    return item.name;
   }
   return 'Unknown';
 }

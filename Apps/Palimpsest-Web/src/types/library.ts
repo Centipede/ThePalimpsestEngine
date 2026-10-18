@@ -1,5 +1,16 @@
 import type {ConversationRef, QuestionAnswerRef, StudyNoteRef} from './study';
 
+
+export interface Topic {
+    id: number;
+    path: string;
+    library_code: string | null;
+    name: string;
+    prose_description: string | null;
+    parent: number | null;
+    children: Topic[];
+}
+
 export interface Author {
     id: number;
     full_name: string;
@@ -22,6 +33,7 @@ export interface Book {
     by_author1: number | null;
     by_author2: number | null;
     by_author3: number | null;
+    topics: number[];
     question_answers?: QuestionAnswerRef[];
     conversations?: ConversationRef[];
     studynotes?: StudyNoteRef[];
@@ -168,11 +180,14 @@ export interface FacetQuery {
     machine_name_plural: string;
     symbol: string;
     prose_description: string | null;
-    query_block: string | null;
-    query_section: string | null;
+    query_block_lang: Record<string, string> | null;
+    query_section_lang: Record<string, string> | null;
     extraction_schema: Record<string, any> | null;
     by_books: number[];
     by_topics: number[];
+    // Stats included when ?stats=1 is used
+    occurrences_count?: number;
+    contexts_count?: number;
 }
 
 /**
@@ -346,6 +361,3 @@ export interface SurroundingContentItem {
 }
 
 export type SurroundingContentResponse = SurroundingContentItem[];
-
-
-

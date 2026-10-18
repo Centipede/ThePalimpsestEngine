@@ -26,6 +26,12 @@ import '@shoelace-style/shoelace/dist/components/select/select.js';
 import '@shoelace-style/shoelace/dist/components/option/option.js';
 import '@shoelace-style/shoelace/dist/components/tooltip/tooltip.js';
 import '@shoelace-style/shoelace/dist/components/divider/divider.js';
+import '@shoelace-style/shoelace/dist/components/checkbox/checkbox.js';
+import '@shoelace-style/shoelace/dist/components/card/card.js';
+import '@shoelace-style/shoelace/dist/components/alert/alert.js';
+import '@shoelace-style/shoelace/dist/components/tab-group/tab-group.js';
+import '@shoelace-style/shoelace/dist/components/tab/tab.js';
+import '@shoelace-style/shoelace/dist/components/tab-panel/tab-panel.js';
 
 // Icons are SVGs loaded on demand — serve them from CDN to avoid
 // copying ~1400 files into the static directory.

@@ -5,6 +5,16 @@
     </div>
     <div class="picking-op">
       <div class="selector-column">
+        <div class="column-header">Topics</div>
+        <TopicSelector
+          :selected-ids="selectedTopicIds"
+          @update:selected-ids="selectedTopicIds = $event"
+          @include-topics="handleIncludeTopics"
+          @exclude-topics="handleExcludeTopics"
+        />
+      </div>
+
+      <div class="selector-column">
         <div class="column-header">Authors</div>
         <AuthorSelector
           :selected-ids="selectedAuthorIds"
@@ -44,6 +54,7 @@
 import { ref, onMounted } from 'vue';
 import AuthorSelector from './AuthorSelector.vue';
 import BookSelector from './BookSelector.vue';
+import TopicSelector from './TopicSelector.vue';
 import SectionSelector from './SectionSelector.vue';
 import { useLibraryStore } from '../../../stores/library';
 import type { Section } from '../../../types/library';
@@ -55,10 +66,12 @@ const props = defineProps<{
   initialAuthors?: number[];
   initialBooks?: number[];
   initialSections?: number[];
+  initialTopics?: number[];
 }>();
 
 const libraryStore = useLibraryStore();
 
+const selectedTopicIds = ref<number[]>(props.initialTopics || []);
 const selectedAuthorIds = ref<number[]>(props.initialAuthors || []);
 const selectedBookIds = ref<number[]>(props.initialBooks || []);
 const lastSelectedBookMachineName = ref<string | null>(null);
@@ -88,6 +101,42 @@ function handleBookSelectionChange(ids: number[]) {
 
 function addSteps(steps: PickingStep[]) {
   props.node.steps.push(...steps);
+}
+
+function handleIncludeTopics(ids: number[]) {
+  const items: PickingStep[] = ids.map(id => {
+    const topic = libraryStore.flattenedTopics.find(t => t.id === id);
+    return {
+      strategy: 'include',
+      expansion: 'self',
+      properties: 'contents',
+      selection: [{
+        obj_kind: 'topic',
+        id,
+        name: topic?.name || '',
+        path: topic?.path || ''
+      }]
+    };
+  });
+  addSteps(items);
+}
+
+function handleExcludeTopics(ids: number[]) {
+  const items: PickingStep[] = ids.map(id => {
+    const topic = libraryStore.flattenedTopics.find(t => t.id === id);
+    return {
+      strategy: 'exclude',
+      expansion: 'self',
+      properties: 'contents',
+      selection: [{
+        obj_kind: 'topic',
+        id,
+        name: topic?.name || '',
+        path: topic?.path || ''
+      }]
+    };
+  });
+  addSteps(items);
 }
 
 function handleIncludeAuthors(ids: number[]) {
