@@ -3,7 +3,7 @@
     <div v-if="isStaff" class="admin-actions-row">
       <div class="admin-actions-spacer-left"></div>
       <div class="admin-actions-content">
-        <sl-button variant="warning" size="small" @click="gatherBlockInfo">
+        <sl-button variant="warning" size="small" :loading="isGathering" @click="gatherBlockInfo">
           <sl-icon slot="prefix" name="gear"></sl-icon>
           Gather block info
         </sl-button>
@@ -99,6 +99,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { apiFetch } from '../api';
 import { useAuth } from '../composables/useAuth';
 import type { ContentBlock, ContentSummary, FoldTrigger, Highlight, ContentEmphasis, ToolbarToggle, FindingOccurrence } from '../types/library';
 import { computeSegments, searchForFragments } from '../utils/text';
@@ -108,6 +109,8 @@ import { useFacetsStore } from '../stores/facets';
 const props = defineProps<{
   block: ContentBlock;
   index: number;
+  machineName?: string;
+  sectionPath?: string;
   foldTrigger?: FoldTrigger;
   availableHighlights?: ToolbarToggle[];
   borderColor?: string;
@@ -118,8 +121,25 @@ const themeStore = useThemeStore();
 const facetsStore = useFacetsStore();
 const { isStaff } = useAuth();
 
-function gatherBlockInfo() {
-  console.log('Gathering block info for:', props.block.path_id);
+const isGathering = ref(false);
+
+async function gatherBlockInfo() {
+  if (!props.machineName || !props.sectionPath) {
+    console.error('Missing context for gathering block info');
+    return;
+  }
+
+  isGathering.value = true;
+  try {
+    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/content/${props.block.path_id}/maintenance/job/run_gather_info`, {
+      method: 'POST'
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  } catch (e) {
+    console.error('Failed to gather block info:', e);
+  } finally {
+    isGathering.value = false;
+  }
 }
 
 watch(
