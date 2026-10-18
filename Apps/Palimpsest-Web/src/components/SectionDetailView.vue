@@ -260,7 +260,7 @@
         <router-view v-if="route.params.block_id"></router-view>
         <template v-else>
           <template v-if="organiseMode === 'linear'">
-            <ContentBlockStudyView
+            <ContentBlockView
                 v-for="(block, index) in data.contents"
                 :key="block.path_id"
                 :block="block"
@@ -305,7 +305,7 @@
                       </i>
                     </div>
 
-                    <ContentBlockStudyView
+                    <ContentBlockView
                         :block="entry.block"
                         :index="entry.index"
                         :fold-trigger="paragraphFoldTrigger"
@@ -319,7 +319,7 @@
 
               <div v-if="segmentedData.orphans.length > 0" class="orphans-section">
                 <h3 class="orphans-title">Other Paragraphs</h3>
-                <ContentBlockStudyView
+                <ContentBlockView
                     v-for="entry in segmentedData.orphans"
                     :key="entry.block.path_id"
                     :block="entry.block"
@@ -352,7 +352,7 @@ import SummaryInfoRecord from './SummaryInfoRecord.vue';
 import SectionSegmentsOverview from './SectionSegmentsOverview.vue';
 import SectionEntities from './SectionEntities.vue';
 import SectionFindings from './SectionFindings.vue';
-import ContentBlockStudyView from './ContentBlockStudyView.vue';
+import ContentBlockView from './ContentBlockView.vue';
 import TableOfContents from './TableOfContents.vue';
 import CorpusStudyDialog from './corpus/CorpusStudyDialog.vue';
 import StudyWorkspaceDialog from './studyworkspaces/StudyWorkspaceDialog.vue';

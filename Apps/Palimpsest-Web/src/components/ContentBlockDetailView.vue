@@ -7,7 +7,7 @@
       </router-link>
     </div>
     <div class="block-only-view__focus">
-      <ContentBlockStudyView
+      <ContentBlockView
           :block="block"
           :index="blockIndex"
           :available-highlights="availableHighlights"
@@ -23,7 +23,7 @@
 import { computed, inject, type Ref } from 'vue';
 import { useRoute } from 'vue-router';
 import type { SectionContentResponse, ToolbarToggle } from '../types/library';
-import ContentBlockStudyView from './ContentBlockStudyView.vue';
+import ContentBlockView from './ContentBlockView.vue';
 
 const route = useRoute();
 const sectionData = inject<Ref<SectionContentResponse | null>>('sectionData');

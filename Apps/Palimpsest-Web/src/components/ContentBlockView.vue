@@ -1,92 +1,105 @@
 <template>
-  <div
-      :id="'block-' + block.path_id"
-      class="content-block"
-      :class="{ 'is-folded': isFolded }"
-      :style="{ '--block-border-color': borderColor }"
-  >
-
-    <!-- Left outer: Block link -->
-    <div class="block-info">
-      <div class="block-link" :title="block.path_id">
-        <router-link v-if="blockLink" :to="blockLink" class="block-link__marker">
-          ¶ {{ index + 1 }}
-        </router-link>
-        <span v-else>
-          ¶ {{ index + 1 }}
-        </span>
-
-        <sl-icon-button
-            :name="isFolded ? 'chevron-right' : 'chevron-down'"
-            label="Toggle Content"
-            size="small"
-            @click="isFolded = !isFolded"
-        ></sl-icon-button>
-
+  <div class="content-block-study-view">
+    <div v-if="isStaff" class="admin-actions-row">
+      <div class="admin-actions-spacer-left"></div>
+      <div class="admin-actions-content">
+        <sl-button variant="warning" size="small" @click="gatherBlockInfo">
+          <sl-icon slot="prefix" name="gear"></sl-icon>
+          Gather block info
+        </sl-button>
       </div>
+      <div class="admin-actions-spacer-right"></div>
     </div>
 
-    <template v-if="isFolded">
-      <!-- Center: Wide Summary (folded) -->
-      <div class="block-summary">
-        <div class="block-summary__caption" v-if="summaryCaption"><i>{{ summaryCaption }}</i></div>
-        <div class="block-summary__text" v-if="summaryText"><i>{{ summaryText }}</i></div>
-      </div>
-    </template>
+    <div
+        :id="'block-' + block.path_id"
+        class="content-block"
+        :class="{ 'is-folded': isFolded }"
+        :style="{ '--block-border-color': borderColor }"
+    >
 
-    <template v-else>
-      <!-- Left inner: Summary (caption) -->
-      <div class="block-summary">
-        <div class="block-summary__text" v-if="summaryCaption"><i>{{ summaryCaption }}</i></div>
-      </div>
-
-      <!-- Center: Content -->
-      <div class="block-content">
-        <div class="content-text">
-          <span
-              v-for="segment in segments"
-              :key="`${segment.start}-${segment.end}`"
-              :style="{ backgroundImage: segment.mixedColor }"
-          >
-            {{ block.content_text.slice(segment.start, segment.end) }}
+      <!-- Left outer: Block link -->
+      <div class="block-info">
+        <div class="block-link" :title="block.path_id">
+          <router-link v-if="blockLink" :to="blockLink" class="block-link__marker">
+            ¶ {{ index + 1 }}
+          </router-link>
+          <span v-else>
+            ¶ {{ index + 1 }}
           </span>
+
+          <sl-icon-button
+              :name="isFolded ? 'chevron-right' : 'chevron-down'"
+              label="Toggle Content"
+              size="small"
+              @click="isFolded = !isFolded"
+          ></sl-icon-button>
+
         </div>
       </div>
 
-      <!-- Right inner: Entities -->
-      <div class="block-entities">
-        <div v-for="group in sortedOccurrencesByFacet" :key="group.facetName">
-          <small>
-            <span v-if="group.facet">{{ group.facet.symbol }}</span>
-            <i>
-              <span
-                  v-for="occurrence in group.occurrences"
-                  :key="occurrence.id"
-                  :title="`${occurrence.description}\n\n${occurrence.quote}`"
-              >
-                {{ occurrence.name }}{{ ' ' }}
-              </span>
-            </i>
-          </small>
+      <template v-if="isFolded">
+        <!-- Center: Wide Summary (folded) -->
+        <div class="block-summary">
+          <div class="block-summary__caption" v-if="summaryCaption"><i>{{ summaryCaption }}</i></div>
+          <div class="block-summary__text" v-if="summaryText"><i>{{ summaryText }}</i></div>
         </div>
-      </div>
-    </template>
-
-    <!-- Right outer: Page link -->
-    <div class="block-pages">
-      <template v-if="firstPage || lastPage">
-        p.
-        <span v-if="firstPage">{{ firstPage }}</span>
-        <span v-if="firstPage && lastPage !== firstPage"> - </span>
-        <span v-if="lastPage && lastPage !== firstPage">{{ lastPage }}</span>
       </template>
-    </div>
 
+      <template v-else>
+        <!-- Left inner: Summary (caption) -->
+        <div class="block-summary">
+          <div class="block-summary__text" v-if="summaryCaption"><i>{{ summaryCaption }}</i></div>
+        </div>
+
+        <!-- Center: Content -->
+        <div class="block-content">
+          <div class="content-text">
+            <span
+                v-for="segment in segments"
+                :key="`${segment.start}-${segment.end}`"
+                :style="{ backgroundImage: segment.mixedColor }"
+            >
+              {{ block.content_text.slice(segment.start, segment.end) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Right inner: Entities -->
+        <div class="block-entities">
+          <div v-for="group in sortedOccurrencesByFacet" :key="group.facetName">
+            <small>
+              <span v-if="group.facet">{{ group.facet.symbol }}</span>
+              <i>
+                <span
+                    v-for="occurrence in group.occurrences"
+                    :key="occurrence.id"
+                    :title="`${occurrence.description}\n\n${occurrence.quote}`"
+                >
+                  {{ occurrence.name }}{{ ' ' }}
+                </span>
+              </i>
+            </small>
+          </div>
+        </div>
+      </template>
+
+      <!-- Right outer: Page link -->
+      <div class="block-pages">
+        <template v-if="firstPage || lastPage">
+          p.
+          <span v-if="firstPage">{{ firstPage }}</span>
+          <span v-if="firstPage && lastPage !== firstPage"> - </span>
+          <span v-if="lastPage && lastPage !== firstPage">{{ lastPage }}</span>
+        </template>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useAuth } from '../composables/useAuth';
 import type { ContentBlock, ContentSummary, FoldTrigger, Highlight, ContentEmphasis, ToolbarToggle, FindingOccurrence } from '../types/library';
 import { computeSegments, searchForFragments } from '../utils/text';
 import { useThemeStore } from '../stores/theme';
@@ -103,6 +116,11 @@ const props = defineProps<{
 
 const themeStore = useThemeStore();
 const facetsStore = useFacetsStore();
+const { isStaff } = useAuth();
+
+function gatherBlockInfo() {
+  console.log('Gathering block info for:', props.block.path_id);
+}
 
 watch(
     () => props.availableHighlights,
@@ -133,7 +151,6 @@ const summaryText = computed(() => {
   const record = props.block.inforecords.find(r => r.kind === 'summary');
   return (record?.content_js as ContentSummary)?.summary;
 });
-
 
 const sortedOccurrencesByFacet = computed(() => {
   if (!props.block.finding_occurrences?.length) return [];
@@ -304,7 +321,7 @@ const segments = computed(() => {
 @media (max-width: 1024px) {
   .content-block {
     grid-template-columns: 30px 80px 1fr 1fr 80px 30px;
-    grid-template-areas: 
+    grid-template-areas:
       "toggle info content content pages spacer"
       ". . summary entities . .";
   }
@@ -312,6 +329,35 @@ const segments = computed(() => {
   .content-block.is-folded {
     grid-template-columns: 30px 80px 1fr 80px 30px;
     grid-template-areas: "toggle info summary pages spacer";
+  }
+}
+
+.content-block-study-view {
+  width: 100%;
+}
+
+.admin-actions-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 4fr 1fr 80px;
+  grid-gap: 0.5rem;
+  padding-left: 0.5rem;
+  margin-bottom: 2px;
+}
+
+.admin-actions-content {
+  grid-column: 2 / span 3;
+  display: flex;
+  gap: 0.5rem;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--sl-color-warning-300);
+}
+
+@media (max-width: 1024px) {
+  .admin-actions-row {
+    grid-template-columns: 30px 80px 1fr 1fr 80px 30px;
+  }
+  .admin-actions-content {
+    grid-column: 2 / span 4;
   }
 }
 </style>

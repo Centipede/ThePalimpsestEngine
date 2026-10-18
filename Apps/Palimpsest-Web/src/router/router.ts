@@ -5,9 +5,9 @@ import StudyHome from '../views/StudyHome.vue';
 import Search from '../views/Search.vue';
 import StudyWorkspaceView from '../views/StudyWorkspaceView.vue';
 import { useAuth } from '../composables/useAuth';
-import BookStudyView from "../components/BookStudyView.vue";
-import SectionStudyView from "../components/SectionStudyView.vue";
-import BlockOnlyStudyView from "../components/BlockOnlyStudyView.vue";
+import BookDetailView from "../components/BookDetailView.vue";
+import SectionDetailView from "../components/SectionDetailView.vue";
+import ContentBlockDetailView from "../components/ContentBlockDetailView.vue";
 import AdminFacets from "../views/AdminFacets.vue";
 import AdminFacetDetail from "../views/AdminFacetDetail.vue";
 
@@ -24,14 +24,14 @@ export const router = createRouter({
         { path: '/search', component: Search },
         {
             path: '/study/:machine_name',
-            component: BookStudyView,
+            component: BookDetailView,
             props: (route) => ({
                 machineName: route.params.machine_name,
             }),
             children: [
                 {
                     path: 'section/:path_full',
-                    component: SectionStudyView,
+                    component: SectionDetailView,
                     props: (route) => ({
                         machineName: route.params.machine_name,
                         sectionPath: route.params.path_full,
@@ -39,7 +39,7 @@ export const router = createRouter({
                     children: [
                         {
                             path: 'content/:block_id',
-                            component: BlockOnlyStudyView,
+                            component: ContentBlockDetailView,
                         }
                     ]
                 },
