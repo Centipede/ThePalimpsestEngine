@@ -6,7 +6,16 @@
         <div class="entities-list">
           <template v-for="finding in facetGroup.linked" :key="`linked-${finding.id}`">
             <sl-details class="entity-details">
-              <div slot="summary">{{ facetGroup.symbol }} {{ finding.name }}</div>
+              <div slot="summary" class="summary-content">
+                <span>{{ facetGroup.symbol }} {{ finding.name }}</span>
+                <sl-icon-button
+                  v-if="isStaff"
+                  name="gear"
+                  label="Manage Finding"
+                  class="manage-button"
+                  @click.stop="openToolset(finding, facetGroup.facetName)"
+                ></sl-icon-button>
+              </div>
               <div class="occurrences-list">
                 <template v-if="finding.occurrences.length > 0">
                   <div v-for="occurrence in finding.occurrences" :key="occurrence.id" class="occurrence-item">
@@ -23,7 +32,16 @@
 
           <template v-for="finding in facetGroup.unlinked" :key="`unlinked-${finding.id}`">
             <sl-details class="entity-details">
-              <div slot="summary">{{ facetGroup.symbol }} {{ finding.name }}</div>
+              <div slot="summary" class="summary-content">
+                <span>{{ facetGroup.symbol }} {{ finding.name }}</span>
+                <sl-icon-button
+                  v-if="isStaff"
+                  name="gear"
+                  label="Manage Finding"
+                  class="manage-button"
+                  @click.stop="openToolset(finding, facetGroup.facetName)"
+                ></sl-icon-button>
+              </div>
               <div class="occurrences-list">
                 <template v-if="finding.occurrences.length > 0">
                   <div v-for="occurrence in finding.occurrences" :key="occurrence.id" class="occurrence-item">
@@ -39,18 +57,47 @@
       </div>
     </div>
   </div>
+
+  <FindingToolset
+    v-model:open="showToolset"
+    :finding="selectedFinding"
+    :facet-name="selectedFacetName"
+    @linked="handleLinked"
+  />
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import type { FindingFacetMap } from '../types/library';
+import { computed, ref } from 'vue';
+import type { FindingContext, FindingFacetMap } from '../types/library';
 import { useFacetsStore } from '../stores/facets';
+import { useAuth } from '../composables/useAuth';
+import FindingToolset from './FindingToolset.vue';
 
 const props = defineProps<{
   facets: FindingFacetMap;
 }>();
 
 const facetsStore = useFacetsStore();
+const { isStaff } = useAuth();
+
+const emit = defineEmits<{
+  (e: 'refresh'): void;
+}>();
+
+const selectedFinding = ref<FindingContext | null>(null);
+const selectedFacetName = ref<string | null>(null);
+const showToolset = ref(false);
+
+function openToolset(finding: FindingContext, facetNamePlural: string) {
+  selectedFinding.value = finding;
+  const facet = facetsStore.getFacetByPluralName(facetNamePlural);
+  selectedFacetName.value = facet?.machine_name_singular || facetNamePlural;
+  showToolset.value = true;
+}
+
+function handleLinked() {
+  emit('refresh');
+}
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -114,6 +161,22 @@ const sortedFacets = computed(() => {
 .entity-details::part(header) {
   padding: 0.1rem 0;
   cursor: pointer;
+}
+
+.summary-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding-right: 0.5rem;
+}
+
+.manage-button {
+  font-size: 1rem;
+}
+
+.manage-button::part(base) {
+  padding: 0;
 }
 
 .entity-details::part(header):hover {

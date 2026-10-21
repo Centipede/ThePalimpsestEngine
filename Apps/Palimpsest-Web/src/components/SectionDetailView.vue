@@ -218,7 +218,7 @@
 
       <SummaryInfoRecord v-if="showSummary" :machine-name="props.machineName" :section-path="props.sectionPath"/>
       <SectionSegmentsOverview v-if="showSegmentsOverview && data.section.info?.summary?.paragraph_segments" :segments="data.section.info.summary.paragraph_segments"/>
-      <SectionFindings v-if="showEntities && data.section.info?.facets" :facets="data.section.info.facets"/>
+      <SectionFindings v-if="showEntities && data.section.info?.facets" :facets="data.section.info.facets" @refresh="fetchSection"/>
       <SectionEntities v-else-if="showEntities && data.section.info?.entities" :entities="data.section.info.entities"/>
 
       <CorpusStudyDialog
