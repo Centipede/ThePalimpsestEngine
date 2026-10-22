@@ -218,7 +218,7 @@
 
       <SummaryInfoRecord v-if="showSummary" :machine-name="props.machineName" :section-path="props.sectionPath"/>
       <SectionSegmentsOverview v-if="showSegmentsOverview && data.section.info?.summary?.paragraph_segments" :segments="data.section.info.summary.paragraph_segments"/>
-      <SectionFindings v-if="showEntities && data.section.info?.facets" :facets="data.section.info.facets" @refresh="fetchSection"/>
+      <SectionFindings v-if="showEntities && data.section.info?.facets" :facets="data.section.info.facets" :selected-occurrence="selectedOccurrence" @refresh="fetchSection"/>
       <SectionEntities v-else-if="showEntities && data.section.info?.entities" :entities="data.section.info.entities"/>
 
       <CorpusStudyDialog
@@ -286,6 +286,7 @@
                 :available-highlights="availableHighlights"
                 :border-color="blockBorderColors[index]"
                 :block-link="getBlockLink(block.path_id)"
+                @occurrence-selected="handleOccurrenceSelected"
             />
           </template>
 
@@ -331,6 +332,7 @@
                         :available-highlights="availableHighlights"
                         :border-color="blockBorderColors[entry.index]"
                         :block-link="getBlockLink(entry.block.path_id)"
+                        @occurrence-selected="handleOccurrenceSelected"
                     />
                   </template>
                 </div>
@@ -349,6 +351,7 @@
                     :available-highlights="availableHighlights"
                     :border-color="blockBorderColors[entry.index]"
                     :block-link="getBlockLink(entry.block.path_id)"
+                    @occurrence-selected="handleOccurrenceSelected"
                 />
               </div>
             </div>
@@ -361,12 +364,12 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, ref, watch, provide} from 'vue';
+import {computed, onMounted, ref, watch, provide, nextTick} from 'vue';
 import { useHead } from '@unhead/vue';
 import { useRoute } from 'vue-router';
 import { useAuth } from '../composables/useAuth';
 import {apiFetch} from '../api';
-import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle} from '../types/library';
+import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle, FindingOccurrence} from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import SectionNoteView from './studynotes/SectionNoteView.vue';
 import SummaryInfoRecord from './SummaryInfoRecord.vue';
@@ -400,6 +403,7 @@ const organiseMode = ref<'linear' | 'segmented'>('linear');
 const openSegments = ref<Record<number, boolean>>({});
 const showNotesDrawer = ref(false);
 const paragraphFoldTrigger = ref<FoldTrigger>({ command: 'expand-all', count: 0 });
+const selectedOccurrence = ref<FindingOccurrence | null>(null);
 
 const SEGMENT_COLORS = [
   'var(--sl-color-blue-500)',
@@ -468,6 +472,17 @@ const pageTitle = computed(() => `${data.value?.section.path_coded ?? props.sect
 useHead({
   title: pageTitle
 });
+
+function handleOccurrenceSelected(occ: FindingOccurrence) {
+  selectedOccurrence.value = occ;
+  showEntities.value = true;
+  nextTick(() => {
+    const el = document.querySelector('.section-findings');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  });
+}
 
 function handleToolbarSelect(group: ToolbarToggleGroup, event: Event) {
   const selectedItem = (event as CustomEvent<{ item: HTMLElement }>).detail.item as HTMLElement & {

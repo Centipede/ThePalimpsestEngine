@@ -5,7 +5,12 @@
         <p class="category-title">{{ facetGroup.label }}</p>
         <div class="entities-list">
           <template v-for="finding in facetGroup.linked" :key="`linked-${finding.id}`">
-            <sl-details class="entity-details">
+            <sl-details
+              class="entity-details"
+              :open="openFindingIds[finding.id] || false"
+              @sl-show="openFindingIds[finding.id] = true"
+              @sl-hide="openFindingIds[finding.id] = false"
+            >
               <div slot="summary" class="summary-content">
                 <span>{{ facetGroup.symbol }} {{ finding.name }}</span>
                 <sl-icon-button
@@ -18,7 +23,13 @@
               </div>
               <div class="occurrences-list">
                 <template v-if="finding.occurrences.length > 0">
-                  <div v-for="occurrence in finding.occurrences" :key="occurrence.id" class="occurrence-item">
+                  <div
+                    v-for="occurrence in finding.occurrences"
+                    :key="occurrence.id"
+                    :id="`occurrence-${occurrence.id}`"
+                    class="occurrence-item"
+                    :class="{ 'is-selected': props.selectedOccurrence?.id === occurrence.id }"
+                  >
                     <div class="occurrence-name">{{ occurrence.name }}</div>
                     <blockquote class="occurrence-quote">{{ occurrence.quote }}</blockquote>
                     <div class="occurrence-description">{{ occurrence.description }}</div>
@@ -28,11 +39,16 @@
               </div>
             </sl-details>
           </template>
-          
+
           <hr v-if="facetGroup.linked.length > 0 && facetGroup.unlinked.length > 0" />
 
           <template v-for="finding in facetGroup.unlinked" :key="`unlinked-${finding.id}`">
-            <sl-details class="entity-details">
+            <sl-details
+              class="entity-details"
+              :open="openFindingIds[finding.id] || false"
+              @sl-show="openFindingIds[finding.id] = true"
+              @sl-hide="openFindingIds[finding.id] = false"
+            >
               <div slot="summary" class="summary-content">
                 <span>{{ facetGroup.symbol }} {{ finding.name }}</span>
                 <sl-icon-button
@@ -45,7 +61,13 @@
               </div>
               <div class="occurrences-list">
                 <template v-if="finding.occurrences.length > 0">
-                  <div v-for="occurrence in finding.occurrences" :key="occurrence.id" class="occurrence-item">
+                  <div
+                    v-for="occurrence in finding.occurrences"
+                    :key="occurrence.id"
+                    :id="`occurrence-${occurrence.id}`"
+                    class="occurrence-item"
+                    :class="{ 'is-selected': props.selectedOccurrence?.id === occurrence.id }"
+                  >
                     <div class="occurrence-name">{{ occurrence.name }}</div>
                     <blockquote class="occurrence-quote">{{ occurrence.quote }}</blockquote>
                     <div class="occurrence-description">{{ occurrence.description }}</div>
@@ -69,14 +91,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import type { FindingContext, FindingFacetMap } from '../types/library';
+import { computed, ref, watch, nextTick } from 'vue';
+import type { FindingContext, FindingFacetMap, FindingOccurrence } from '../types/library';
 import { useFacetsStore } from '../stores/facets';
 import { useAuth } from '../composables/useAuth';
 import FindingToolset from './FindingToolset.vue';
 
 const props = defineProps<{
   facets: FindingFacetMap;
+  selectedOccurrence?: FindingOccurrence | null;
 }>();
 
 const facetsStore = useFacetsStore();
@@ -89,6 +112,20 @@ const emit = defineEmits<{
 const selectedFinding = ref<FindingContext | null>(null);
 const selectedFacetName = ref<string | null>(null);
 const showToolset = ref(false);
+
+const openFindingIds = ref<Record<number, boolean>>({});
+
+watch(() => props.selectedOccurrence, (newOcc) => {
+  if (newOcc && newOcc.of_context) {
+    openFindingIds.value[newOcc.of_context] = true;
+    nextTick(() => {
+      const el = document.getElementById(`occurrence-${newOcc.id}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  }
+}, { immediate: true });
 
 function openToolset(finding: FindingContext, facetNamePlural: string) {
   selectedFinding.value = finding;
@@ -195,6 +232,17 @@ const sortedFacets = computed(() => {
   gap: 0.6rem;
   border-left: 2px solid var(--sl-color-neutral-200);
   padding-left: 0.75rem;
+}
+
+.occurrence-item {
+  transition: background-color 0.3s ease;
+}
+
+.occurrence-item.is-selected {
+  background-color: var(--sl-color-primary-50);
+  border-radius: 4px;
+  padding: 0.25rem;
+  margin: -0.25rem;
 }
 
 .occurrence-name {

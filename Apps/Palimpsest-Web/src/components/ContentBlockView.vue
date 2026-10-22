@@ -69,13 +69,15 @@
         <div class="block-entities">
           <div v-for="group in sortedOccurrencesByFacet" :key="group.facetName">
             <small>
-              <span v-if="group.facet">{{ group.facet.symbol }}</span>
               <i>
                 <span
                     v-for="occurrence in group.occurrences"
                     :key="occurrence.id"
+                    class="finding-occurrence-link"
                     :title="`${occurrence.description}\n\n${occurrence.quote}`"
+                    @click="emit('occurrence-selected', occurrence)"
                 >
+                  <span v-if="group.facet" class="finding-occurrence-icon">{{ group.facet.symbol }}</span>
                   {{ occurrence.name }}{{ ' ' }}
                 </span>
               </i>
@@ -115,6 +117,10 @@ const props = defineProps<{
   availableHighlights?: ToolbarToggle[];
   borderColor?: string;
   blockLink?: string;
+}>();
+
+const emit = defineEmits<{
+  (e: 'occurrence-selected', occurrence: FindingOccurrence): void;
 }>();
 
 const themeStore = useThemeStore();
@@ -310,6 +316,21 @@ const segments = computed(() => {
   word-break: break-word;
   white-space: pre-wrap;
   font-weight: 400;
+}
+
+.finding-occurrence-link {
+  cursor: pointer;
+  display: inline-block;
+}
+
+.finding-occurrence-link:hover {
+  text-decoration: underline;
+  color: var(--sl-color-primary-600);
+}
+
+.finding-occurrence-icon {
+  margin-right: 0.1rem;
+  font-style: normal;
 }
 
 .block-content {
