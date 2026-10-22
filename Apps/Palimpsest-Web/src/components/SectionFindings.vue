@@ -19,6 +19,7 @@
               <div class="occurrences-list">
                 <template v-if="finding.occurrences.length > 0">
                   <div v-for="occurrence in finding.occurrences" :key="occurrence.id" class="occurrence-item">
+                    <div class="occurrence-name">{{ occurrence.name }}</div>
                     <blockquote class="occurrence-quote">{{ occurrence.quote }}</blockquote>
                     <div class="occurrence-description">{{ occurrence.description }}</div>
                   </div>
@@ -45,6 +46,7 @@
               <div class="occurrences-list">
                 <template v-if="finding.occurrences.length > 0">
                   <div v-for="occurrence in finding.occurrences" :key="occurrence.id" class="occurrence-item">
+                    <div class="occurrence-name">{{ occurrence.name }}</div>
                     <blockquote class="occurrence-quote">{{ occurrence.quote }}</blockquote>
                     <div class="occurrence-description">{{ occurrence.description }}</div>
                   </div>
@@ -193,6 +195,12 @@ const sortedFacets = computed(() => {
   gap: 0.6rem;
   border-left: 2px solid var(--sl-color-neutral-200);
   padding-left: 0.75rem;
+}
+
+.occurrence-name {
+  font-weight: 600;
+  color: var(--sl-color-neutral-800);
+  margin-bottom: 0.1rem;
 }
 
 .occurrence-quote {
