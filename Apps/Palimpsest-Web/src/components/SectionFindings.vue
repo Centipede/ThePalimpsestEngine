@@ -22,6 +22,13 @@
                 ></sl-icon-button>
               </div>
               <div class="occurrences-list">
+                <div v-if="finding.of_identity?.wikipedia_url" class="identity-link">
+                  <a :href="finding.of_identity.wikipedia_url" target="_blank" rel="noopener">
+                    <sl-icon name="link-45deg"></sl-icon>
+                    Wikipedia
+                    <sl-icon name="box-arrow-up-right" class="external-icon"></sl-icon>
+                  </a>
+                </div>
                 <template v-if="finding.occurrences.length > 0">
                   <div
                     v-for="occurrence in finding.occurrences"
@@ -247,6 +254,32 @@ const sortedFacets = computed<SortedFacetGroup[]>(() => {
   gap: 0.6rem;
   border-left: 2px solid var(--sl-color-neutral-200);
   padding-left: 0.75rem;
+}
+
+.identity-link {
+  margin-bottom: 0.2rem;
+}
+
+.identity-link a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--sl-color-primary-600);
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0.2rem 0.4rem;
+  background-color: var(--sl-color-primary-50);
+  border-radius: var(--sl-border-radius-small);
+  transition: background-color 0.2s ease;
+}
+
+.identity-link a:hover {
+  background-color: var(--sl-color-primary-100);
+}
+
+.external-icon {
+  font-size: 0.7rem;
+  opacity: 0.8;
 }
 
 .occurrence-item {

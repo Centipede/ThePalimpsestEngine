@@ -225,7 +225,7 @@ export interface FindingContext {
     id: number;
     name: string;
     of_facet?: string;
-    of_identity: number | null;
+    of_identity: FoundIdentity | null;
     occurrences: FindingOccurrence[];
 }
 

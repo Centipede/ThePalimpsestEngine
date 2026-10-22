@@ -30,6 +30,18 @@
                     <sl-icon name="box-arrow-up-right"></sl-icon>
                   </a>
                 </p>
+                <p class="identity-wikipedia">
+                  <sl-icon name="globe"></sl-icon>
+                  <strong>Wikipedia:</strong>
+                  <a v-if="foundIdentity.wikipedia_url" :href="foundIdentity.wikipedia_url" target="_blank">
+                    Link
+                    <sl-icon name="box-arrow-up-right"></sl-icon>
+                  </a>
+                  <span v-else>None</span>
+                  <sl-button size="small" circle variant="text" class="retry-button" :loading="retryingWikipedia" @click="retryWikipedia">
+                    <sl-icon name="arrow-clockwise"></sl-icon>
+                  </sl-button>
+                </p>
               </div>
               <div class="identity-actions">
                 <sl-button size="small" @click="showSearch = !showSearch">
@@ -167,6 +179,7 @@ const searchResults = ref<any[]>([]);
 const hasSearched = ref(false);
 const linkingQid = ref<string | null>(null);
 const unlinking = ref(false);
+const retryingWikipedia = ref(false);
 
 const uniqueOccurrenceNames = computed(() => {
   if (!findingContext.value) return [];
@@ -188,17 +201,22 @@ function useSuggestedName(name: string) {
 
 watch(
     () => findingContext.value?.of_identity,
-    async (identityId) => {
+    async (identityData) => {
       foundIdentity.value = null;
 
-      if (!identityId || typeof identityId === 'object') {
+      if (!identityData) {
+        return;
+      }
+
+      if (typeof identityData === 'object') {
+        foundIdentity.value = identityData as FoundIdentity;
         return;
       }
 
       loadingIdentity.value = true;
 
       try {
-        const response = await apiFetch(`/testbooks/api/v1/found-identity/${identityId}`);
+        const response = await apiFetch(`/testbooks/api/v1/found-identity/${identityData}`);
 
         if (response.ok) {
           foundIdentity.value = await response.json() as FoundIdentity;
@@ -276,6 +294,25 @@ async function unlinkIdentity() {
     console.error('Unlinking failed:', error);
   } finally {
     unlinking.value = false;
+  }
+}
+
+async function retryWikipedia() {
+  if (!props.finding) return;
+  retryingWikipedia.value = true;
+  try {
+    const response = await apiFetch(`/testbooks/api/v1/finding-context/${props.finding.id}/retry_wikipedia_link/`, {
+      method: 'POST'
+    });
+
+    if (response.ok) {
+      findingContext.value = await response.json();
+      emit('linked');
+    }
+  } catch (error) {
+    console.error('Wikipedia retry failed:', error);
+  } finally {
+    retryingWikipedia.value = false;
   }
 }
 
@@ -469,6 +506,18 @@ watch(() => props.open, (newVal) => {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+}
+
+.identity-wikipedia a {
+  color: var(--sl-color-primary-600);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.retry-button {
+  margin-left: 0.25rem;
 }
 
 .no-identity {
