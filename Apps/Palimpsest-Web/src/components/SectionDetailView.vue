@@ -218,7 +218,7 @@
 
       <SummaryInfoRecord v-if="showSummary" :machine-name="props.machineName" :section-path="props.sectionPath"/>
       <SectionSegmentsOverview v-if="showSegmentsOverview && data.section.info?.summary?.paragraph_segments" :segments="data.section.info.summary.paragraph_segments"/>
-      <SectionFindings v-if="showEntities && data.section.info?.facets" :facets="data.section.info.facets" :selected-occurrence="selectedOccurrence" @refresh="fetchSection"/>
+      <SectionFindings v-if="showEntities && data.section.info?.facets" :facets="data.section.info.facets" :selected-occurrence="selectedOccurrence" :active-facet-types="activeFacetTypes" @refresh="fetchSection"/>
       <SectionEntities v-else-if="showEntities && data.section.info?.entities" :entities="data.section.info.entities"/>
 
       <CorpusStudyDialog
@@ -284,6 +284,7 @@
                 :section-path="props.sectionPath"
                 :fold-trigger="paragraphFoldTrigger"
                 :available-highlights="availableHighlights"
+                :active-facet-types="activeFacetTypes"
                 :border-color="blockBorderColors[index]"
                 :block-link="getBlockLink(block.path_id)"
                 @occurrence-selected="handleOccurrenceSelected"
@@ -330,6 +331,7 @@
                         :section-path="props.sectionPath"
                         :fold-trigger="paragraphFoldTrigger"
                         :available-highlights="availableHighlights"
+                        :active-facet-types="activeFacetTypes"
                         :border-color="blockBorderColors[entry.index]"
                         :block-link="getBlockLink(entry.block.path_id)"
                         @occurrence-selected="handleOccurrenceSelected"
@@ -349,6 +351,7 @@
                     :section-path="props.sectionPath"
                     :fold-trigger="paragraphFoldTrigger"
                     :available-highlights="availableHighlights"
+                    :active-facet-types="activeFacetTypes"
                     :border-color="blockBorderColors[entry.index]"
                     :block-link="getBlockLink(entry.block.path_id)"
                     @occurrence-selected="handleOccurrenceSelected"
@@ -404,6 +407,7 @@ const openSegments = ref<Record<number, boolean>>({});
 const showNotesDrawer = ref(false);
 const paragraphFoldTrigger = ref<FoldTrigger>({ command: 'expand-all', count: 0 });
 const selectedOccurrence = ref<FindingOccurrence | null>(null);
+const activeFacetTypes = ref<Set<string>>(new Set());
 
 const SEGMENT_COLORS = [
   'var(--sl-color-blue-500)',
@@ -457,12 +461,19 @@ const availableHighlights = ref<ToolbarToggle[]>([
   { name: 'Summary Quotes', type: 'summary-quotes', checked: true },
 ]);
 
-const availableInfoRight = ref<ToolbarToggle[]>([
-  { name: 'People', type: 'people', checked: true },
-  { name: 'Times', type: 'times', checked: true },
-  { name: 'Places', type: 'places', checked: true },
-  { name: 'Works', type: 'works', checked: true },
-]);
+const availableInfoRight = computed<ToolbarToggle[]>(() => {
+  if (!data.value?.section.info?.facets) return [];
+
+  const presentPluralNames = Object.keys(data.value.section.info.facets);
+
+  return facetsStore.facetQueries
+    .filter(fq => presentPluralNames.includes(fq.machine_name_plural))
+    .map(fq => ({
+      name: fq.name,
+      type: fq.machine_name_plural,
+      checked: activeFacetTypes.value.has(fq.machine_name_plural)
+    }));
+});
 
 type ToolbarToggleGroup = 'info-left' | 'highlights' | 'info-right';
 
@@ -506,7 +517,13 @@ function setToolbarToggle(
   } else if (group === 'highlights') {
     availableHighlights.value = update(availableHighlights.value);
   } else {
-    availableInfoRight.value = update(availableInfoRight.value);
+    const next = new Set(activeFacetTypes.value);
+    if (checked) {
+      next.add(type);
+    } else {
+      next.delete(type);
+    }
+    activeFacetTypes.value = next;
   }
 }
 
@@ -980,6 +997,15 @@ async function fetchSection() {
     const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=sum,ents,facets&cont_info=sum,ents,facets&path_coded=1&pageinfo=1`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data.value = await res.json();
+
+    // Initialize active facets
+    const nextFacets = new Set<string>();
+    if (data.value?.section.info?.facets) {
+      Object.keys(data.value.section.info.facets).forEach(pluralName => {
+        nextFacets.add(pluralName);
+      });
+    }
+    activeFacetTypes.value = nextFacets;
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load section';
   } finally {

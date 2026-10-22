@@ -100,6 +100,7 @@ import FindingToolset from './FindingToolset.vue';
 const props = defineProps<{
   facets: FindingFacetMap;
   selectedOccurrence?: FindingOccurrence | null;
+  activeFacetTypes?: Set<string>;
 }>();
 
 const facetsStore = useFacetsStore();
@@ -146,9 +147,14 @@ const hasFindings = computed(() => {
 
 const sortedFacets = computed(() => {
   return Object.entries(props.facets)
-    .filter(([_, findings]) => findings.length > 0)
+    .filter(([facetName, findings]) => {
+      if (findings.length === 0) return false;
+      if (!props.activeFacetTypes) return true;
+      return props.activeFacetTypes.has(facetName);
+    })
     .map(([facetName, findings]) => {
       const facet = facetsStore.getFacetByPluralName(facetName);
+      const order = facetsStore.facetQueries.findIndex(fq => fq.id === facet?.id);
       const linked = findings.filter(f => f.of_identity !== null);
       const unlinked = findings.filter(f => f.of_identity === null);
 
@@ -156,12 +162,12 @@ const sortedFacets = computed(() => {
         facetName,
         label: capitalize(facetName),
         symbol: facet?.symbol || '❓',
-        facetId: facet?.id ?? Infinity,
+        order: order === -1 ? Infinity : order,
         linked,
         unlinked
       };
     })
-    .sort((a, b) => a.facetId - b.facetId);
+    .sort((a, b) => a.order - b.order);
 });
 </script>
 

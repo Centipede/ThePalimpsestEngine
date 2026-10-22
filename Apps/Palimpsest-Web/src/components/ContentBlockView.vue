@@ -115,6 +115,7 @@ const props = defineProps<{
   sectionPath?: string;
   foldTrigger?: FoldTrigger;
   availableHighlights?: ToolbarToggle[];
+  activeFacetTypes?: Set<string>;
   borderColor?: string;
   blockLink?: string;
 }>();
@@ -184,26 +185,30 @@ const sortedOccurrencesByFacet = computed(() => {
   // Group by of_facet
   const groups: Record<string, FindingOccurrence[]> = {};
   props.block.finding_occurrences.forEach(occ => {
-    const facetName = occ.of_facet || 'unknown';
-    if (!groups[facetName]) groups[facetName] = [];
-    groups[facetName].push(occ);
+    const facetNameSingular = occ.of_facet || 'unknown';
+    if (props.activeFacetTypes && facetNameSingular !== 'unknown') {
+      const facet = facetsStore.getFacetBySingularName(facetNameSingular);
+      if (facet && !props.activeFacetTypes.has(facet.machine_name_plural)) {
+        return;
+      }
+    }
+    if (!groups[facetNameSingular]) groups[facetNameSingular] = [];
+    groups[facetNameSingular].push(occ);
   });
 
   // Map to objects with facet info and sort by facet ID
   return Object.entries(groups)
     .map(([facetName, occurrences]) => {
       const facet = facetsStore.getFacetBySingularName(facetName);
+      const order = facetsStore.facetQueries.findIndex(fq => fq.id === facet?.id);
       return {
         facetName,
         facet,
+        order: order === -1 ? Infinity : order,
         occurrences
       };
     })
-    .sort((a, b) => {
-      const idA = a.facet?.id ?? Infinity;
-      const idB = b.facet?.id ?? Infinity;
-      return idA - idB;
-    });
+    .sort((a, b) => a.order - b.order);
 });
 
 const firstPage = computed(() => {
