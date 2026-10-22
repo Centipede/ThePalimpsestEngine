@@ -56,10 +56,10 @@ import AuthorSelector from './AuthorSelector.vue';
 import BookSelector from './BookSelector.vue';
 import TopicSelector from './TopicSelector.vue';
 import SectionSelector from './SectionSelector.vue';
-import { useLibraryStore } from '../../../stores/library';
-import type { Section } from '../../../types/library';
-import type { PickingOperator, PickingStep, PickStrategy, PickExpansion } from "../../../types/corpusquery.ts";
-import OperatorNodeView from "../OperatorNodeView.vue";
+import { useLibraryStore } from '../../../../stores/library';
+import type { Section } from '../../../../types/library';
+import type { PickingOperator, PickingStep, PickStrategy, PickExpansion } from "../../../../types/corpusquery.ts";
+import OperatorNodeView from "../../OperatorNodeView.vue";
 
 const props = defineProps<{
   node: PickingOperator;

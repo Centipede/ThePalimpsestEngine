@@ -45,8 +45,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { SequenceOperator, PickingOperator, SearchPostgresFTS } from "../../types/corpusquery.ts";
-import PickingOp from './picking/PickingOp.vue';
+import type { SequenceOperator, PickingOperator, SearchPostgresFTS } from "../../../../types/corpusquery.ts";
+import PickingOp from '../pickingpanels/PickingOp.vue';
 
 const props = defineProps<{
   node: SequenceOperator;

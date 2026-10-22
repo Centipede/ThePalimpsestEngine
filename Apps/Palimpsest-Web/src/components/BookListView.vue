@@ -109,7 +109,7 @@ import { storeToRefs } from 'pinia';
 import { useLibraryStore } from '../stores/library';
 import { useAuth } from '../composables/useAuth';
 import type { Book } from '../types/library';
-import TopicSelector from './corpus/picking/TopicSelector.vue';
+import TopicSelector from './corpus/panels/pickingpanels/TopicSelector.vue';
 
 const store = useLibraryStore();
 const { isStaff } = useAuth();

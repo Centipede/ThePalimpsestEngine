@@ -44,8 +44,8 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
 import {type FlattenedTopic, useLibraryStore} from '../../stores/library';
-import BookSelector from '../corpus/picking/BookSelector.vue';
-import TopicSelector from '../corpus/picking/TopicSelector.vue';
+import BookSelector from '../corpus/panels/pickingpanels/BookSelector.vue';
+import TopicSelector from '../corpus/panels/pickingpanels/TopicSelector.vue';
 import type {Book} from "../../types/library.ts";
 
 const props = defineProps<{

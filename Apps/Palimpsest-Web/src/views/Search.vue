@@ -96,7 +96,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useHead } from '@unhead/vue';
-import PickingOp from '../components/corpus/picking/PickingOp.vue';
+import PickingOp from '../components/corpus/panels/pickingpanels/PickingOp.vue';
 import OperatorTreeEditor from '../components/corpus/OperatorTreeEditor.vue';
 import SearchHitItem from '../components/SearchHitItem.vue';
 import type { SearchHit, SearchResponse, SearchStyle } from '../types/library';
