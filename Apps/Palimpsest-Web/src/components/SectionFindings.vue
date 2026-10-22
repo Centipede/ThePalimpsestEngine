@@ -7,9 +7,9 @@
           <template v-for="finding in facetGroup.linked" :key="`linked-${finding.id}`">
             <sl-details
               class="entity-details"
-              :open="openFindingIds[finding.id] || false"
-              @sl-show="openFindingIds[finding.id] = true"
-              @sl-hide="openFindingIds[finding.id] = false"
+              :open="props.openFindingIds[finding.id] || false"
+              @sl-show="emit('update:openFindingIds', { ...props.openFindingIds, [finding.id]: true })"
+              @sl-hide="emit('update:openFindingIds', { ...props.openFindingIds, [finding.id]: false })"
             >
               <div slot="summary" class="summary-content">
                 <span>{{ facetGroup.symbol }} {{ finding.name }}</span>
@@ -45,9 +45,9 @@
           <template v-for="finding in facetGroup.unlinked" :key="`unlinked-${finding.id}`">
             <sl-details
               class="entity-details"
-              :open="openFindingIds[finding.id] || false"
-              @sl-show="openFindingIds[finding.id] = true"
-              @sl-hide="openFindingIds[finding.id] = false"
+              :open="props.openFindingIds[finding.id] || false"
+              @sl-show="emit('update:openFindingIds', { ...props.openFindingIds, [finding.id]: true })"
+              @sl-hide="emit('update:openFindingIds', { ...props.openFindingIds, [finding.id]: false })"
             >
               <div slot="summary" class="summary-content">
                 <span>{{ facetGroup.symbol }} {{ finding.name }}</span>
@@ -101,6 +101,7 @@ const props = defineProps<{
   facets: FindingFacetMap;
   selectedOccurrence?: FindingOccurrence | null;
   activeFacetTypes?: Set<string>;
+  openFindingIds: Record<number, boolean>;
 }>();
 
 const facetsStore = useFacetsStore();
@@ -108,17 +109,16 @@ const { isStaff } = useAuth();
 
 const emit = defineEmits<{
   (e: 'refresh'): void;
+  (e: 'update:openFindingIds', val: Record<number, boolean>): void;
 }>();
 
 const selectedFinding = ref<FindingContext | null>(null);
 const selectedFacetName = ref<string | null>(null);
 const showToolset = ref(false);
 
-const openFindingIds = ref<Record<number, boolean>>({});
-
 watch(() => props.selectedOccurrence, (newOcc) => {
   if (newOcc && newOcc.of_context) {
-    openFindingIds.value[newOcc.of_context] = true;
+    emit('update:openFindingIds', { ...props.openFindingIds, [newOcc.of_context]: true });
     nextTick(() => {
       const el = document.getElementById(`occurrence-${newOcc.id}`);
       if (el) {
@@ -141,11 +141,20 @@ function handleLinked() {
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+type SortedFacetGroup = {
+  facetName: string;
+  label: string;
+  symbol: string;
+  order: number;
+  linked: FindingContext[];
+  unlinked: FindingContext[];
+};
+
 const hasFindings = computed(() => {
   return Object.values(props.facets).some(findings => findings.length > 0);
 });
 
-const sortedFacets = computed(() => {
+const sortedFacets = computed<SortedFacetGroup[]>(() => {
   return Object.entries(props.facets)
     .filter(([facetName, findings]) => {
       if (findings.length === 0) return false;

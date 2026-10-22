@@ -218,7 +218,7 @@
 
       <SummaryInfoRecord v-if="showSummary" :machine-name="props.machineName" :section-path="props.sectionPath"/>
       <SectionSegmentsOverview v-if="showSegmentsOverview && data.section.info?.summary?.paragraph_segments" :segments="data.section.info.summary.paragraph_segments"/>
-      <SectionFindings v-if="showEntities && data.section.info?.facets" :facets="data.section.info.facets" :selected-occurrence="selectedOccurrence" :active-facet-types="activeFacetTypes" @refresh="fetchSection"/>
+      <SectionFindings v-if="showEntities && data.section.info?.facets" :facets="data.section.info.facets" v-model:open-finding-ids="openFindingIds" :selected-occurrence="selectedOccurrence" :active-facet-types="activeFacetTypes" @refresh="fetchSection"/>
       <SectionEntities v-else-if="showEntities && data.section.info?.entities" :entities="data.section.info.entities"/>
 
       <CorpusStudyDialog
@@ -284,6 +284,7 @@
                 :section-path="props.sectionPath"
                 :fold-trigger="paragraphFoldTrigger"
                 :available-highlights="availableHighlights"
+                :active-finding-contexts="activeFindingContexts"
                 :active-facet-types="activeFacetTypes"
                 :border-color="blockBorderColors[index]"
                 :block-link="getBlockLink(block.path_id)"
@@ -331,6 +332,7 @@
                         :section-path="props.sectionPath"
                         :fold-trigger="paragraphFoldTrigger"
                         :available-highlights="availableHighlights"
+                        :active-finding-contexts="activeFindingContexts"
                         :active-facet-types="activeFacetTypes"
                         :border-color="blockBorderColors[entry.index]"
                         :block-link="getBlockLink(entry.block.path_id)"
@@ -351,6 +353,7 @@
                     :section-path="props.sectionPath"
                     :fold-trigger="paragraphFoldTrigger"
                     :available-highlights="availableHighlights"
+                    :active-finding-contexts="activeFindingContexts"
                     :active-facet-types="activeFacetTypes"
                     :border-color="blockBorderColors[entry.index]"
                     :block-link="getBlockLink(entry.block.path_id)"
@@ -372,7 +375,7 @@ import { useHead } from '@unhead/vue';
 import { useRoute } from 'vue-router';
 import { useAuth } from '../composables/useAuth';
 import {apiFetch} from '../api';
-import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle, FindingOccurrence} from '../types/library';
+import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle, FindingOccurrence, ActiveFindingContext} from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import SectionNoteView from './studynotes/SectionNoteView.vue';
 import SummaryInfoRecord from './SummaryInfoRecord.vue';
@@ -409,6 +412,9 @@ const paragraphFoldTrigger = ref<FoldTrigger>({ command: 'expand-all', count: 0 
 const selectedOccurrence = ref<FindingOccurrence | null>(null);
 const activeFacetTypes = ref<Set<string>>(new Set());
 
+const openFindingIds = ref<Record<number, boolean>>({});
+const findingColorsMap = ref<Record<number, string>>({});
+
 const SEGMENT_COLORS = [
   'var(--sl-color-blue-500)',
   'var(--sl-color-red-500)',
@@ -418,6 +424,19 @@ const SEGMENT_COLORS = [
   'var(--sl-color-pink-500)',
   'var(--sl-color-orange-500)',
   'var(--sl-color-teal-500)',
+];
+
+const FINDING_COLORS = [
+  '#FFB3BA', // Pastel Red
+  '#BAFFC9', // Pastel Green
+  '#BAE1FF', // Pastel Blue
+  '#FFFFBA', // Pastel Yellow
+  '#FFDFBA', // Pastel Orange
+  '#E0BBE4', // Pastel Purple
+  '#957DAD', // Muted Purple
+  '#D291BC', // Muted Pink
+  '#FEC8D8', // Light Pink
+  '#FFDFD3', // Peach
 ];
 
 const rootSegmentsWithColors = computed(() => {
@@ -460,6 +479,39 @@ const availableInfoLeft = ref<ToolbarToggle[]>([
 const availableHighlights = ref<ToolbarToggle[]>([
   { name: 'Summary Quotes', type: 'summary-quotes', checked: true },
 ]);
+
+const activeFindingContexts = computed<ActiveFindingContext[]>(() => {
+  if (!data.value?.section.info?.facets) return [];
+  const active: ActiveFindingContext[] = [];
+  const facets = data.value.section.info.facets;
+
+  Object.values(facets).flat().forEach(context => {
+    if (openFindingIds.value[context.id]) {
+      if (!findingColorsMap.value[context.id]) {
+        const assignedColors = Object.values(findingColorsMap.value);
+        const nextColor = FINDING_COLORS.find(c => !assignedColors.includes(c)) || FINDING_COLORS[active.length % FINDING_COLORS.length];
+        findingColorsMap.value[context.id] = nextColor;
+      }
+      active.push({ context, color: findingColorsMap.value[context.id] });
+    }
+  });
+  return active;
+});
+
+watch(activeFindingContexts, (newActive) => {
+  const current = availableHighlights.value;
+  const nonFindingHighlights = current.filter(h => !h.type.startsWith('finding-'));
+  const findingHighlights = newActive.map(afc => {
+    const type = `finding-${afc.context.id}`;
+    const existing = current.find(h => h.type === type);
+    return {
+      name: afc.context.name,
+      type,
+      checked: existing ? existing.checked : true
+    };
+  });
+  availableHighlights.value = [...nonFindingHighlights, ...findingHighlights];
+}, { immediate: true });
 
 const availableInfoRight = computed<ToolbarToggle[]>(() => {
   if (!data.value?.section.info?.facets) return [];
@@ -997,6 +1049,7 @@ async function fetchSection() {
     const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=sum,ents,facets&cont_info=sum,ents,facets&path_coded=1&pageinfo=1`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data.value = await res.json();
+    openFindingIds.value = {};
 
     // Initialize active facets
     const nextFacets = new Set<string>();

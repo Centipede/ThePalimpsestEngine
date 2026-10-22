@@ -229,6 +229,11 @@ export interface FindingContext {
     occurrences: FindingOccurrence[];
 }
 
+export interface ActiveFindingContext {
+    context: FindingContext;
+    color: string;
+}
+
 /**
  * Grouped findings by facet (e.g., "people", "places").
  */

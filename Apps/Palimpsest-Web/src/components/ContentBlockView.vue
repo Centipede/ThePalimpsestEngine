@@ -103,7 +103,7 @@
 import { computed, ref, watch } from 'vue';
 import { apiFetch } from '../api';
 import { useAuth } from '../composables/useAuth';
-import type { ContentBlock, ContentSummary, FoldTrigger, Highlight, ContentEmphasis, ToolbarToggle, FindingOccurrence } from '../types/library';
+import type { ContentBlock, ContentSummary, FoldTrigger, Highlight, ContentEmphasis, ToolbarToggle, FindingOccurrence, ActiveFindingContext } from '../types/library';
 import { computeSegments, searchForFragments } from '../utils/text';
 import { useThemeStore } from '../stores/theme';
 import { useFacetsStore } from '../stores/facets';
@@ -115,6 +115,7 @@ const props = defineProps<{
   sectionPath?: string;
   foldTrigger?: FoldTrigger;
   availableHighlights?: ToolbarToggle[];
+  activeFindingContexts?: ActiveFindingContext[];
   activeFacetTypes?: Set<string>;
   borderColor?: string;
   blockLink?: string;
@@ -231,7 +232,21 @@ const allHighlights = computed(() => {
       return searchForFragments(props.block.content_text, content.fragment, content.color || 'green');
     }) : [];
 
-  const entityQuoteHighlights: Highlight[] = []; // Placeholder
+  const entityQuoteHighlights: Highlight[] = [];
+  if (props.activeFindingContexts) {
+    props.activeFindingContexts.forEach(afc => {
+      const isEnabled = props.availableHighlights?.find(h => h.type === `finding-${afc.context.id}`)?.checked ?? true;
+      if (!isEnabled) return;
+
+      const occurrences = afc.context.occurrences.filter(occ => occ.in_block_pi === props.block.path_id);
+      occurrences.forEach(occ => {
+        if (occ.quote) {
+          entityQuoteHighlights.push(...searchForFragments(props.block.content_text, occ.quote, afc.color));
+        }
+      });
+    });
+  }
+
   const studyAnnotations: Highlight[] = []; // Placeholder
 
   return [...emphasisHighlights, ...entityQuoteHighlights, ...studyAnnotations];
