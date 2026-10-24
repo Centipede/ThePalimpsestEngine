@@ -126,17 +126,19 @@ const handleUpdate = async (data: any) => {
   try {
     const payload: any = {};
 
-    if ('prose_description' in data) {
-      payload.prose_description = data.prose_description;
-    }
+    const fields = [
+      'prose_description',
+      'query_block',
+      'query_section_one',
+      'query_section_few',
+      'query_section_many'
+    ];
 
-    if ('query_block_lang' in data) {
-      payload.query_block_lang = data.query_block_lang;
-    }
-
-    if ('query_section_lang' in data) {
-      payload.query_section_lang = data.query_section_lang;
-    }
+    fields.forEach(field => {
+      if (field in data) {
+        payload[field] = data[field];
+      }
+    });
 
     const updated = await facetsStore.updateFacetQuery(facet.value.id, payload);
     facet.value = updated;
