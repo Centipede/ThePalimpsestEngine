@@ -30,6 +30,7 @@
                   type="checkbox"
                   size="small"
                   :checked="item.checked"
+                  :disabled="item.disabled"
               >
                 {{ item.name }}
               </sl-menu-item>
@@ -135,6 +136,7 @@
                   type="checkbox"
                   size="small"
                   :checked="item.checked"
+                  :disabled="item.disabled"
               >
                 {{ item.name }}
               </sl-menu-item>
@@ -154,6 +156,7 @@
                   type="checkbox"
                   size="small"
                   :checked="item.checked"
+                  :disabled="item.disabled"
               >
                 {{ item.name }}
               </sl-menu-item>
@@ -218,8 +221,8 @@
 
       <SummaryInfoRecord v-if="showSummary" :machine-name="props.machineName" :section-path="props.sectionPath"/>
       <SectionSegmentsOverview v-if="showSegmentsOverview && data.section.info?.summary?.paragraph_segments" :segments="data.section.info.summary.paragraph_segments"/>
-      <SectionFindings v-if="showEntities && data.section.info?.facets" :facets="data.section.info.facets" v-model:open-finding-ids="openFindingIds" :selected-occurrence="selectedOccurrence" :active-facet-types="activeFacetTypes" @refresh="fetchSection"/>
-      <SectionEntities v-else-if="showEntities && data.section.info?.entities" :entities="data.section.info.entities"/>
+      <SectionFindings v-if="showEntities && Object.keys(mergedFacets).length" :facets="mergedFacets" v-model:open-finding-ids="openFindingIds" :selected-occurrence="selectedOccurrence" :active-facet-types="activeFacetTypes" @refresh="fetchSection"/>
+      <SectionEntitiesObsolete v-else-if="showEntities && data.section.info?.entities" :entities="data.section.info.entities"/>
 
       <CorpusStudyDialog
           v-model:open="corpusDialog.open"
@@ -375,12 +378,12 @@ import { useHead } from '@unhead/vue';
 import { useRoute } from 'vue-router';
 import { useAuth } from '../composables/useAuth';
 import {apiFetch} from '../api';
-import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle, FindingOccurrence, ActiveFindingContext} from '../types/library';
+import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle, FindingOccurrence, ActiveFindingContext, FacetQuery, FindingFacetMap} from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import SectionNoteView from './studynotes/SectionNoteView.vue';
 import SummaryInfoRecord from './SummaryInfoRecord.vue';
 import SectionSegmentsOverview from './SectionSegmentsOverview.vue';
-import SectionEntities from './SectionEntities.vue';
+import SectionEntitiesObsolete from './SectionEntitiesObsolete.vue';
 import SectionFindings from './SectionFindings.vue';
 import ContentBlockView from './ContentBlockView.vue';
 import TableOfContents from './TableOfContents.vue';
@@ -480,10 +483,58 @@ const availableHighlights = ref<ToolbarToggle[]>([
   { name: 'Summary Quotes', type: 'summary-quotes', checked: true },
 ]);
 
+const mergedFacets = computed<FindingFacetMap>(() => {
+  const facets: FindingFacetMap = {};
+  if (!data.value) return facets;
+
+  // 1. Start with section-level findings
+  if (data.value.section.info?.facets) {
+    for (const [facetName, contexts] of Object.entries(data.value.section.info.facets)) {
+      facets[facetName] = contexts.map(c => ({
+        ...c,
+        occurrences: [...c.occurrences]
+      }));
+    }
+  }
+
+  // 2. Add block-level findings if they're not already present
+  data.value.contents.forEach(block => {
+    block.finding_occurrences?.forEach(occ => {
+      if (!occ.of_facet) return;
+      const facet = facetsStore.getFacetBySingularName(occ.of_facet);
+      if (!facet) return;
+
+      const pluralName = facet.machine_name_plural;
+      if (!facets[pluralName]) {
+        facets[pluralName] = [];
+      }
+
+      if (occ.of_context) {
+        let context = facets[pluralName].find(c => c.id === occ.of_context);
+        if (!context) {
+          context = {
+            id: occ.of_context,
+            name: occ.name,
+            of_facet: pluralName,
+            of_identity: null,
+            occurrences: []
+          };
+          facets[pluralName].push(context);
+        }
+        // Ensure this occurrence is in the context's occurrences list
+        if (!context.occurrences.some(o => o.id === occ.id)) {
+          context.occurrences.push(occ);
+        }
+      }
+    });
+  });
+
+  return facets;
+});
+
 const activeFindingContexts = computed<ActiveFindingContext[]>(() => {
-  if (!data.value?.section.info?.facets) return [];
   const active: ActiveFindingContext[] = [];
-  const facets = data.value.section.info.facets;
+  const facets = mergedFacets.value;
 
   Object.values(facets).flat().forEach(context => {
     if (openFindingIds.value[context.id]) {
@@ -514,16 +565,19 @@ watch(activeFindingContexts, (newActive) => {
 }, { immediate: true });
 
 const availableInfoRight = computed<ToolbarToggle[]>(() => {
-  if (!data.value?.section.info?.facets) return [];
+  const cascadedApps = props.bookStructure?.book.facet_applications_cascaded ?? [];
+  const facetIds = [...new Set(cascadedApps.map(app => app.facet).filter((id): id is number => id !== null))];
 
-  const presentPluralNames = Object.keys(data.value.section.info.facets);
+  const presentPluralNames = Object.keys(mergedFacets.value);
 
-  return facetsStore.facetQueries
-    .filter(fq => presentPluralNames.includes(fq.machine_name_plural))
+  return facetIds
+    .map(id => facetsStore.getFacetById(id))
+    .filter((fq): fq is FacetQuery => !!fq)
     .map(fq => ({
       name: fq.name,
       type: fq.machine_name_plural,
-      checked: activeFacetTypes.value.has(fq.machine_name_plural)
+      checked: activeFacetTypes.value.has(fq.machine_name_plural),
+      disabled: !presentPluralNames.includes(fq.machine_name_plural)
     }));
 });
 
@@ -1058,6 +1112,19 @@ async function fetchSection() {
         nextFacets.add(pluralName);
       });
     }
+
+    // Also check content blocks for findings that might not be in section info
+    data.value?.contents.forEach(block => {
+      block.finding_occurrences?.forEach(occ => {
+        if (occ.of_facet) {
+          const facet = facetsStore.getFacetBySingularName(occ.of_facet);
+          if (facet) {
+            nextFacets.add(facet.machine_name_plural);
+          }
+        }
+      });
+    });
+
     activeFacetTypes.value = nextFacets;
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load section';

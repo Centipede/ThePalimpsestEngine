@@ -382,6 +382,7 @@ export interface ToolbarToggle {
     name: string;
     type: string;
     checked: boolean;
+    disabled?: boolean;
 }
 
 export interface SectionSummaryNew {
