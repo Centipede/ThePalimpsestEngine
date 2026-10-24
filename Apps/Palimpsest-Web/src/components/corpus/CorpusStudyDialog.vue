@@ -112,8 +112,8 @@
 <script setup lang="ts">
 import {ref, onMounted, watch} from 'vue';
 import { useDraft } from '../../composables/useDraft';
-import PickingOp from './picking/PickingOp.vue';
-import SearchOp from './SearchOp.vue';
+import PickingOp from './panels/pickingpanels/PickingOp.vue';
+import SearchOp from './panels/searchpanels/SearchOp.vue';
 import OperatorTreeEditor from './OperatorTreeEditor.vue';
 import { apiFetch } from '../../api';
 import { useLibraryStore } from '../../stores/library';

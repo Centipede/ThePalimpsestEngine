@@ -8,19 +8,39 @@
           <span class="hit-author">by {{ authorName }}</span>
         </div>
         <div class="hit-section-row">
-          <router-link
-            v-if="book"
-            :to="{
-              path: `/study/${book.machine_name}/section/${hit.in_section.path_full}`,
-              query: hit.in_block_pi ? { pi: hit.in_block_pi } : {}
-            }"
-            class="hit-section"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <span class="hit-section-link-text">{{ hit.in_section.title }} <sl-icon name="box-arrow-in-right"></sl-icon></span>
-          </router-link>
-          <span v-else class="hit-section">{{ hit.in_section.title }}</span>
+          <div v-if="loadingAncestors" class="hit-ancestors-loading">
+            <sl-spinner></sl-spinner> Loading path...
+          </div>
+          <sl-breadcrumb v-else-if="ancestors && book" class="hit-breadcrumb">
+            <sl-breadcrumb-item v-for="ancestor in ancestors" :key="ancestor.path_full">
+              <router-link
+                :to="{
+                  path: `/study/${book.machine_name}/section/${ancestor.path_full}`,
+                  query: ancestor.path_full === hit.in_section.path_full && hit.in_block_pi ? { pi: hit.in_block_pi } : {}
+                }"
+                class="breadcrumb-link"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {{ ancestor.title_text || (ancestor as any).title }}
+              </router-link>
+            </sl-breadcrumb-item>
+          </sl-breadcrumb>
+          <template v-else>
+            <router-link
+              v-if="book"
+              :to="{
+                path: `/study/${book.machine_name}/section/${hit.in_section.path_full}`,
+                query: hit.in_block_pi ? { pi: hit.in_block_pi } : {}
+              }"
+              class="hit-section"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span class="hit-section-link-text">{{ hit.in_section.title }} <sl-icon name="box-arrow-in-right"></sl-icon></span>
+            </router-link>
+            <span v-else class="hit-section">{{ hit.in_section.title }}</span>
+          </template>
           <span class="hit-page">Page {{ hit.on_page }}</span>
         </div>
       </div>
@@ -61,7 +81,7 @@
 import { computed, ref } from 'vue';
 import { useLibraryStore } from '../stores/library';
 import { apiFetch } from '../api';
-import type { SearchHit, ContentBlock, SurroundingContentResponse } from '../types/library';
+import type { SearchHit, ContentBlock, SurroundingContentResponse, Section } from '../types/library';
 
 const props = defineProps<{
   hit: SearchHit;
@@ -94,6 +114,29 @@ const loadingUp = ref(false);
 const loadingDown = ref(false);
 const hasMoreUp = ref(true);
 const hasMoreDown = ref(true);
+const ancestors = ref<Section[] | null>(props.hit.in_section.ancestors || null);
+const loadingAncestors = ref(false);
+
+async function fetchAncestors() {
+  if (ancestors.value || loadingAncestors.value || !book.value) return;
+
+  loadingAncestors.value = true;
+  const bookMn = book.value.machine_name;
+  const secPf = props.hit.in_section.path_full;
+
+  try {
+    const url = `/testbooks/api/v1/book/${bookMn}/section/${secPf}/?ancestors=1`;
+    const res = await apiFetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+    ancestors.value = data.section.ancestors;
+  } catch (e) {
+    console.error('Failed to fetch ancestors:', e);
+  } finally {
+    loadingAncestors.value = false;
+  }
+}
 
 async function fetchSurrounding(direction: 'up' | 'down') {
   if (!book.value || !props.hit.in_block_pi) return;
@@ -150,10 +193,12 @@ async function fetchSurrounding(direction: 'up' | 'down') {
 
 function expandUp() {
   fetchSurrounding('up');
+  fetchAncestors();
 }
 
 function expandDown() {
   fetchSurrounding('down');
+  fetchAncestors();
 }
 </script>
 
@@ -235,6 +280,29 @@ a.hit-section:hover {
   text-decoration: underline;
 }
 
+.hit-breadcrumb {
+  --sl-spacing-x-small: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.breadcrumb-link {
+  color: var(--color-accent, var(--sl-color-primary-600));
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.breadcrumb-link:hover {
+  text-decoration: underline;
+}
+
+.hit-ancestors-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
 .hit-page {
   color: var(--color-text-muted);
 }
@@ -281,6 +349,43 @@ a.hit-section:hover {
   color: var(--sl-color-warning-900);
   padding: 0 0.1rem;
   border-radius: 2px;
+}
+
+@media (min-width: 900px) {
+  .search-hit-item {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 1.5rem;
+    padding: 1.25rem;
+  }
+
+  .hit-header {
+    flex-direction: column;
+    width: 220px;
+    flex-shrink: 0;
+    gap: 1rem;
+  }
+
+  .hit-thumbnail {
+    width: 120px;
+    height: 180px;
+  }
+
+  .hit-title-row,
+  .hit-section-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .hit-actions {
+    align-items: flex-start;
+    margin-top: auto;
+  }
+
+  .hit-content {
+    flex-grow: 1;
+  }
 }
 
 .expansion-trigger {

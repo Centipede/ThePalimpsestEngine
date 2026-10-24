@@ -48,8 +48,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useLibraryStore } from '../../../stores/library';
-import type { Book } from '../../../types/library';
+import { useLibraryStore } from '../../../../stores/library';
+import type { Book } from '../../../../types/library';
 
 const props = withDefaults(defineProps<{
   selectedIds: number[];

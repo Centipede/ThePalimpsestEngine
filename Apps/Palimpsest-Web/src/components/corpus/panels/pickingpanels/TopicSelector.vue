@@ -48,7 +48,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useLibraryStore, type FlattenedTopic } from '../../../stores/library';
+import { useLibraryStore, type FlattenedTopic } from '../../../../stores/library';
 
 const props = withDefaults(defineProps<{
   selectedIds: number[];

@@ -69,13 +69,15 @@
         <div class="block-entities">
           <div v-for="group in sortedOccurrencesByFacet" :key="group.facetName">
             <small>
-              <span v-if="group.facet">{{ group.facet.symbol }}</span>
               <i>
                 <span
                     v-for="occurrence in group.occurrences"
                     :key="occurrence.id"
+                    class="finding-occurrence-link"
                     :title="`${occurrence.description}\n\n${occurrence.quote}`"
+                    @click="emit('occurrence-selected', occurrence)"
                 >
+                  <span v-if="group.facet" class="finding-occurrence-icon">{{ group.facet.symbol }}</span>
                   {{ occurrence.name }}{{ ' ' }}
                 </span>
               </i>
@@ -101,7 +103,7 @@
 import { computed, ref, watch } from 'vue';
 import { apiFetch } from '../api';
 import { useAuth } from '../composables/useAuth';
-import type { ContentBlock, ContentSummary, FoldTrigger, Highlight, ContentEmphasis, ToolbarToggle, FindingOccurrence } from '../types/library';
+import type { ContentBlock, ContentSummary, FoldTrigger, Highlight, ContentEmphasis, ToolbarToggle, FindingOccurrence, ActiveFindingContext } from '../types/library';
 import { computeSegments, searchForFragments } from '../utils/text';
 import { useThemeStore } from '../stores/theme';
 import { useFacetsStore } from '../stores/facets';
@@ -113,8 +115,14 @@ const props = defineProps<{
   sectionPath?: string;
   foldTrigger?: FoldTrigger;
   availableHighlights?: ToolbarToggle[];
+  activeFindingContexts?: ActiveFindingContext[];
+  activeFacetTypes?: Set<string>;
   borderColor?: string;
   blockLink?: string;
+}>();
+
+const emit = defineEmits<{
+  (e: 'occurrence-selected', occurrence: FindingOccurrence): void;
 }>();
 
 const themeStore = useThemeStore();
@@ -178,26 +186,30 @@ const sortedOccurrencesByFacet = computed(() => {
   // Group by of_facet
   const groups: Record<string, FindingOccurrence[]> = {};
   props.block.finding_occurrences.forEach(occ => {
-    const facetName = occ.of_facet || 'unknown';
-    if (!groups[facetName]) groups[facetName] = [];
-    groups[facetName].push(occ);
+    const facetNameSingular = occ.of_facet || 'unknown';
+    if (props.activeFacetTypes && facetNameSingular !== 'unknown') {
+      const facet = facetsStore.getFacetBySingularName(facetNameSingular);
+      if (facet && !props.activeFacetTypes.has(facet.machine_name_plural)) {
+        return;
+      }
+    }
+    if (!groups[facetNameSingular]) groups[facetNameSingular] = [];
+    groups[facetNameSingular].push(occ);
   });
 
   // Map to objects with facet info and sort by facet ID
   return Object.entries(groups)
     .map(([facetName, occurrences]) => {
       const facet = facetsStore.getFacetBySingularName(facetName);
+      const order = facetsStore.facetQueries.findIndex(fq => fq.id === facet?.id);
       return {
         facetName,
         facet,
+        order: order === -1 ? Infinity : order,
         occurrences
       };
     })
-    .sort((a, b) => {
-      const idA = a.facet?.id ?? Infinity;
-      const idB = b.facet?.id ?? Infinity;
-      return idA - idB;
-    });
+    .sort((a, b) => a.order - b.order);
 });
 
 const firstPage = computed(() => {
@@ -220,7 +232,21 @@ const allHighlights = computed(() => {
       return searchForFragments(props.block.content_text, content.fragment, content.color || 'green');
     }) : [];
 
-  const entityQuoteHighlights: Highlight[] = []; // Placeholder
+  const entityQuoteHighlights: Highlight[] = [];
+  if (props.activeFindingContexts) {
+    props.activeFindingContexts.forEach(afc => {
+      const isEnabled = props.availableHighlights?.find(h => h.type === `finding-${afc.context.id}`)?.checked ?? true;
+      if (!isEnabled) return;
+
+      const occurrences = afc.context.occurrences.filter(occ => occ.in_block_pi === props.block.path_id);
+      occurrences.forEach(occ => {
+        if (occ.quote) {
+          entityQuoteHighlights.push(...searchForFragments(props.block.content_text, occ.quote, afc.color));
+        }
+      });
+    });
+  }
+
   const studyAnnotations: Highlight[] = []; // Placeholder
 
   return [...emphasisHighlights, ...entityQuoteHighlights, ...studyAnnotations];
@@ -310,6 +336,21 @@ const segments = computed(() => {
   word-break: break-word;
   white-space: pre-wrap;
   font-weight: 400;
+}
+
+.finding-occurrence-link {
+  cursor: pointer;
+  display: inline-block;
+}
+
+.finding-occurrence-link:hover {
+  text-decoration: underline;
+  color: var(--sl-color-primary-600);
+}
+
+.finding-occurrence-icon {
+  margin-right: 0.1rem;
+  font-style: normal;
 }
 
 .block-content {

@@ -71,6 +71,7 @@ export interface Section {
     conversations?: ConversationRef[];
     studynotes?: StudyNoteRef[];
     pageinfo?: PageInfo | null;
+    ancestors?: Section[] | null;
 }
 
 export interface Flow {
@@ -224,8 +225,13 @@ export interface FindingContext {
     id: number;
     name: string;
     of_facet?: string;
-    of_identity: number | null;
+    of_identity: FoundIdentity | null;
     occurrences: FindingOccurrence[];
+}
+
+export interface ActiveFindingContext {
+    context: FindingContext;
+    color: string;
 }
 
 /**
@@ -341,6 +347,7 @@ export interface SearchHit {
     path_full: string;
     path_coded: string;
     title: string;
+    ancestors?: Section[] | null;
   };
   in_block?: number;
   in_block_pi?: string;

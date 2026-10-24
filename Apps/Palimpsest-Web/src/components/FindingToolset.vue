@@ -30,6 +30,18 @@
                     <sl-icon name="box-arrow-up-right"></sl-icon>
                   </a>
                 </p>
+                <p class="identity-wikipedia">
+                  <sl-icon name="globe"></sl-icon>
+                  <strong>Wikipedia:</strong>
+                  <a v-if="foundIdentity.wikipedia_url" :href="foundIdentity.wikipedia_url" target="_blank">
+                    Link
+                    <sl-icon name="box-arrow-up-right"></sl-icon>
+                  </a>
+                  <span v-else>None</span>
+                  <sl-button size="small" circle variant="text" class="retry-button" :loading="retryingWikipedia" @click="retryWikipedia">
+                    <sl-icon name="arrow-clockwise"></sl-icon>
+                  </sl-button>
+                </p>
               </div>
               <div class="identity-actions">
                 <sl-button size="small" @click="showSearch = !showSearch">
@@ -54,6 +66,22 @@
           <section v-if="showSearch" class="wikidata-search-section">
             <sl-divider></sl-divider>
             <h3 class="section-title">Wikidata Lookup</h3>
+
+            <div v-if="uniqueOccurrenceNames.length > 0" class="search-suggestions">
+              <span class="suggestions-label">Try alternative names:</span>
+              <div class="suggestions-list">
+                <sl-button
+                    v-for="name in uniqueOccurrenceNames"
+                    :key="name"
+                    size="small"
+                    pill
+                    @click="useSuggestedName(name)"
+                >
+                  {{ name }}
+                </sl-button>
+              </div>
+            </div>
+
             <div class="search-controls">
               <sl-input
                 placeholder="Search query..."
@@ -100,7 +128,11 @@
         <div v-if="findingContext.occurrences && findingContext.occurrences.length > 0" class="occurrences-list">
           <div v-for="occ in findingContext.occurrences" :key="occ.id" class="occurrence-item">
             <div class="occurrence-header">
-              <span class="occurrence-name">{{ occ.name }}</span>
+              <span
+                  class="occurrence-name clickable"
+                  @click="useSuggestedName(occ.name)"
+                  title="Search for this name in Wikidata"
+              >{{ occ.name }}</span>
               <span class="occurrence-page" v-if="occ.on_page">p. {{ occ.on_page }}</span>
             </div>
             <div class="occurrence-description" v-if="occ.description">{{ occ.description }}</div>
@@ -147,20 +179,44 @@ const searchResults = ref<any[]>([]);
 const hasSearched = ref(false);
 const linkingQid = ref<string | null>(null);
 const unlinking = ref(false);
+const retryingWikipedia = ref(false);
+
+const uniqueOccurrenceNames = computed(() => {
+  if (!findingContext.value) return [];
+  const canonicalName = findingContext.value.name.toLowerCase();
+  const names = new Set<string>();
+  findingContext.value.occurrences.forEach(occ => {
+    if (occ.name && occ.name.toLowerCase() !== canonicalName) {
+      names.add(occ.name);
+    }
+  });
+  return Array.from(names).sort();
+});
+
+function useSuggestedName(name: string) {
+  searchQuery.value = name;
+  showSearch.value = true;
+  performSearch();
+}
 
 watch(
     () => findingContext.value?.of_identity,
-    async (identityId) => {
+    async (identityData) => {
       foundIdentity.value = null;
 
-      if (!identityId || typeof identityId === 'object') {
+      if (!identityData) {
+        return;
+      }
+
+      if (typeof identityData === 'object') {
+        foundIdentity.value = identityData as FoundIdentity;
         return;
       }
 
       loadingIdentity.value = true;
 
       try {
-        const response = await apiFetch(`/testbooks/api/v1/found-identity/${identityId}`);
+        const response = await apiFetch(`/testbooks/api/v1/found-identity/${identityData}`);
 
         if (response.ok) {
           foundIdentity.value = await response.json() as FoundIdentity;
@@ -241,12 +297,32 @@ async function unlinkIdentity() {
   }
 }
 
+async function retryWikipedia() {
+  if (!props.finding) return;
+  retryingWikipedia.value = true;
+  try {
+    const response = await apiFetch(`/testbooks/api/v1/finding-context/${props.finding.id}/retry_wikipedia_link/`, {
+      method: 'POST'
+    });
+
+    if (response.ok) {
+      findingContext.value = await response.json();
+      emit('linked');
+    }
+  } catch (error) {
+    console.error('Wikipedia retry failed:', error);
+  } finally {
+    retryingWikipedia.value = false;
+  }
+}
+
 watch(() => props.open, (newVal) => {
   if (newVal) {
     findingContext.value = { ...props.finding! };
     showSearch.value = false;
     searchResults.value = [];
     hasSearched.value = false;
+    searchQuery.value = findingContext.value?.name || '';
   }
 });
 </script>
@@ -309,6 +385,18 @@ watch(() => props.open, (newVal) => {
   color: var(--sl-color-neutral-900);
 }
 
+.occurrence-name.clickable {
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  color: var(--sl-color-primary-600);
+}
+
+.occurrence-name.clickable:hover {
+  color: var(--sl-color-primary-500);
+  text-decoration: underline;
+}
+
 .occurrence-page {
   font-size: 0.8rem;
   color: var(--sl-color-neutral-500);
@@ -368,6 +456,23 @@ watch(() => props.open, (newVal) => {
   color: var(--sl-color-neutral-600);
 }
 
+.search-suggestions {
+  margin-bottom: 1rem;
+}
+
+.suggestions-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--sl-color-neutral-500);
+  margin-bottom: 0.5rem;
+}
+
+.suggestions-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .identity-card {
   display: flex;
   justify-content: space-between;
@@ -401,6 +506,18 @@ watch(() => props.open, (newVal) => {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+}
+
+.identity-wikipedia a {
+  color: var(--sl-color-primary-600);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.retry-button {
+  margin-left: 0.25rem;
 }
 
 .no-identity {

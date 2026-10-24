@@ -5,7 +5,12 @@
         <p class="category-title">{{ facetGroup.label }}</p>
         <div class="entities-list">
           <template v-for="finding in facetGroup.linked" :key="`linked-${finding.id}`">
-            <sl-details class="entity-details">
+            <sl-details
+              class="entity-details"
+              :open="props.openFindingIds[finding.id] || false"
+              @sl-show="emit('update:openFindingIds', { ...props.openFindingIds, [finding.id]: true })"
+              @sl-hide="emit('update:openFindingIds', { ...props.openFindingIds, [finding.id]: false })"
+            >
               <div slot="summary" class="summary-content">
                 <span>{{ facetGroup.symbol }} {{ finding.name }}</span>
                 <sl-icon-button
@@ -17,8 +22,22 @@
                 ></sl-icon-button>
               </div>
               <div class="occurrences-list">
+                <div v-if="finding.of_identity?.wikipedia_url" class="identity-link">
+                  <a :href="finding.of_identity.wikipedia_url" target="_blank" rel="noopener">
+                    <sl-icon name="link-45deg"></sl-icon>
+                    Wikipedia
+                    <sl-icon name="box-arrow-up-right" class="external-icon"></sl-icon>
+                  </a>
+                </div>
                 <template v-if="finding.occurrences.length > 0">
-                  <div v-for="occurrence in finding.occurrences" :key="occurrence.id" class="occurrence-item">
+                  <div
+                    v-for="occurrence in finding.occurrences"
+                    :key="occurrence.id"
+                    :id="`occurrence-${occurrence.id}`"
+                    class="occurrence-item"
+                    :class="{ 'is-selected': props.selectedOccurrence?.id === occurrence.id }"
+                  >
+                    <div class="occurrence-name">{{ occurrence.name }}</div>
                     <blockquote class="occurrence-quote">{{ occurrence.quote }}</blockquote>
                     <div class="occurrence-description">{{ occurrence.description }}</div>
                   </div>
@@ -27,11 +46,16 @@
               </div>
             </sl-details>
           </template>
-          
+
           <hr v-if="facetGroup.linked.length > 0 && facetGroup.unlinked.length > 0" />
 
           <template v-for="finding in facetGroup.unlinked" :key="`unlinked-${finding.id}`">
-            <sl-details class="entity-details">
+            <sl-details
+              class="entity-details"
+              :open="props.openFindingIds[finding.id] || false"
+              @sl-show="emit('update:openFindingIds', { ...props.openFindingIds, [finding.id]: true })"
+              @sl-hide="emit('update:openFindingIds', { ...props.openFindingIds, [finding.id]: false })"
+            >
               <div slot="summary" class="summary-content">
                 <span>{{ facetGroup.symbol }} {{ finding.name }}</span>
                 <sl-icon-button
@@ -44,7 +68,14 @@
               </div>
               <div class="occurrences-list">
                 <template v-if="finding.occurrences.length > 0">
-                  <div v-for="occurrence in finding.occurrences" :key="occurrence.id" class="occurrence-item">
+                  <div
+                    v-for="occurrence in finding.occurrences"
+                    :key="occurrence.id"
+                    :id="`occurrence-${occurrence.id}`"
+                    class="occurrence-item"
+                    :class="{ 'is-selected': props.selectedOccurrence?.id === occurrence.id }"
+                  >
+                    <div class="occurrence-name">{{ occurrence.name }}</div>
                     <blockquote class="occurrence-quote">{{ occurrence.quote }}</blockquote>
                     <div class="occurrence-description">{{ occurrence.description }}</div>
                   </div>
@@ -67,14 +98,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import type { FindingContext, FindingFacetMap } from '../types/library';
+import { computed, ref, watch, nextTick } from 'vue';
+import type { FindingContext, FindingFacetMap, FindingOccurrence } from '../types/library';
 import { useFacetsStore } from '../stores/facets';
 import { useAuth } from '../composables/useAuth';
 import FindingToolset from './FindingToolset.vue';
 
 const props = defineProps<{
   facets: FindingFacetMap;
+  selectedOccurrence?: FindingOccurrence | null;
+  activeFacetTypes?: Set<string>;
+  openFindingIds: Record<number, boolean>;
 }>();
 
 const facetsStore = useFacetsStore();
@@ -82,11 +116,24 @@ const { isStaff } = useAuth();
 
 const emit = defineEmits<{
   (e: 'refresh'): void;
+  (e: 'update:openFindingIds', val: Record<number, boolean>): void;
 }>();
 
 const selectedFinding = ref<FindingContext | null>(null);
 const selectedFacetName = ref<string | null>(null);
 const showToolset = ref(false);
+
+watch(() => props.selectedOccurrence, (newOcc) => {
+  if (newOcc && newOcc.of_context) {
+    emit('update:openFindingIds', { ...props.openFindingIds, [newOcc.of_context]: true });
+    nextTick(() => {
+      const el = document.getElementById(`occurrence-${newOcc.id}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  }
+}, { immediate: true });
 
 function openToolset(finding: FindingContext, facetNamePlural: string) {
   selectedFinding.value = finding;
@@ -101,15 +148,29 @@ function handleLinked() {
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+type SortedFacetGroup = {
+  facetName: string;
+  label: string;
+  symbol: string;
+  order: number;
+  linked: FindingContext[];
+  unlinked: FindingContext[];
+};
+
 const hasFindings = computed(() => {
   return Object.values(props.facets).some(findings => findings.length > 0);
 });
 
-const sortedFacets = computed(() => {
+const sortedFacets = computed<SortedFacetGroup[]>(() => {
   return Object.entries(props.facets)
-    .filter(([_, findings]) => findings.length > 0)
+    .filter(([facetName, findings]) => {
+      if (findings.length === 0) return false;
+      if (!props.activeFacetTypes) return true;
+      return props.activeFacetTypes.has(facetName);
+    })
     .map(([facetName, findings]) => {
       const facet = facetsStore.getFacetByPluralName(facetName);
+      const order = facetsStore.facetQueries.findIndex(fq => fq.id === facet?.id);
       const linked = findings.filter(f => f.of_identity !== null);
       const unlinked = findings.filter(f => f.of_identity === null);
 
@@ -117,12 +178,12 @@ const sortedFacets = computed(() => {
         facetName,
         label: capitalize(facetName),
         symbol: facet?.symbol || '❓',
-        facetId: facet?.id ?? Infinity,
+        order: order === -1 ? Infinity : order,
         linked,
         unlinked
       };
     })
-    .sort((a, b) => a.facetId - b.facetId);
+    .sort((a, b) => a.order - b.order);
 });
 </script>
 
@@ -193,6 +254,49 @@ const sortedFacets = computed(() => {
   gap: 0.6rem;
   border-left: 2px solid var(--sl-color-neutral-200);
   padding-left: 0.75rem;
+}
+
+.identity-link {
+  margin-bottom: 0.2rem;
+}
+
+.identity-link a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--sl-color-primary-600);
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0.2rem 0.4rem;
+  background-color: var(--sl-color-primary-50);
+  border-radius: var(--sl-border-radius-small);
+  transition: background-color 0.2s ease;
+}
+
+.identity-link a:hover {
+  background-color: var(--sl-color-primary-100);
+}
+
+.external-icon {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+.occurrence-item {
+  transition: background-color 0.3s ease;
+}
+
+.occurrence-item.is-selected {
+  background-color: var(--sl-color-primary-50);
+  border-radius: 4px;
+  padding: 0.25rem;
+  margin: -0.25rem;
+}
+
+.occurrence-name {
+  font-weight: 600;
+  color: var(--sl-color-neutral-800);
+  margin-bottom: 0.1rem;
 }
 
 .occurrence-quote {

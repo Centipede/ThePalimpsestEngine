@@ -54,9 +54,9 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue';
-import { apiFetch } from '../../../api';
-import type { BookStructure, Section } from '../../../types/library';
-import TableOfContents from '../../TableOfContents.vue';
+import { apiFetch } from '../../../../api';
+import type { BookStructure, Section } from '../../../../types/library';
+import TableOfContents from '../../../TableOfContents.vue';
 
 const props = withDefaults(defineProps<{
   machineName: string | null;

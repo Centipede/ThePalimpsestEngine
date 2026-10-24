@@ -37,9 +37,9 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import AuthorSelector from '../corpus/picking/AuthorSelector.vue';
-import BookSelector from '../corpus/picking/BookSelector.vue';
-import SectionSelector from '../corpus/picking/SectionSelector.vue';
+import AuthorSelector from '../corpus/panels/pickingpanels/AuthorSelector.vue';
+import BookSelector from '../corpus/panels/pickingpanels/BookSelector.vue';
+import SectionSelector from '../corpus/panels/pickingpanels/SectionSelector.vue';
 import { useLibraryStore } from '../../stores/library';
 
 const props = defineProps<{

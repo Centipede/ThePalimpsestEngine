@@ -218,7 +218,7 @@
 
       <SummaryInfoRecord v-if="showSummary" :machine-name="props.machineName" :section-path="props.sectionPath"/>
       <SectionSegmentsOverview v-if="showSegmentsOverview && data.section.info?.summary?.paragraph_segments" :segments="data.section.info.summary.paragraph_segments"/>
-      <SectionFindings v-if="showEntities && data.section.info?.facets" :facets="data.section.info.facets" @refresh="fetchSection"/>
+      <SectionFindings v-if="showEntities && data.section.info?.facets" :facets="data.section.info.facets" v-model:open-finding-ids="openFindingIds" :selected-occurrence="selectedOccurrence" :active-facet-types="activeFacetTypes" @refresh="fetchSection"/>
       <SectionEntities v-else-if="showEntities && data.section.info?.entities" :entities="data.section.info.entities"/>
 
       <CorpusStudyDialog
@@ -284,8 +284,11 @@
                 :section-path="props.sectionPath"
                 :fold-trigger="paragraphFoldTrigger"
                 :available-highlights="availableHighlights"
+                :active-finding-contexts="activeFindingContexts"
+                :active-facet-types="activeFacetTypes"
                 :border-color="blockBorderColors[index]"
                 :block-link="getBlockLink(block.path_id)"
+                @occurrence-selected="handleOccurrenceSelected"
             />
           </template>
 
@@ -329,8 +332,11 @@
                         :section-path="props.sectionPath"
                         :fold-trigger="paragraphFoldTrigger"
                         :available-highlights="availableHighlights"
+                        :active-finding-contexts="activeFindingContexts"
+                        :active-facet-types="activeFacetTypes"
                         :border-color="blockBorderColors[entry.index]"
                         :block-link="getBlockLink(entry.block.path_id)"
+                        @occurrence-selected="handleOccurrenceSelected"
                     />
                   </template>
                 </div>
@@ -347,8 +353,11 @@
                     :section-path="props.sectionPath"
                     :fold-trigger="paragraphFoldTrigger"
                     :available-highlights="availableHighlights"
+                    :active-finding-contexts="activeFindingContexts"
+                    :active-facet-types="activeFacetTypes"
                     :border-color="blockBorderColors[entry.index]"
                     :block-link="getBlockLink(entry.block.path_id)"
+                    @occurrence-selected="handleOccurrenceSelected"
                 />
               </div>
             </div>
@@ -361,12 +370,12 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, ref, watch, provide} from 'vue';
+import {computed, onMounted, ref, watch, provide, nextTick} from 'vue';
 import { useHead } from '@unhead/vue';
 import { useRoute } from 'vue-router';
 import { useAuth } from '../composables/useAuth';
 import {apiFetch} from '../api';
-import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle} from '../types/library';
+import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle, FindingOccurrence, ActiveFindingContext} from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import SectionNoteView from './studynotes/SectionNoteView.vue';
 import SummaryInfoRecord from './SummaryInfoRecord.vue';
@@ -400,6 +409,11 @@ const organiseMode = ref<'linear' | 'segmented'>('linear');
 const openSegments = ref<Record<number, boolean>>({});
 const showNotesDrawer = ref(false);
 const paragraphFoldTrigger = ref<FoldTrigger>({ command: 'expand-all', count: 0 });
+const selectedOccurrence = ref<FindingOccurrence | null>(null);
+const activeFacetTypes = ref<Set<string>>(new Set());
+
+const openFindingIds = ref<Record<number, boolean>>({});
+const findingColorsMap = ref<Record<number, string>>({});
 
 const SEGMENT_COLORS = [
   'var(--sl-color-blue-500)',
@@ -410,6 +424,19 @@ const SEGMENT_COLORS = [
   'var(--sl-color-pink-500)',
   'var(--sl-color-orange-500)',
   'var(--sl-color-teal-500)',
+];
+
+const FINDING_COLORS = [
+  '#FFB3BA', // Pastel Red
+  '#BAFFC9', // Pastel Green
+  '#BAE1FF', // Pastel Blue
+  '#FFFFBA', // Pastel Yellow
+  '#FFDFBA', // Pastel Orange
+  '#E0BBE4', // Pastel Purple
+  '#957DAD', // Muted Purple
+  '#D291BC', // Muted Pink
+  '#FEC8D8', // Light Pink
+  '#FFDFD3', // Peach
 ];
 
 const rootSegmentsWithColors = computed(() => {
@@ -453,12 +480,52 @@ const availableHighlights = ref<ToolbarToggle[]>([
   { name: 'Summary Quotes', type: 'summary-quotes', checked: true },
 ]);
 
-const availableInfoRight = ref<ToolbarToggle[]>([
-  { name: 'People', type: 'people', checked: true },
-  { name: 'Times', type: 'times', checked: true },
-  { name: 'Places', type: 'places', checked: true },
-  { name: 'Works', type: 'works', checked: true },
-]);
+const activeFindingContexts = computed<ActiveFindingContext[]>(() => {
+  if (!data.value?.section.info?.facets) return [];
+  const active: ActiveFindingContext[] = [];
+  const facets = data.value.section.info.facets;
+
+  Object.values(facets).flat().forEach(context => {
+    if (openFindingIds.value[context.id]) {
+      if (!findingColorsMap.value[context.id]) {
+        const assignedColors = Object.values(findingColorsMap.value);
+        const nextColor = FINDING_COLORS.find(c => !assignedColors.includes(c)) || FINDING_COLORS[active.length % FINDING_COLORS.length];
+        findingColorsMap.value[context.id] = nextColor;
+      }
+      active.push({ context, color: findingColorsMap.value[context.id] });
+    }
+  });
+  return active;
+});
+
+watch(activeFindingContexts, (newActive) => {
+  const current = availableHighlights.value;
+  const nonFindingHighlights = current.filter(h => !h.type.startsWith('finding-'));
+  const findingHighlights = newActive.map(afc => {
+    const type = `finding-${afc.context.id}`;
+    const existing = current.find(h => h.type === type);
+    return {
+      name: afc.context.name,
+      type,
+      checked: existing ? existing.checked : true
+    };
+  });
+  availableHighlights.value = [...nonFindingHighlights, ...findingHighlights];
+}, { immediate: true });
+
+const availableInfoRight = computed<ToolbarToggle[]>(() => {
+  if (!data.value?.section.info?.facets) return [];
+
+  const presentPluralNames = Object.keys(data.value.section.info.facets);
+
+  return facetsStore.facetQueries
+    .filter(fq => presentPluralNames.includes(fq.machine_name_plural))
+    .map(fq => ({
+      name: fq.name,
+      type: fq.machine_name_plural,
+      checked: activeFacetTypes.value.has(fq.machine_name_plural)
+    }));
+});
 
 type ToolbarToggleGroup = 'info-left' | 'highlights' | 'info-right';
 
@@ -468,6 +535,17 @@ const pageTitle = computed(() => `${data.value?.section.path_coded ?? props.sect
 useHead({
   title: pageTitle
 });
+
+function handleOccurrenceSelected(occ: FindingOccurrence) {
+  selectedOccurrence.value = occ;
+  showEntities.value = true;
+  nextTick(() => {
+    const el = document.querySelector('.section-findings');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  });
+}
 
 function handleToolbarSelect(group: ToolbarToggleGroup, event: Event) {
   const selectedItem = (event as CustomEvent<{ item: HTMLElement }>).detail.item as HTMLElement & {
@@ -491,7 +569,13 @@ function setToolbarToggle(
   } else if (group === 'highlights') {
     availableHighlights.value = update(availableHighlights.value);
   } else {
-    availableInfoRight.value = update(availableInfoRight.value);
+    const next = new Set(activeFacetTypes.value);
+    if (checked) {
+      next.add(type);
+    } else {
+      next.delete(type);
+    }
+    activeFacetTypes.value = next;
   }
 }
 
@@ -965,6 +1049,16 @@ async function fetchSection() {
     const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=sum,ents,facets&cont_info=sum,ents,facets&path_coded=1&pageinfo=1`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data.value = await res.json();
+    openFindingIds.value = {};
+
+    // Initialize active facets
+    const nextFacets = new Set<string>();
+    if (data.value?.section.info?.facets) {
+      Object.keys(data.value.section.info.facets).forEach(pluralName => {
+        nextFacets.add(pluralName);
+      });
+    }
+    activeFacetTypes.value = nextFacets;
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load section';
   } finally {
