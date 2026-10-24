@@ -9,6 +9,7 @@ export interface Topic {
     prose_description: string | null;
     parent: number | null;
     children: Topic[];
+    facetapplications: FacetApplication[];
 }
 
 export interface Author {
@@ -34,6 +35,7 @@ export interface Book {
     by_author2: number | null;
     by_author3: number | null;
     topics: number[];
+    facetapplications: FacetApplication[];
     question_answers?: QuestionAnswerRef[];
     conversations?: ConversationRef[];
     studynotes?: StudyNoteRef[];
@@ -171,6 +173,62 @@ export interface SectionEntities {
     unlinkable_count: number;
 }
 
+export interface ParagraphSegment {
+    ranges: string[];
+    caption: string;
+    description: string;
+    keywords: string[];
+}
+
+export interface ParagraphSegments {
+    paragraph_segments: ParagraphSegment[];
+}
+
+export interface EssentialDigest {
+    id: number;
+    in_book_mn: string | null;
+    in_section: number | null;
+    in_section_pf: string | null;
+    caption: string;
+    theme: string;
+    prose_summary: string | null;
+    brief_summary: string | null;
+    llm_summary: string | null;
+}
+
+export interface EssentialOutline {
+    id: number;
+    in_book_mn: string | null;
+    in_section: number | null;
+    in_section_pf: string | null;
+    segments: ParagraphSegments | null;
+}
+
+export interface EssentialApplication {
+    id: number;
+    book: number | null;
+    with_topics: number[];
+    use_section_digest: boolean;
+    use_section_outline: boolean;
+}
+
+export interface FacetApplication {
+    id: number;
+    facet: number | null;
+    book: number | null;
+    with_topics: number[];
+    use_section_one: boolean;
+    use_section_few: boolean;
+    use_section_many: boolean;
+    use_segment_one: boolean;
+    use_segment_few: boolean;
+    use_segment_many: boolean;
+    use_content_all: boolean;
+    render_method: { method: 'time_period' | 'geographical_area' } | null;
+}
+
+export type ProvidedQueryData = 'full_text' | 'summary' | 'findings';
+
 /**
  * Represents a site-wide facet of interest that the system can query for automatically.
  */
@@ -181,11 +239,15 @@ export interface FacetQuery {
     machine_name_plural: string;
     symbol: string;
     prose_description: string | null;
-    query_block_lang: Record<string, string> | null;
-    query_section_lang: Record<string, string> | null;
-    extraction_schema: Record<string, any> | null;
-    by_books: number[];
-    by_topics: number[];
+    query_block: Record<string, any> | null;
+    query_section_one: Record<string, any> | null;
+    query_section_few: Record<string, any> | null;
+    query_section_many: Record<string, any> | null;
+    query_data: ProvidedQueryData;
+    schema_scratchpad: string | null;
+    schema_section_one: Record<string, any> | null;
+    schema_section_few: Record<string, any> | null;
+    schema_section_many: Record<string, any> | null;
     // Stats included when ?stats=1 is used
     occurrences_count?: number;
     contexts_count?: number;
@@ -199,7 +261,7 @@ export interface FoundIdentity {
     of_facet: number | FacetQuery | null;
     wikidata_qid: string;
     wikipedia_url: string | null;
-    wikimedia_commons_url: string | null;
+    wikimedia_url: string | null;
     name: string;
     properties: Record<string, any> | null;
 }
