@@ -59,18 +59,20 @@
           <div class="associations-grid">
             <FacetAssociationManager
                 type="book"
-                :ids="facet.by_books"
+                :applications="bookApplications"
                 title="Books"
                 @add="handleAddBook"
                 @remove="handleRemoveBook"
+                @update="handleUpdateApplication"
             />
             <sl-divider></sl-divider>
             <FacetAssociationManager
                 type="topic"
-                :ids="facet.by_topics"
+                :applications="topicApplications"
                 title="Topics"
                 @add="handleAddTopic"
                 @remove="handleRemoveTopic"
+                @update="handleUpdateApplication"
             />
           </div>
         </sl-card>
@@ -91,27 +93,34 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import { useFacetsStore } from '../stores/facets';
 import { storeToRefs } from 'pinia';
 import FacetForm from '../components/admin/FacetForm.vue';
 import FacetAssociationManager from '../components/admin/FacetAssociationManager.vue';
 import FacetMaintenance from '../components/admin/FacetMaintenance.vue';
+import type { FacetApplication } from '../types/library';
 
 const props = defineProps<{
   id: string;
 }>();
 
 const facetsStore = useFacetsStore();
-const { isLoading, error } = storeToRefs(facetsStore);
+const { isLoading, error, facetApplications } = storeToRefs(facetsStore);
 const facet = ref<any>(null);
+
+const facetId = computed<number>(() => parseInt(props.id));
 
 onMounted(async () => {
   const facetId = parseInt(props.id);
   if (!isNaN(facetId)) {
     facet.value = await facetsStore.fetchFacetDetail(facetId);
+    await facetsStore.fetchFacetApplications(facetId);
   }
 });
+
+const bookApplications = computed(() => facetApplications.value.filter(a => a.book !== null && a.facet == facetId.value));
+const topicApplications = computed(() => facetApplications.value.filter(a => a.topic !== null && a.facet == facetId.value));
 
 const handleUpdate = async (data: any) => {
   try {
@@ -137,19 +146,23 @@ const handleUpdate = async (data: any) => {
 };
 
 const handleAddBook = async (bookId: number) => {
-  facet.value = await facetsStore.addBook(facet.value.id, bookId);
+  await facetsStore.addBook(facet.value.id, bookId);
 };
 
 const handleRemoveBook = async (bookId: number) => {
-  facet.value = await facetsStore.removeBook(facet.value.id, bookId);
+  await facetsStore.removeBook(facet.value.id, bookId);
 };
 
 const handleAddTopic = async (topicId: number) => {
-  facet.value = await facetsStore.addTopic(facet.value.id, topicId);
+  await facetsStore.addTopic(facet.value.id, topicId);
 };
 
 const handleRemoveTopic = async (topicId: number) => {
-  facet.value = await facetsStore.removeTopic(facet.value.id, topicId);
+  await facetsStore.removeTopic(facet.value.id, topicId);
+};
+
+const handleUpdateApplication = async (payload: { id: number, data: Partial<FacetApplication> }) => {
+  await facetsStore.updateFacetApplication(payload.id, payload.data);
 };
 
 const handlePopulate = async () => {

@@ -9,7 +9,7 @@ export interface Topic {
     prose_description: string | null;
     parent: number | null;
     children: Topic[];
-    facetapplications: FacetApplication[];
+    facet_applications: FacetApplication[];
 }
 
 export interface Author {
@@ -35,7 +35,8 @@ export interface Book {
     by_author2: number | null;
     by_author3: number | null;
     topics: number[];
-    facetapplications: FacetApplication[];
+    facet_applications: FacetApplication[];
+    facet_applications_cascaded: FacetApplication[];
     question_answers?: QuestionAnswerRef[];
     conversations?: ConversationRef[];
     studynotes?: StudyNoteRef[];
@@ -216,7 +217,7 @@ export interface FacetApplication {
     id: number;
     facet: number | null;
     book: number | null;
-    with_topics: number[];
+    topic: number | null;
     use_section_one: boolean;
     use_section_few: boolean;
     use_section_many: boolean;
