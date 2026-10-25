@@ -13,6 +13,10 @@
       <sl-tab slot="nav" panel="section_one">Section (One)</sl-tab>
       <sl-tab slot="nav" panel="section_few">Section (Few)</sl-tab>
       <sl-tab slot="nav" panel="section_many">Section (Many)</sl-tab>
+      <sl-tab slot="nav" panel="schema_one">Schema (One)</sl-tab>
+      <sl-tab slot="nav" panel="schema_few">Schema (Few)</sl-tab>
+      <sl-tab slot="nav" panel="schema_many">Schema (Many)</sl-tab>
+      <sl-tab slot="nav" panel="scratchpad">Scratchpad</sl-tab>
 
       <sl-tab-panel name="block">
         <div class="prompts-list">
@@ -77,6 +81,50 @@
           </div>
         </div>
       </sl-tab-panel>
+
+      <sl-tab-panel name="schema_one">
+        <div class="prompts-list">
+          <sl-textarea
+              :value="formatJson(facet.schema_section_one)"
+              @sl-change="handleSaveSchema('schema_section_one', $event.target.value)"
+              placeholder="Enter JSON schema for one section... (hint: print(json.dumps(SomeBaseModel.model_json_schema(), indent=2)) in python)"
+              rows="12"
+          ></sl-textarea>
+        </div>
+      </sl-tab-panel>
+
+      <sl-tab-panel name="schema_few">
+        <div class="prompts-list">
+          <sl-textarea
+              :value="formatJson(facet.schema_section_few)"
+              @sl-change="handleSaveSchema('schema_section_few', $event.target.value)"
+              placeholder="Enter JSON schema for a few sections..."
+              rows="12"
+          ></sl-textarea>
+        </div>
+      </sl-tab-panel>
+
+      <sl-tab-panel name="schema_many">
+        <div class="prompts-list">
+          <sl-textarea
+              :value="formatJson(facet.schema_section_many)"
+              @sl-change="handleSaveSchema('schema_section_many', $event.target.value)"
+              placeholder="Enter JSON schema for many sections..."
+              rows="12"
+          ></sl-textarea>
+        </div>
+      </sl-tab-panel>
+
+      <sl-tab-panel name="scratchpad">
+        <div class="prompts-list">
+          <sl-textarea
+              :value="facet.schema_scratchpad || ''"
+              @sl-change="handleSaveScratchpad($event.target.value)"
+              placeholder="Use this space to store notes, Pydantic models, or draft schemas..."
+              rows="12"
+          ></sl-textarea>
+        </div>
+      </sl-tab-panel>
     </sl-tab-group>
   </div>
 </template>
@@ -115,6 +163,28 @@ const handleSavePrompt = (lang: string, field: keyof FacetQuery, value: string) 
   const updated = { ...(props.facet[field] as Record<string, any> || {}) };
   updated[lang] = value;
   emit('update', { [field]: updated });
+};
+
+const formatJson = (val: any) => {
+  if (!val) return '';
+  return JSON.stringify(val, null, 2);
+};
+
+const handleSaveSchema = (field: keyof FacetQuery, value: string) => {
+  if (!value.trim()) {
+    emit('update', { [field]: null });
+    return;
+  }
+  try {
+    const parsed = JSON.parse(value);
+    emit('update', { [field]: parsed });
+  } catch (e) {
+    console.error('Failed to parse JSON schema:', e);
+  }
+};
+
+const handleSaveScratchpad = (value: string) => {
+  emit('update', { schema_scratchpad: value || null });
 };
 </script>
 

@@ -131,7 +131,11 @@ const handleUpdate = async (data: any) => {
       'query_block',
       'query_section_one',
       'query_section_few',
-      'query_section_many'
+      'query_section_many',
+      'schema_scratchpad',
+      'schema_section_one',
+      'schema_section_few',
+      'schema_section_many'
     ];
 
     fields.forEach(field => {
