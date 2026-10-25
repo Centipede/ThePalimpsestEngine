@@ -265,6 +265,7 @@ export interface FoundIdentity {
     wikimedia_url: string | null;
     name: string;
     properties: Record<string, any> | null;
+    articles: any[];
 }
 
 /**
@@ -279,6 +280,7 @@ export interface FindingOccurrence {
     on_page: number | null;
     of_facet?: string;
     of_context: number | null;
+    extracted_data: Record<string, any> | null;
 }
 
 /**
@@ -300,7 +302,16 @@ export interface ActiveFindingContext {
 /**
  * Grouped findings by facet (e.g., "people", "places").
  */
-export type FindingFacetMap = Record<string, FindingContext[]>;
+export type FindingContextMap = Record<string, FindingContext[]>;
+
+export type FindingOccurrenceMap = Record<string, FindingOccurrence[]>;
+
+export interface SectionFindings {
+    contexts: FindingContextMap;
+    section_one: FindingOccurrenceMap;
+    section_few: FindingOccurrenceMap;
+    section_many: FindingOccurrenceMap;
+}
 
 export interface SectionDetail extends Section {
     title_html: string;
@@ -317,8 +328,8 @@ export interface SectionDetail extends Section {
     info?: {
         summary?: SectionSummary;
         entities?: SectionEntities;
-        facets?: FindingFacetMap;
     };
+    findings?: SectionFindings | null;
 }
 
 export interface SegmentInfo {

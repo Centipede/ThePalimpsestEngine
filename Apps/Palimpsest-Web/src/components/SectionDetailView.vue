@@ -222,7 +222,6 @@
       <SummaryInfoRecord v-if="showSummary" :machine-name="props.machineName" :section-path="props.sectionPath"/>
       <SectionSegmentsOverview v-if="showSegmentsOverview && data.section.info?.summary?.paragraph_segments" :segments="data.section.info.summary.paragraph_segments"/>
       <SectionFindings v-if="showEntities && Object.keys(mergedFacets).length" :facets="mergedFacets" v-model:open-finding-ids="openFindingIds" :selected-occurrence="selectedOccurrence" :active-facet-types="activeFacetTypes" @refresh="fetchSection"/>
-      <SectionEntitiesObsolete v-else-if="showEntities && data.section.info?.entities" :entities="data.section.info.entities"/>
 
       <CorpusStudyDialog
           v-model:open="corpusDialog.open"
@@ -378,12 +377,11 @@ import { useHead } from '@unhead/vue';
 import { useRoute } from 'vue-router';
 import { useAuth } from '../composables/useAuth';
 import {apiFetch} from '../api';
-import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle, FindingOccurrence, ActiveFindingContext, FacetQuery, FindingFacetMap} from '../types/library';
+import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle, FindingOccurrence, ActiveFindingContext, FacetQuery, FindingContextMap} from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import SectionNoteView from './studynotes/SectionNoteView.vue';
 import SummaryInfoRecord from './SummaryInfoRecord.vue';
 import SectionSegmentsOverview from './SectionSegmentsOverview.vue';
-import SectionEntitiesObsolete from './SectionEntitiesObsolete.vue';
 import SectionFindings from './SectionFindings.vue';
 import ContentBlockView from './ContentBlockView.vue';
 import TableOfContents from './TableOfContents.vue';
@@ -483,13 +481,14 @@ const availableHighlights = ref<ToolbarToggle[]>([
   { name: 'Summary Quotes', type: 'summary-quotes', checked: true },
 ]);
 
-const mergedFacets = computed<FindingFacetMap>(() => {
-  const facets: FindingFacetMap = {};
+// TODO: This got out of hand! All we wanted was a list of facet ids in actual use so the Vue could disable availableInfoRight entries not actually represented by a block occurrence.
+const mergedFacets = computed<FindingContextMap>(() => {
+  const facets: FindingContextMap = {};
   if (!data.value) return facets;
 
-  // 1. Start with section-level findings
-  if (data.value.section.info?.facets) {
-    for (const [facetName, contexts] of Object.entries(data.value.section.info.facets)) {
+  // 1. Start with section-level findings (clustered contexts)
+  if (data.value.section.findings?.contexts) {
+    for (const [facetName, contexts] of Object.entries(data.value.section.findings.contexts)) {
       facets[facetName] = contexts.map(c => ({
         ...c,
         occurrences: [...c.occurrences]
@@ -1107,9 +1106,16 @@ async function fetchSection() {
 
     // Initialize active facets
     const nextFacets = new Set<string>();
-    if (data.value?.section.info?.facets) {
-      Object.keys(data.value.section.info.facets).forEach(pluralName => {
-        nextFacets.add(pluralName);
+    if (data.value?.section.findings) {
+      const findings = data.value.section.findings;
+      const buckets: (keyof typeof findings)[] = ['contexts', 'section_one', 'section_few', 'section_many'];
+      buckets.forEach(bucket => {
+        const map = findings[bucket];
+        if (map) {
+          Object.keys(map).forEach(pluralName => {
+            nextFacets.add(pluralName);
+          });
+        }
       });
     }
 

@@ -140,6 +140,9 @@
               <sl-icon name="quote"></sl-icon>
               <span class="quote-text">{{ occ.quote }}</span>
             </div>
+            <div v-if="occ.extracted_data" class="occurrence-data">
+              <pre>{{ JSON.stringify(occ.extracted_data, null, 2) }}</pre>
+            </div>
           </div>
         </div>
         <div v-else class="no-occurrences">
@@ -424,6 +427,23 @@ watch(() => props.open, (newVal) => {
   flex-shrink: 0;
   margin-top: 0.2rem;
   color: var(--sl-color-neutral-400);
+}
+
+.occurrence-data {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background-color: white;
+  border: 1px solid var(--sl-color-neutral-200);
+  border-radius: var(--sl-border-radius-small);
+  font-family: var(--sl-font-mono);
+  font-size: 0.8rem;
+  overflow-x: auto;
+}
+
+.occurrence-data pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .no-occurrences {

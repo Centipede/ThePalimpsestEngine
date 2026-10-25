@@ -40,6 +40,9 @@
                     <div class="occurrence-name">{{ occurrence.name }}</div>
                     <blockquote class="occurrence-quote">{{ occurrence.quote }}</blockquote>
                     <div class="occurrence-description">{{ occurrence.description }}</div>
+                    <div v-if="occurrence.extracted_data" class="occurrence-data">
+                      <pre>{{ JSON.stringify(occurrence.extracted_data, null, 2) }}</pre>
+                    </div>
                   </div>
                 </template>
                 <div v-else class="no-occurrences">No occurrences found.</div>
@@ -78,6 +81,9 @@
                     <div class="occurrence-name">{{ occurrence.name }}</div>
                     <blockquote class="occurrence-quote">{{ occurrence.quote }}</blockquote>
                     <div class="occurrence-description">{{ occurrence.description }}</div>
+                    <div v-if="occurrence.extracted_data" class="occurrence-data">
+                      <pre>{{ JSON.stringify(occurrence.extracted_data, null, 2) }}</pre>
+                    </div>
                   </div>
                 </template>
                 <div v-else class="no-occurrences">No occurrences found.</div>
@@ -99,13 +105,13 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue';
-import type { FindingContext, FindingFacetMap, FindingOccurrence } from '../types/library';
+import type { FindingContext, FindingContextMap, FindingOccurrence } from '../types/library';
 import { useFacetsStore } from '../stores/facets';
 import { useAuth } from '../composables/useAuth';
 import FindingToolset from './FindingToolset.vue';
 
 const props = defineProps<{
-  facets: FindingFacetMap;
+  facets: FindingContextMap;
   selectedOccurrence?: FindingOccurrence | null;
   activeFacetTypes?: Set<string>;
   openFindingIds: Record<number, boolean>;
@@ -310,6 +316,22 @@ const sortedFacets = computed<SortedFacetGroup[]>(() => {
   font-size: 0.75rem;
   color: var(--sl-color-neutral-500);
   margin-top: 0.2rem;
+}
+
+.occurrence-data {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: var(--sl-color-neutral-50);
+  border-radius: var(--sl-border-radius-small);
+  font-family: var(--sl-font-mono);
+  font-size: 0.7rem;
+  overflow-x: auto;
+}
+
+.occurrence-data pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .no-occurrences {
