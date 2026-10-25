@@ -148,7 +148,7 @@
           </div>
         </div>
 
-        <SummaryInfoRecord
+        <SectionInformation
           v-if="isVisible(entry) && tocState.summaries[entry.section.path_full]"
           :machine-name="props.machineName"
           :section-path="entry.section.path_full"
@@ -180,7 +180,7 @@ import { RouterLink, useRouter } from 'vue-router';
 import type { BookStructure, Section } from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef, StudyNote, StudyNoteRef } from '../types/study';
 import { useStudyWorkspaceItem } from '../composables/useStudyWorkspaceItem';
-import SummaryInfoRecord from './SummaryInfoRecord.vue';
+import SectionInformation from './SectionInformation.vue';
 import StudyWorkspaceDialog from './studyworkspaces/StudyWorkspaceDialog.vue';
 
 const props = withDefaults(defineProps<{

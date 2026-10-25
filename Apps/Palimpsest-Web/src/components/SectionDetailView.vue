@@ -219,7 +219,7 @@
           :rootSectionPF="props.sectionPath"
       />
 
-      <SummaryInfoRecord v-if="showSummary" :machine-name="props.machineName" :section-path="props.sectionPath"/>
+      <SectionInformation v-if="showSummary" :machine-name="props.machineName" :section-path="props.sectionPath"/>
       <SectionSegmentsOverview v-if="showSegmentsOverview && data.section.info?.summary?.paragraph_segments" :segments="data.section.info.summary.paragraph_segments"/>
       <SectionFindings v-if="showEntities && Object.keys(mergedFacets).length" :facets="mergedFacets" v-model:open-finding-ids="openFindingIds" :selected-occurrence="selectedOccurrence" :active-facet-types="activeFacetTypes" @refresh="fetchSection"/>
 
@@ -380,7 +380,7 @@ import {apiFetch} from '../api';
 import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle, FindingOccurrence, ActiveFindingContext, FacetQuery, FindingContextMap} from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import SectionNoteView from './studynotes/SectionNoteView.vue';
-import SummaryInfoRecord from './SummaryInfoRecord.vue';
+import SectionInformation from './SectionInformation.vue';
 import SectionSegmentsOverview from './SectionSegmentsOverview.vue';
 import SectionFindings from './SectionFindings.vue';
 import ContentBlockView from './ContentBlockView.vue';

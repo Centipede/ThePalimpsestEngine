@@ -140,6 +140,18 @@ export interface ContentEntities {
     };
 }
 
+export interface CentralTimePeriod {
+    interval_years: number[][];
+    specific_years: number[];
+    full_description: string;
+    specific_full_dates: string[];
+}
+
+export interface CentralGeographicalArea {
+    placenames: string[];
+    full_description: string;
+}
+
 export interface SectionSummary {
     theme: string;
     key_events: string[];
@@ -153,16 +165,8 @@ export interface SectionSummary {
         description?: string;
         keywords: string[];
     }>;
-    central_time_period: {
-        interval_years: number[][];
-        specific_years: number[];
-        full_description: string;
-        specific_full_dates: string[];
-    };
-    central_geographical_area: {
-        placenames: string[];
-        full_description: string;
-    };
+    central_time_period: CentralTimePeriod;
+    central_geographical_area: CentralGeographicalArea;
 }
 
 export interface SectionEntities {
@@ -405,12 +409,17 @@ export interface SectionSummaryNew {
         institutions: { title: string }[];
     };
     prose_descriptors: {
-        time: SectionSummary['central_time_period'];
-        place: SectionSummary['central_geographical_area'];
+        time: CentralTimePeriod;
+        place: CentralGeographicalArea;
     };
     summary?: string;
 }
 
+
+export interface SectionInformationResponse {
+    digest: EssentialDigest;
+    findings: SectionFindings;
+}
 
 export type SearchStyle = 'plain' | 'phrase' | 'raw' | 'websearch';
 

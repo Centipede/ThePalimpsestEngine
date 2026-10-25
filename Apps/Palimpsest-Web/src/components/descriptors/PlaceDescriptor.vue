@@ -2,19 +2,19 @@
   <div class="summary-info-record__tag-group">
     <span class="summary-info-record__tag-label">Place:</span>
     <div class="summary-info-record__descriptor-content">
-      <div v-if="data.full_description" class="summary-info-record__descriptor-prose">{{ data.full_description }}</div>
-      <div v-if="data.placenames?.length" class="summary-info-record__tag-list">
-        <sl-badge v-for="p in data.placenames" :key="p" variant="neutral" pill>{{ p }}</sl-badge>
+      <div v-if="central_geographical_area.full_description" class="summary-info-record__descriptor-prose">{{ central_geographical_area.full_description }}</div>
+      <div v-if="central_geographical_area.placenames?.length" class="summary-info-record__tag-list">
+        <sl-badge v-for="p in central_geographical_area.placenames" :key="p" variant="neutral" pill>{{ p }}</sl-badge>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { SectionSummary } from '../types/library';
+import type { CentralGeographicalArea } from '../../types/library';
 
 defineProps<{
-  data: SectionSummary['central_geographical_area'];
+  central_geographical_area: CentralGeographicalArea;
 }>();
 </script>
 
