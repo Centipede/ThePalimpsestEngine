@@ -4,7 +4,7 @@
     <div class="summary-info-record__descriptor-content">
       <div v-if="central_time_period.full_description" class="summary-info-record__descriptor-prose">{{ central_time_period.full_description }}</div>
       <div v-if="badges.length" class="summary-info-record__tag-list">
-        <sl-badge v-for="b in badges" :key="b" variant="neutral" pill>{{ b }}</sl-badge>
+        <sl-badge v-for="b in badges" :key="b" pill class="time-badge">{{ b }}</sl-badge>
       </div>
     </div>
   </div>
@@ -70,9 +70,15 @@ const badges = computed(() => {
 }
 
 .summary-info-record__descriptor-prose {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   line-height: 1.4;
   color: var(--color-text-muted);
+}
+
+.time-badge::part(base) {
+  background-color: var(--sl-color-purple-600);
+  border-color: var(--sl-color-purple-600);
+  color: #fff;
 }
 
 .summary-info-record__tag-list {

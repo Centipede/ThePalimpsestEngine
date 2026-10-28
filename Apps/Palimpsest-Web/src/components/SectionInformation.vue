@@ -14,6 +14,8 @@
           <p v-if="data.digest.brief_summary" class="summary-info-record__brief">{{ data.digest.brief_summary }}</p>
           <div v-if="data.digest.prose_summary" class="summary-info-record__markdown" v-html="renderedProse"></div>
           
+          <br v-if="sectionOneDescriptors.length > 0">
+
           <component
             v-for="descriptor in sectionOneDescriptors"
             :key="descriptor.key"
@@ -25,7 +27,15 @@
           <div v-for="(occurrences, facetPlural) in data.findings.section_few" :key="facetPlural" class="summary-info-record__tag-group">
             <span class="summary-info-record__tag-label">{{ getFacetLabel(facetPlural) }}:</span>
             <div class="summary-info-record__tag-list">
-              <sl-badge v-for="occ in occurrences" :key="occ.id" variant="neutral" pill>{{ occ.name }}</sl-badge>
+              <sl-badge
+                v-for="occ in occurrences"
+                :key="occ.id"
+                pill
+                class="facet-badge"
+                :style="{ '--facet-color': getFacetColor(facetPlural) }"
+              >
+                {{ occ.name }}
+              </sl-badge>
             </div>
           </div>
         </div>
@@ -98,6 +108,21 @@ const renderedProse = computed(() => {
   }
   return '';
 });
+
+const facetColors: Record<string, string> = {
+  people: 'var(--sl-color-indigo-600)',
+  events: 'var(--sl-color-emerald-600)',
+  institutions: 'var(--sl-color-amber-600)',
+  places: 'var(--sl-color-teal-600)',
+  times: 'var(--sl-color-purple-600)',
+  works: 'var(--sl-color-rose-600)',
+};
+
+function getFacetColor(facetPlural: string) {
+  const facet = facetsStore.getFacetByPluralName(facetPlural);
+  const name = facet?.machine_name_plural || facetPlural;
+  return facetColors[name] || 'var(--sl-color-neutral-600)';
+}
 
 type SectionOneDescriptor =
   | {
@@ -224,6 +249,12 @@ function getFacetLabel(facetPlural: string) {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
+}
+
+.facet-badge::part(base) {
+  background-color: var(--facet-color);
+  border-color: var(--facet-color);
+  color: #fff;
 }
 
 .summary-info-record__markdown :deep(p) {
