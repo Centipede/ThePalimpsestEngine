@@ -7,12 +7,12 @@
     <div v-else-if="error" class="summary-info-record__error">
       <sl-badge variant="danger">{{ error }}</sl-badge>
     </div>
-    <div v-else-if="data" class="summary-info-record__content">
+    <div v-else-if="data && hasInformation" class="summary-info-record__content">
       <div class="summary-info-record__grid">
         <div class="summary-info-record__main">
-          <h4 v-if="data.digest.theme" class="summary-info-record__theme">{{ data.digest.theme }}</h4>
-          <p v-if="data.digest.brief_summary" class="summary-info-record__brief">{{ data.digest.brief_summary }}</p>
-          <div v-if="data.digest.prose_summary" class="summary-info-record__markdown" v-html="renderedProse"></div>
+          <h4 v-if="data.digest?.theme" class="summary-info-record__theme">{{ data.digest.theme }}</h4>
+          <p v-if="data.digest?.brief_summary" class="summary-info-record__brief">{{ data.digest.brief_summary }}</p>
+          <div v-if="data.digest?.prose_summary" class="summary-info-record__markdown" v-html="renderedProse"></div>
           
           <br v-if="sectionOneDescriptors.length > 0">
 
@@ -24,7 +24,7 @@
           />
         </div>
         <div class="summary-info-record__tags">
-          <div v-for="(occurrences, facetPlural) in data.findings.section_few" :key="facetPlural" class="summary-info-record__tag-group">
+          <div v-for="(occurrences, facetPlural) in data.findings?.section_few || {}" :key="facetPlural" class="summary-info-record__tag-group">
             <span class="summary-info-record__tag-label">{{ getFacetLabel(facetPlural) }}:</span>
             <div class="summary-info-record__tag-list">
               <sl-badge
@@ -41,6 +41,9 @@
         </div>
       </div>
     </div>
+    <div v-else-if="data && !hasInformation" class="summary-info-record__empty">
+      (no information)
+    </div>
   </div>
 </template>
 
@@ -54,7 +57,6 @@ import type {
 } from '../types/library';
 import { apiFetch } from '../api';
 import { useFacetsStore } from '../stores/facets';
-import { useLibraryStore } from '../stores/library';
 import TimeDescriptor from './descriptors/TimeDescriptor.vue';
 import PlaceDescriptor from './descriptors/PlaceDescriptor.vue';
 
@@ -65,7 +67,6 @@ const props = defineProps<{
 }>();
 
 const facetsStore = useFacetsStore();
-const libraryStore = useLibraryStore();
 
 const data = ref<SectionInformationResponse | null>(null);
 const loading = ref(false);
@@ -81,7 +82,6 @@ async function fetchData() {
   await Promise.all([
     facetsStore.fetchFacetQueries(),
     facetsStore.fetchFacetApplications(),
-    libraryStore.fetchBooks()
   ]);
 
   try {
@@ -141,7 +141,7 @@ type SectionOneDescriptor =
     };
 
 const sectionOneDescriptors = computed<SectionOneDescriptor[]>(() => {
-  if (!data.value) return [];
+  if (!data.value || !data.value.findings?.section_one) return [];
 
   return Object.entries(data.value.findings.section_one).flatMap(([facetPlural, occurrences]): SectionOneDescriptor[] => {
     const occurrence = occurrences[0];
@@ -173,8 +173,12 @@ const sectionOneDescriptors = computed<SectionOneDescriptor[]>(() => {
   });
 });
 
-const bookId = computed(() => {
-  return libraryStore.books.find(b => b.machine_name === props.machineName)?.id;
+const hasInformation = computed(() => {
+  if (!data.value) return false;
+  const hasDigest = !!(data.value.digest && (data.value.digest.theme || data.value.digest.brief_summary || data.value.digest.prose_summary));
+  const hasSectionOne = sectionOneDescriptors.value.length > 0;
+  const hasSectionFew = !!data.value.findings?.section_few && Object.values(data.value.findings.section_few).some(occ => occ.length > 0);
+  return hasDigest || hasSectionOne || hasSectionFew;
 });
 
 function getFacetApplication(facetPlural: string) {
@@ -208,6 +212,12 @@ function getFacetLabel(facetPlural: string) {
   gap: 0.5rem;
   font-size: 0.9rem;
   color: var(--color-text-muted);
+}
+
+.summary-info-record__empty {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-style: italic;
 }
 
 .summary-info-record__grid {

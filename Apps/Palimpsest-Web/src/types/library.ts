@@ -417,7 +417,7 @@ export interface SectionSummaryNew {
 
 
 export interface SectionInformationResponse {
-    digest: EssentialDigest;
+    digest: EssentialDigest | null;
     findings: SectionFindings;
 }
 
