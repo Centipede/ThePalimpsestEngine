@@ -24,7 +24,7 @@
       </div>
     </div>
 
-    <sl-dialog :label="`Add ${title}`" :open="showSelector" @sl-after-hide="showSelector = false" class="selector-dialog">
+    <sl-dialog :label="`Add ${title}`" :open="showSelector" @sl-after-hide.self="showSelector = false" class="selector-dialog">
       <div class="selector-container">
         <BookSelector
             v-if="type === 'book'"
@@ -41,7 +41,7 @@
       <sl-button slot="footer" variant="primary" @click="showSelector = false">Close</sl-button>
     </sl-dialog>
 
-    <sl-dialog :label="`Edit Association Properties`" :open="showEditDialog" @sl-after-hide="showEditDialog = false">
+    <sl-dialog :label="`Edit Association Properties`" :open="showEditDialog" @sl-after-hide.self="showEditDialog = false">
       <div v-if="editFormData" class="edit-form">
         <div class="form-grid">
           <div class="form-section">

@@ -14,13 +14,12 @@
           <p v-if="data.digest.brief_summary" class="summary-info-record__brief">{{ data.digest.brief_summary }}</p>
           <div v-if="data.digest.prose_summary" class="summary-info-record__markdown" v-html="renderedProse"></div>
           
-          <div v-for="(occurrences, facetPlural) in data.findings.section_one" :key="facetPlural">
-            <component 
-              v-if="getRenderMethod(facetPlural)"
-              :is="getComponent(facetPlural)"
-              v-bind="getProps(facetPlural, occurrences[0])"
-            />
-          </div>
+          <component
+            v-for="descriptor in sectionOneDescriptors"
+            :key="descriptor.key"
+            :is="descriptor.component"
+            v-bind="descriptor.props"
+          />
         </div>
         <div class="summary-info-record__tags">
           <div v-for="(occurrences, facetPlural) in data.findings.section_few" :key="facetPlural" class="summary-info-record__tag-group">
@@ -38,7 +37,11 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue';
 import { marked } from 'marked';
-import type { SectionInformationResponse, FindingOccurrence } from '../types/library';
+import type {
+  SectionInformationResponse,
+  CentralTimePeriod,
+  CentralGeographicalArea
+} from '../types/library';
 import { apiFetch } from '../api';
 import { useFacetsStore } from '../stores/facets';
 import { useLibraryStore } from '../stores/library';
@@ -96,6 +99,55 @@ const renderedProse = computed(() => {
   return '';
 });
 
+type SectionOneDescriptor =
+  | {
+      key: string;
+      component: any;
+      props: {
+        central_time_period: CentralTimePeriod;
+      };
+    }
+  | {
+      key: string;
+      component: any;
+      props: {
+        central_geographical_area: CentralGeographicalArea;
+      };
+    };
+
+const sectionOneDescriptors = computed<SectionOneDescriptor[]>(() => {
+  if (!data.value) return [];
+
+  return Object.entries(data.value.findings.section_one).flatMap(([facetPlural, occurrences]): SectionOneDescriptor[] => {
+    const occurrence = occurrences[0];
+    if (!occurrence?.extracted_data) return [];
+
+    const method = getRenderMethod(facetPlural);
+    console.log('method', facetPlural, method, ' extracted_data: ', occurrence.extracted_data);
+    if (method === 'time_period') {
+      return [{
+        key: facetPlural,
+        component: TimeDescriptor,
+        props: {
+          central_time_period: occurrence.extracted_data as CentralTimePeriod
+        }
+      }];
+    }
+
+    if (method === 'geographical_area') {
+      return [{
+        key: facetPlural,
+        component: PlaceDescriptor,
+        props: {
+          central_geographical_area: occurrence.extracted_data as CentralGeographicalArea
+        }
+      }];
+    }
+
+    return [];
+  });
+});
+
 const bookId = computed(() => {
   return libraryStore.books.find(b => b.machine_name === props.machineName)?.id;
 });
@@ -103,31 +155,13 @@ const bookId = computed(() => {
 function getFacetApplication(facetPlural: string) {
   const facet = facetsStore.getFacetByPluralName(facetPlural);
   if (!facet) return null;
-  
-  return facetsStore.facetApplications.find(a => a.facet === facet.id && a.book === bookId.value);
+
+  return facetsStore.facetApplications.find(a => a.facet === facet.id);
 }
 
 function getRenderMethod(facetPlural: string) {
   const app = getFacetApplication(facetPlural);
   return app?.render_method?.method;
-}
-
-function getComponent(facetPlural: string) {
-  const method = getRenderMethod(facetPlural);
-  if (method === 'time_period') return TimeDescriptor;
-  if (method === 'geographical_area') return PlaceDescriptor;
-  return null;
-}
-
-function getProps(facetPlural: string, occurrence: FindingOccurrence) {
-  const method = getRenderMethod(facetPlural);
-  if (method === 'time_period') {
-    return { central_time_period: occurrence.extracted_data };
-  }
-  if (method === 'geographical_area') {
-    return { central_geographical_area: occurrence.extracted_data };
-  }
-  return {};
 }
 
 function getFacetLabel(facetPlural: string) {

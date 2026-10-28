@@ -36,7 +36,7 @@
       </sl-card>
     </div>
 
-    <sl-dialog label="Add New Facet" :open="showAddDialog" @sl-after-hide="showAddDialog = false">
+    <sl-dialog label="Add New Facet" :open="showAddDialog" @sl-after-hide.self="showAddDialog = false">
       <FacetForm @submit="handleCreate" @cancel="showAddDialog = false" />
     </sl-dialog>
   </div>

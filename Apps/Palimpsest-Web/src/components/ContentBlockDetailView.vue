@@ -26,6 +26,7 @@ import type { SectionContentResponse, ToolbarToggle } from '../types/library';
 import ContentBlockView from './ContentBlockView.vue';
 
 const route = useRoute();
+// TODO: Don't provide/inject sectionData!
 const sectionData = inject<Ref<SectionContentResponse | null>>('sectionData');
 
 const blockId = computed(() => route.params.block_id as string);
