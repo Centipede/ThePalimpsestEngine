@@ -1099,7 +1099,7 @@ async function fetchSection() {
   loading.value = true;
   error.value = '';
   try {
-    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=sum,ents,facets&cont_info=sum,ents,facets&path_coded=1&pageinfo=1`);
+    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=sum,ents,facets,pm&cont_info=sum,ents,facets,pm&path_coded=1&pageinfo=1`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data.value = await res.json();
     openFindingIds.value = {};

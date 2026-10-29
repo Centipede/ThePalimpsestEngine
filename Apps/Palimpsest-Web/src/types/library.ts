@@ -92,12 +92,13 @@ export interface ContentBlock {
     content_type: string;
     content_text: string;
     content_json: any;
-    inforecords: InfoRecord[];
+    inforecords: ContentInfoRecord[];
     pageinfo?: PageInfo | null;
     finding_occurrences?: FindingOccurrence[];
+    info?: { processing_manifest?: ProcessingManifest };
 }
 
-export interface InfoRecord {
+export interface ContentInfoRecord {
     id: number;
     of_content_pi: string;
     in_section_pf: string;
@@ -111,8 +112,10 @@ export interface InfoRecord {
     validated_at: string | null;
     version_info: Record<string, any>;
     of_content: number;
+    processing_manifest?: ProcessingManifest;
 }
 
+// DEPRECATED: Soon to be removed
 export interface ContentSummary {
     caption: string;
     summary: string;
@@ -130,6 +133,7 @@ export interface EntityInfo {
     description: string;
 }
 
+// DEPRECATED: Soon to be removed
 export interface ContentEntities {
     entities: {
         times: EntityInfo[];
@@ -140,6 +144,7 @@ export interface ContentEntities {
     };
 }
 
+// A descriptor for extraced_data in time facets (section_one data)
 export interface CentralTimePeriod {
     interval_years: number[][];
     specific_years: number[];
@@ -147,11 +152,13 @@ export interface CentralTimePeriod {
     specific_full_dates: string[];
 }
 
+// A descriptor for extraced_data in place facets (section_one data)
 export interface CentralGeographicalArea {
     placenames: string[];
     full_description: string;
 }
 
+// DEPRECATED: Soon to be removed
 export interface SectionSummary {
     theme: string;
     key_events: string[];
@@ -169,6 +176,7 @@ export interface SectionSummary {
     central_geographical_area: CentralGeographicalArea;
 }
 
+// DEPRECATED: Soon to be removed
 export interface SectionEntities {
     linked: Record<string, any>;
     unlinked: Record<string, any>;
@@ -187,6 +195,22 @@ export interface ParagraphSegment {
 
 export interface ParagraphSegments {
     paragraph_segments: ParagraphSegment[];
+}
+
+export interface PMLogEntry {
+    when: string; // ISO datetime string
+    notes: Record<string, any>;
+    errors: string[];
+}
+
+export interface PMCompleted {
+    facets: string[];
+    essentials: string[];
+}
+
+export interface ProcessingManifest {
+    completed: PMCompleted;
+    log: PMLogEntry[];
 }
 
 export interface EssentialDigest {
@@ -330,8 +354,9 @@ export interface SectionDetail extends Section {
     last_real_content: number;
     full_path_coded?: string;
     info?: {
-        summary?: SectionSummary;
-        entities?: SectionEntities;
+        summary?: any;
+        entities?: any;
+        processing_manifest?: ProcessingManifest;
     };
     findings?: SectionFindings | null;
 }
@@ -339,6 +364,7 @@ export interface SectionDetail extends Section {
 export interface SegmentInfo {
     summary: Record<string, unknown>;
     queries: Record<string, unknown>;
+    processing_manifest?: ProcessingManifest;
 }
 
 export interface CoverageSpec {
@@ -400,24 +426,10 @@ export interface ToolbarToggle {
     disabled?: boolean;
 }
 
-export interface SectionSummaryNew {
-    theme: string;
-    brief_summary: string;
-    tag_descriptors: {
-        people: { title: string }[];
-        events: { title: string }[];
-        institutions: { title: string }[];
-    };
-    prose_descriptors: {
-        time: CentralTimePeriod;
-        place: CentralGeographicalArea;
-    };
-    summary?: string;
-}
-
 
 export interface SectionInformationResponse {
     digest: EssentialDigest | null;
+    outline: EssentialOutline | null;
     findings: SectionFindings;
 }
 
