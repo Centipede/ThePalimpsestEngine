@@ -153,6 +153,8 @@
           :machine-name="props.machineName"
           :section-path="entry.section.path_full"
           :depth="entry.depth"
+          :findings="entry.section.path_full === props.rootSectionPF ? props.findings : undefined"
+          :essentials="entry.section.path_full === props.rootSectionPF ? props.essentials : undefined"
         />
       </template>
     </div>
@@ -177,7 +179,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
-import type { BookStructure, Section } from '../types/library';
+import type { BookStructure, Section, SectionFindings, SectionEssentials } from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef, StudyNote, StudyNoteRef } from '../types/study';
 import { useStudyWorkspaceItem } from '../composables/useStudyWorkspaceItem';
 import SectionInformation from './SectionInformation.vue';
@@ -189,7 +191,9 @@ const props = withDefaults(defineProps<{
   rootSectionPF?: string,
   mode?: 'nav' | 'select',
   showDiscussions?: boolean,
-  selectedIds?: number[]
+  selectedIds?: number[],
+  findings?: SectionFindings | null,
+  essentials?: SectionEssentials | null
 }>(), {
   mode: 'nav',
   showDiscussions: true,

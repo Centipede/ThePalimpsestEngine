@@ -217,9 +217,17 @@
           :book-structure="props.bookStructure"
           :machine-name="props.machineName"
           :rootSectionPF="props.sectionPath"
+          :findings="data?.section.findings"
+          :essentials="data?.section.essentials"
       />
 
-      <SectionInformation v-if="showSummary" :machine-name="props.machineName" :section-path="props.sectionPath"/>
+      <SectionInformation
+          v-if="showSummary"
+          :machine-name="props.machineName"
+          :section-path="props.sectionPath"
+          :findings="data?.section.findings"
+          :essentials="data?.section.essentials"
+      />
       <SectionSegmentsOverview v-if="showSegmentsOverview && data.section.info?.summary?.paragraph_segments" :segments="data.section.info.summary.paragraph_segments"/>
       <SectionFindings v-if="showEntities && Object.keys(mergedFacets).length" :facets="mergedFacets" v-model:open-finding-ids="openFindingIds" :selected-occurrence="selectedOccurrence" :active-facet-types="activeFacetTypes" @refresh="fetchSection"/>
 

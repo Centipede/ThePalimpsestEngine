@@ -116,58 +116,13 @@ export interface ContentBlock {
         processing_manifest?: ProcessingManifest;
         emphasis?: ContentEmphasis[];
     };
-    // Deprecated: use essentials, findings, and info instead
-    inforecords: ContentInfoRecord[];
     pageinfo?: PageInfo | null;
     finding_occurrences?: FindingOccurrence[];
-}
-
-// DEPRECATED: Soon to be removed, use .info instead.
-export interface ContentInfoRecord {
-    id: number;
-    of_content_pi: string;
-    in_section_pf: string;
-    in_book_mn: string;
-    kind: 'summary' | 'named_entities' | 'emphasis' | string;
-    source: string;
-    created_at: string;
-    created_info: any;
-    content_js: ContentSummary | ContentEntities | ContentEmphasis | any;
-    valid: boolean;
-    validated_at: string | null;
-    version_info: Record<string, any>;
-    of_content: number;
-    processing_manifest?: ProcessingManifest;
-}
-
-// DEPRECATED: Soon to be removed, use BlockDigest and BlockEssentials instead
-export interface ContentSummary {
-    caption: string;
-    summary: string;
 }
 
 export interface ContentEmphasis {
     color: string;
     fragment: string;
-}
-
-// DEPRECATED: Soon to be removed
-export interface EntityInfo {
-    name: string;
-    quote: string;
-    location: string;
-    description: string;
-}
-
-// DEPRECATED: Soon to be removed
-export interface ContentEntities {
-    entities: {
-        times: EntityInfo[];
-        works: EntityInfo[];
-        people: EntityInfo[];
-        places: EntityInfo[];
-        fuzzy_answer: string;
-    };
 }
 
 // A descriptor for extraced_data in time facets (section_one data)
@@ -200,16 +155,6 @@ export interface SectionSummary {
     }>;
     central_time_period: CentralTimePeriod;
     central_geographical_area: CentralGeographicalArea;
-}
-
-// DEPRECATED: Soon to be removed
-export interface SectionEntities {
-    linked: Record<string, any>;
-    unlinked: Record<string, any>;
-    unlinkable: Record<string, any>;
-    linked_count: number;
-    unlinked_count: number;
-    unlinkable_count: number;
 }
 
 export interface ParagraphSegment {

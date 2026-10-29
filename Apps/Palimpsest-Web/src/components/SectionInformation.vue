@@ -10,10 +10,9 @@
     <div v-else-if="data && hasInformation" class="summary-info-record__content">
       <div class="summary-info-record__grid">
         <div class="summary-info-record__main">
-          <h4 v-if="data.digest?.theme" class="summary-info-record__theme">{{ data.digest.theme }}</h4>
-          <p v-if="data.digest?.brief_summary" class="summary-info-record__brief">{{ data.digest.brief_summary }}</p>
-          <div v-if="data.digest?.prose_summary" class="summary-info-record__markdown" v-html="renderedProse"></div>
-          
+          <h4 v-if="data.essentials?.digest?.theme" class="summary-info-record__theme">{{ data.essentials.digest.theme }}</h4>
+          <p v-if="data.essentials?.digest?.brief_summary" class="summary-info-record__brief">{{ data.essentials.digest.brief_summary }}</p>
+
           <br v-if="sectionOneDescriptors.length > 0">
 
           <component
@@ -52,6 +51,8 @@ import { computed, ref, onMounted, watch } from 'vue';
 import { marked } from 'marked';
 import type {
   SectionInformationResponse,
+  SectionFindings,
+  SectionEssentials,
   CentralTimePeriod,
   CentralGeographicalArea
 } from '../types/library';
@@ -64,30 +65,49 @@ const props = defineProps<{
   machineName: string;
   sectionPath: string;
   depth?: number;
+  findings?: SectionFindings | null;
+  essentials?: SectionEssentials | null;
 }>();
 
 const facetsStore = useFacetsStore();
 
-const data = ref<SectionInformationResponse | null>(null);
+const internalData = ref<SectionInformationResponse | null>(null);
+
+const data = computed<SectionInformationResponse | null>(() => {
+  if (props.findings !== undefined || props.essentials !== undefined) {
+    return {
+      findings: props.findings ?? { contexts: {}, section_one: {}, section_few: {}, section_many: {} },
+      essentials: props.essentials ?? null
+    };
+  }
+  return internalData.value;
+});
+
 const loading = ref(false);
 const error = ref<string | null>(null);
 
 async function fetchData() {
   if (!props.machineName || !props.sectionPath) return;
 
-  loading.value = true;
-  error.value = null;
-
   // Ensure stores are populated
-  await Promise.all([
+  const storesPromise = Promise.all([
     facetsStore.fetchFacetQueries(),
     facetsStore.fetchFacetApplications(),
   ]);
 
+  if (props.findings !== undefined || props.essentials !== undefined) {
+    await storesPromise;
+    return;
+  }
+
+  loading.value = true;
+  error.value = null;
+
   try {
+    await storesPromise;
     const response = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/info/`);
     if (response.ok) {
-      data.value = await response.json();
+      internalData.value = await response.json();
     } else {
       error.value = `Error: ${response.statusText}`;
     }
@@ -103,8 +123,8 @@ onMounted(fetchData);
 watch(() => props.sectionPath, fetchData);
 
 const renderedProse = computed(() => {
-  if (data.value?.digest?.prose_summary) {
-    return marked.parse(data.value.digest.prose_summary);
+  if (data.value?.essentials?.digest?.prose_summary) {
+    return marked.parse(data.value.essentials.digest.prose_summary);
   }
   return '';
 });
@@ -175,7 +195,7 @@ const sectionOneDescriptors = computed<SectionOneDescriptor[]>(() => {
 
 const hasInformation = computed(() => {
   if (!data.value) return false;
-  const hasDigest = !!(data.value.digest && (data.value.digest.theme || data.value.digest.brief_summary || data.value.digest.prose_summary));
+  const hasDigest = !!(data.value.essentials?.digest && (data.value.essentials.digest.theme || data.value.essentials.digest.brief_summary || data.value.essentials.digest.prose_summary));
   const hasSectionOne = sectionOneDescriptors.value.length > 0;
   const hasSectionFew = !!data.value.findings?.section_few && Object.values(data.value.findings.section_few).some(occ => occ.length > 0);
   return hasDigest || hasSectionOne || hasSectionFew;
