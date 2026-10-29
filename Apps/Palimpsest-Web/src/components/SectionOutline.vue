@@ -1,7 +1,7 @@
 <template>
-  <div class="section-segments-overview">
-    <div v-if="segments?.length" class="segments-list">
-      <div v-for="(seg, idx) in segments" :key="idx" class="segment-item">
+  <div class="section-outline">
+    <div v-if="outline?.paragraph_segments?.length" class="segments-list">
+      <div v-for="(seg, idx) in outline.paragraph_segments" :key="idx" class="segment-item">
         <div class="segment-header">
           <sl-badge variant="success" pill>{{ seg.ranges.join(', ') }}</sl-badge>
           <span class="segment-caption">{{ seg.caption }}</span>
@@ -16,15 +16,15 @@
 </template>
 
 <script setup lang="ts">
-import type { SectionSummary } from '../types/library';
+import type { ParagraphSegments } from '../types/library';
 
 defineProps<{
-  segments: SectionSummary['paragraph_segments'];
+  outline: ParagraphSegments;
 }>();
 </script>
 
 <style scoped>
-.section-segments-overview {
+.section-outline {
   display: flex;
   flex-direction: column;
   gap: 1rem;

@@ -151,13 +151,13 @@ async function gatherBlockInfo() {
   }
 }
 
-watch(
-    () => props.availableHighlights,
-    value => {
-      console.log('availableHighlights changed in ContentBlockView:', value);
-    },
-    { deep: true }
-);
+// watch(
+//     () => props.availableHighlights,
+//     value => {
+//       console.log('availableHighlights changed in ContentBlockView:', value);
+//     },
+//     { deep: true }
+// );
 
 const isFolded = ref(false);
 
@@ -223,7 +223,7 @@ const lastPage = computed(() => {
 const allHighlights = computed(() => {
   const showSummaryQuotes = props.availableHighlights?.find(h => h.type === 'summary-quotes')?.checked ?? true;
 
-  const emphasisHighlights = (showSummaryQuotes && props.block.info?.emphasis) ? props.block.info.emphasis
+  const emphasisHighlights = (showSummaryQuotes && props.block.info?.emphases) ? props.block.info.emphases
     .flatMap((e: ContentEmphasis) => {
       if (!e.fragment) return [];
 

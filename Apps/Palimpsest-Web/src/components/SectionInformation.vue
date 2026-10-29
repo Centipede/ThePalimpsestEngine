@@ -48,7 +48,6 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue';
-import { marked } from 'marked';
 import type {
   SectionInformationResponse,
   SectionFindings,
@@ -122,13 +121,6 @@ onMounted(fetchData);
 
 watch(() => props.sectionPath, fetchData);
 
-const renderedProse = computed(() => {
-  if (data.value?.essentials?.digest?.prose_summary) {
-    return marked.parse(data.value.essentials.digest.prose_summary);
-  }
-  return '';
-});
-
 const facetColors: Record<string, string> = {
   people: 'var(--sl-color-indigo-600)',
   events: 'var(--sl-color-emerald-600)',
@@ -168,7 +160,6 @@ const sectionOneDescriptors = computed<SectionOneDescriptor[]>(() => {
     if (!occurrence?.extracted_data) return [];
 
     const method = getRenderMethod(facetPlural);
-    console.log('method', facetPlural, method, ' extracted_data: ', occurrence.extracted_data);
     if (method === 'time_period') {
       return [{
         key: facetPlural,

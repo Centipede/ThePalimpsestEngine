@@ -168,6 +168,7 @@ export function computeSegments(text: string, highlights: Highlight[], isDark: b
  * Returns an array of highlights, one for each part of the split fragment.
  */
 export function searchForFragments(text: string, fragment: string, color: string): Highlight[] {
+  console.log('searchForFragments called with fragment:', fragment);
   // Split the fragment by ... or unicode …
   const parts = fragment.split(/\.\.\.|\u2026/).map(p => p.trim()).filter(p => p.length > 0);
   const highlights: Highlight[] = [];

@@ -86,7 +86,7 @@
                 <sl-icon name="list"></sl-icon>
               </sl-button>
               <sl-button
-                  v-if="data.section.info?.summary?.paragraph_segments?.length"
+                  v-if="data.section.essentials?.outline?.segments?.paragraph_segments?.length"
                   size="small"
                   :variant="organiseMode === 'segmented' ? 'primary' : 'default'"
                   @click="organiseMode = 'segmented'"
@@ -228,7 +228,7 @@
           :findings="data?.section.findings"
           :essentials="data?.section.essentials"
       />
-      <SectionSegmentsOverview v-if="showSegmentsOverview && data.section.info?.summary?.paragraph_segments" :segments="data.section.info.summary.paragraph_segments"/>
+      <SectionOutline v-if="showSegmentsOverview && data.section.essentials?.outline?.segments" :outline="data.section.essentials.outline.segments"/>
       <SectionFindings v-if="showEntities && Object.keys(mergedFacets).length" :facets="mergedFacets" v-model:open-finding-ids="openFindingIds" :selected-occurrence="selectedOccurrence" :active-facet-types="activeFacetTypes" @refresh="fetchSection"/>
 
       <CorpusStudyDialog
@@ -389,7 +389,7 @@ import type {SectionContentResponse, BookStructure, Section, FindingOccurrence, 
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import SectionNoteView from './studynotes/SectionNoteView.vue';
 import SectionInformation from './SectionInformation.vue';
-import SectionSegmentsOverview from './SectionSegmentsOverview.vue';
+import SectionOutline from './SectionOutline.vue';
 import SectionFindings from './SectionFindings.vue';
 import ContentBlockView from './ContentBlockView.vue';
 import TableOfContents from './TableOfContents.vue';
@@ -462,6 +462,18 @@ const rootSegmentsWithColors = computed(() => {
 const blockBorderColors = computed(() => {
   const mapping: Record<number, string> = {};
   if (!data.value?.contents) return mapping;
+
+  const paragraphSegments = data.value.section.essentials?.outline?.segments?.paragraph_segments;
+  if (paragraphSegments && paragraphSegments.length > 0) {
+    paragraphSegments.forEach((seg, index) => {
+      const color = SEGMENT_COLORS[index % SEGMENT_COLORS.length];
+      const indices = parseRanges(seg.ranges);
+      indices.forEach(i => {
+        mapping[i] = color;
+      });
+    });
+    return mapping;
+  }
 
   const roots = rootSegmentsWithColors.value;
 
@@ -788,7 +800,7 @@ const parseRanges = (ranges: string[]): Set<number> => {
 const segmentedData = computed(() => {
   if (!data.value) return {segments: [], orphans: []};
 
-  const paragraphSegments = data.value.section.info?.summary?.paragraph_segments;
+  const paragraphSegments = data.value.section.essentials?.outline?.segments?.paragraph_segments;
   if (!paragraphSegments || paragraphSegments.length === 0) {
     return {segments: [], orphans: data.value.contents.map( (block, index) => ({block, index}))};
   }

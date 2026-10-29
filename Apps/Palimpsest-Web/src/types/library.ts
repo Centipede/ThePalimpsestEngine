@@ -93,7 +93,6 @@ export interface BlockDigest {
     prose_summary: string | null;
     brief_summary: string | null;
     llm_summary: string | null;
-    emphasis?: ContentEmphasis[];
 }
 
 export interface BlockEssentials {
@@ -114,7 +113,7 @@ export interface ContentBlock {
     findings?: BlockFindings;
     info?: {
         processing_manifest?: ProcessingManifest;
-        emphasis?: ContentEmphasis[];
+        emphases?: ContentEmphasis[];
     };
     pageinfo?: PageInfo | null;
     finding_occurrences?: FindingOccurrence[];
@@ -137,24 +136,6 @@ export interface CentralTimePeriod {
 export interface CentralGeographicalArea {
     placenames: string[];
     full_description: string;
-}
-
-// DEPRECATED: Soon to be removed
-export interface SectionSummary {
-    theme: string;
-    key_events: string[];
-    key_people: string[];
-    brief_summary: string;
-    prose_summary: string;
-    key_institutions: string[];
-    paragraph_segments: Array<{
-        ranges: string[];
-        caption: string;
-        description?: string;
-        keywords: string[];
-    }>;
-    central_time_period: CentralTimePeriod;
-    central_geographical_area: CentralGeographicalArea;
 }
 
 export interface ParagraphSegment {
