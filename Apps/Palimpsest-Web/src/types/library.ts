@@ -87,17 +87,42 @@ export interface Flow {
     tree?: Section;
 }
 
+export interface BlockDigest {
+    caption: string;
+    theme: string;
+    prose_summary: string | null;
+    brief_summary: string | null;
+    llm_summary: string | null;
+    emphasis?: ContentEmphasis[];
+}
+
+export interface BlockEssentials {
+    digest?: BlockDigest;
+    outline?: any; // Future use
+}
+
+export interface BlockFindings {
+    occurrences: FindingOccurrence[];
+}
+
 export interface ContentBlock {
     path_id: string;
     content_type: string;
     content_text: string;
     content_json: any;
+    essentials?: BlockEssentials;
+    findings?: BlockFindings;
+    info?: {
+        processing_manifest?: ProcessingManifest;
+        emphasis?: ContentEmphasis[];
+    };
+    // Deprecated: use essentials, findings, and info instead
     inforecords: ContentInfoRecord[];
     pageinfo?: PageInfo | null;
     finding_occurrences?: FindingOccurrence[];
-    info?: { processing_manifest?: ProcessingManifest };
 }
 
+// DEPRECATED: Soon to be removed, use .info instead.
 export interface ContentInfoRecord {
     id: number;
     of_content_pi: string;
@@ -115,7 +140,7 @@ export interface ContentInfoRecord {
     processing_manifest?: ProcessingManifest;
 }
 
-// DEPRECATED: Soon to be removed
+// DEPRECATED: Soon to be removed, use BlockDigest and BlockEssentials instead
 export interface ContentSummary {
     caption: string;
     summary: string;
@@ -126,6 +151,7 @@ export interface ContentEmphasis {
     fragment: string;
 }
 
+// DEPRECATED: Soon to be removed
 export interface EntityInfo {
     name: string;
     quote: string;
