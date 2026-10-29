@@ -2,9 +2,9 @@
   <div class="summary-info-record__tag-group">
     <span class="summary-info-record__tag-label">Time:</span>
     <div class="summary-info-record__descriptor-content">
-      <div v-if="data.full_description" class="summary-info-record__descriptor-prose">{{ data.full_description }}</div>
+      <div v-if="central_time_period.full_description" class="summary-info-record__descriptor-prose">{{ central_time_period.full_description }}</div>
       <div v-if="badges.length" class="summary-info-record__tag-list">
-        <sl-badge v-for="b in badges" :key="b" variant="neutral" pill>{{ b }}</sl-badge>
+        <sl-badge v-for="b in badges" :key="b" pill class="time-badge">{{ b }}</sl-badge>
       </div>
     </div>
   </div>
@@ -12,17 +12,17 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { SectionSummary } from '../types/library';
+import type { CentralTimePeriod } from '../../types/library';
 
 const props = defineProps<{
-  data: SectionSummary['central_time_period'];
+  central_time_period: CentralTimePeriod;
 }>();
 
 const badges = computed(() => {
   const result: string[] = [];
   
-  if (props.data.interval_years) {
-    props.data.interval_years.forEach(interval => {
+  if (props.central_time_period.interval_years) {
+    props.central_time_period.interval_years.forEach(interval => {
       if (interval.length === 2) {
         result.push(`${interval[0]}–${interval[1]}`);
       } else if (interval.length === 1) {
@@ -31,14 +31,14 @@ const badges = computed(() => {
     });
   }
   
-  if (props.data.specific_years) {
-    props.data.specific_years.forEach(year => {
+  if (props.central_time_period.specific_years) {
+    props.central_time_period.specific_years.forEach(year => {
       result.push(`${year}`);
     });
   }
   
-  if (props.data.specific_full_dates) {
-    props.data.specific_full_dates.forEach(date => {
+  if (props.central_time_period.specific_full_dates) {
+    props.central_time_period.specific_full_dates.forEach(date => {
       result.push(date);
     });
   }
@@ -70,9 +70,15 @@ const badges = computed(() => {
 }
 
 .summary-info-record__descriptor-prose {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   line-height: 1.4;
   color: var(--color-text-muted);
+}
+
+.time-badge::part(base) {
+  background-color: var(--sl-color-purple-600);
+  border-color: var(--sl-color-purple-600);
+  color: #fff;
 }
 
 .summary-info-record__tag-list {

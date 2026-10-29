@@ -22,10 +22,12 @@
 <script setup lang="ts">
 import { computed, inject, type Ref } from 'vue';
 import { useRoute } from 'vue-router';
-import type { SectionContentResponse, ToolbarToggle } from '../types/library';
+import type { SectionContentResponse } from '../types/library';
 import ContentBlockView from './ContentBlockView.vue';
+import type {ToolbarToggle} from "../types/view_state.ts";
 
 const route = useRoute();
+// TODO: Don't provide/inject sectionData!
 const sectionData = inject<Ref<SectionContentResponse | null>>('sectionData');
 
 const blockId = computed(() => route.params.block_id as string);

@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia';
 import { apiFetch } from '../api';
-import type { FacetQuery } from '../types/library';
+import type { FacetQuery, FacetApplication } from '../types/library';
 
 export const useFacetsStore = defineStore('facets', {
   state: () => ({
     facetQueries: [] as FacetQuery[],
+    facetApplications: [] as FacetApplication[],
     isLoading: false,
     error: '' as string,
   }),
@@ -129,32 +130,130 @@ export const useFacetsStore = defineStore('facets', {
       }
     },
 
+    async fetchFacetApplications(facetId?: number) {
+      this.isLoading = true;
+      this.error = '';
+      try {
+        let url = '/testbooks/api/v1/facet-application/';
+        if (facetId) {
+          url += `?facet=${facetId}`;
+        }
+        const res = await apiFetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const apps = await res.json();
+        this.facetApplications = apps;
+        return apps;
+      } catch (e) {
+        this.error = e instanceof Error ? e.message : 'Failed to load facet applications';
+        console.error(this.error);
+        throw e;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async createFacetApplication(data: Partial<FacetApplication>) {
+      this.isLoading = true;
+      this.error = '';
+      try {
+        const res = await apiFetch('/testbooks/api/v1/facet-application/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const newApp = await res.json();
+        this.facetApplications.push(newApp);
+        return newApp;
+      } catch (e) {
+        this.error = e instanceof Error ? e.message : 'Failed to create facet application';
+        throw e;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async updateFacetApplication(id: number, data: Partial<FacetApplication>) {
+      this.isLoading = true;
+      this.error = '';
+      try {
+        const res = await apiFetch(`/testbooks/api/v1/facet-application/${id}/`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const updatedApp = await res.json();
+        const index = this.facetApplications.findIndex((a) => a.id === id);
+        if (index !== -1) {
+          this.facetApplications[index] = updatedApp;
+        }
+        return updatedApp;
+      } catch (e) {
+        this.error = e instanceof Error ? e.message : 'Failed to update facet application';
+        throw e;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async deleteFacetApplication(id: number) {
+      this.isLoading = true;
+      this.error = '';
+      try {
+        const res = await apiFetch(`/testbooks/api/v1/facet-application/${id}/`, {
+          method: 'DELETE',
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        this.facetApplications = this.facetApplications.filter((a) => a.id !== id);
+      } catch (e) {
+        this.error = e instanceof Error ? e.message : 'Failed to delete facet application';
+        throw e;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
     async addBook(facetId: number, bookId: number) {
-      const facet = this.getFacetById(facetId);
-      if (!facet) return;
-      const by_books = [...new Set([...(facet.by_books || []), bookId])];
-      return this.updateFacetQuery(facetId, { by_books });
+      return this.createFacetApplication({
+        facet: facetId,
+        book: bookId,
+        use_section_one: true,
+        use_section_few: true,
+        use_section_many: true,
+        use_segment_one: true,
+        use_segment_few: true,
+        use_segment_many: true,
+        use_content_all: true,
+      });
     },
 
     async removeBook(facetId: number, bookId: number) {
-      const facet = this.getFacetById(facetId);
-      if (!facet) return;
-      const by_books = (facet.by_books || []).filter(id => id !== bookId);
-      return this.updateFacetQuery(facetId, { by_books });
+      const app = this.facetApplications.find((a) => a.facet === facetId && a.book === bookId);
+      if (app) {
+        return this.deleteFacetApplication(app.id);
+      }
     },
 
     async addTopic(facetId: number, topicId: number) {
-      const facet = this.getFacetById(facetId);
-      if (!facet) return;
-      const by_topics = [...new Set([...(facet.by_topics || []), topicId])];
-      return this.updateFacetQuery(facetId, { by_topics });
+      return this.createFacetApplication({
+        facet: facetId,
+        topic: topicId,
+        use_section_one: true,
+        use_section_few: true,
+        use_section_many: true,
+        use_segment_one: true,
+        use_segment_few: true,
+        use_segment_many: true,
+        use_content_all: true,
+      });
     },
 
     async removeTopic(facetId: number, topicId: number) {
-      const facet = this.getFacetById(facetId);
-      if (!facet) return;
-      const by_topics = (facet.by_topics || []).filter(id => id !== topicId);
-      return this.updateFacetQuery(facetId, { by_topics });
+      const app = this.facetApplications.find((a) => a.facet === facetId && a.topic === topicId);
+      if (app) {
+        return this.deleteFacetApplication(app.id);
+      }
     },
   },
 });

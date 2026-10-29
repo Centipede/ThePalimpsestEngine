@@ -10,7 +10,13 @@
 
     <sl-tab-group>
       <sl-tab slot="nav" panel="block">Block Prompts</sl-tab>
-      <sl-tab slot="nav" panel="section">Section Prompts</sl-tab>
+      <sl-tab slot="nav" panel="section_one">Section (One)</sl-tab>
+      <sl-tab slot="nav" panel="section_few">Section (Few)</sl-tab>
+      <sl-tab slot="nav" panel="section_many">Section (Many)</sl-tab>
+      <sl-tab slot="nav" panel="schema_one">Schema (One)</sl-tab>
+      <sl-tab slot="nav" panel="schema_few">Schema (Few)</sl-tab>
+      <sl-tab slot="nav" panel="schema_many">Schema (Many)</sl-tab>
+      <sl-tab slot="nav" panel="scratchpad">Scratchpad</sl-tab>
 
       <sl-tab-panel name="block">
         <div class="prompts-list">
@@ -19,8 +25,8 @@
               <sl-badge variant="primary">{{ lang.toUpperCase() }}</sl-badge>
             </header>
             <sl-textarea
-                :value="facet.query_block_lang?.[lang] || ''"
-                @sl-change="handleSavePrompt(lang, 'block', $event.target.value)"
+                :value="facet.query_block?.[lang] || ''"
+                @sl-change="handleSavePrompt(lang, 'query_block', $event.target.value)"
                 placeholder="Enter block-level extraction prompt..."
                 rows="4"
             ></sl-textarea>
@@ -28,19 +34,95 @@
         </div>
       </sl-tab-panel>
 
-      <sl-tab-panel name="section">
+      <sl-tab-panel name="section_one">
         <div class="prompts-list">
           <div v-for="lang in languages" :key="lang" class="prompt-editor">
             <header class="prompt-header">
               <sl-badge variant="primary">{{ lang.toUpperCase() }}</sl-badge>
             </header>
             <sl-textarea
-                :value="facet.query_section_lang?.[lang] || ''"
-                @sl-change="handleSavePrompt(lang, 'section', $event.target.value)"
-                placeholder="Enter section-level extraction prompt..."
+                :value="facet.query_section_one?.[lang] || ''"
+                @sl-change="handleSavePrompt(lang, 'query_section_one', $event.target.value)"
+                placeholder="Enter prompt for a single section..."
                 rows="4"
             ></sl-textarea>
           </div>
+        </div>
+      </sl-tab-panel>
+
+      <sl-tab-panel name="section_few">
+        <div class="prompts-list">
+          <div v-for="lang in languages" :key="lang" class="prompt-editor">
+            <header class="prompt-header">
+              <sl-badge variant="primary">{{ lang.toUpperCase() }}</sl-badge>
+            </header>
+            <sl-textarea
+                :value="facet.query_section_few?.[lang] || ''"
+                @sl-change="handleSavePrompt(lang, 'query_section_few', $event.target.value)"
+                placeholder="Enter prompt for a few sections..."
+                rows="4"
+            ></sl-textarea>
+          </div>
+        </div>
+      </sl-tab-panel>
+
+      <sl-tab-panel name="section_many">
+        <div class="prompts-list">
+          <div v-for="lang in languages" :key="lang" class="prompt-editor">
+            <header class="prompt-header">
+              <sl-badge variant="primary">{{ lang.toUpperCase() }}</sl-badge>
+            </header>
+            <sl-textarea
+                :value="facet.query_section_many?.[lang] || ''"
+                @sl-change="handleSavePrompt(lang, 'query_section_many', $event.target.value)"
+                placeholder="Enter prompt for many sections..."
+                rows="4"
+            ></sl-textarea>
+          </div>
+        </div>
+      </sl-tab-panel>
+
+      <sl-tab-panel name="schema_one">
+        <div class="prompts-list">
+          <sl-textarea
+              :value="formatJson(facet.schema_section_one)"
+              @sl-change="handleSaveSchema('schema_section_one', $event.target.value)"
+              placeholder="Enter JSON schema for one section... (hint: print(json.dumps(SomeBaseModel.model_json_schema(), indent=2)) in python)"
+              rows="12"
+          ></sl-textarea>
+        </div>
+      </sl-tab-panel>
+
+      <sl-tab-panel name="schema_few">
+        <div class="prompts-list">
+          <sl-textarea
+              :value="formatJson(facet.schema_section_few)"
+              @sl-change="handleSaveSchema('schema_section_few', $event.target.value)"
+              placeholder="Enter JSON schema for a few sections..."
+              rows="12"
+          ></sl-textarea>
+        </div>
+      </sl-tab-panel>
+
+      <sl-tab-panel name="schema_many">
+        <div class="prompts-list">
+          <sl-textarea
+              :value="formatJson(facet.schema_section_many)"
+              @sl-change="handleSaveSchema('schema_section_many', $event.target.value)"
+              placeholder="Enter JSON schema for many sections..."
+              rows="12"
+          ></sl-textarea>
+        </div>
+      </sl-tab-panel>
+
+      <sl-tab-panel name="scratchpad">
+        <div class="prompts-list">
+          <sl-textarea
+              :value="facet.schema_scratchpad || ''"
+              @sl-change="handleSaveScratchpad($event.target.value)"
+              placeholder="Use this space to store notes, Pydantic models, or draft schemas..."
+              rows="12"
+          ></sl-textarea>
         </div>
       </sl-tab-panel>
     </sl-tab-group>
@@ -63,8 +145,12 @@ const emit = defineEmits<{
 
 const languages = computed(() => {
   const langs = new Set<string>();
-  if (props.facet.query_block_lang) Object.keys(props.facet.query_block_lang).forEach(l => langs.add(l));
-  if (props.facet.query_section_lang) Object.keys(props.facet.query_section_lang).forEach(l => langs.add(l));
+  const fields = ['query_block', 'query_section_one', 'query_section_few', 'query_section_many'] as const;
+  
+  fields.forEach(field => {
+    const val = props.facet[field];
+    if (val) Object.keys(val).forEach(l => langs.add(l));
+  });
   
   // Default languages if none present
   if (langs.size === 0) {
@@ -73,11 +159,32 @@ const languages = computed(() => {
   return Array.from(langs).sort();
 });
 
-const handleSavePrompt = (lang: string, type: 'block' | 'section', value: string) => {
-  const field = type === 'block' ? 'query_block_lang' : 'query_section_lang';
-  const updated = { ...(props.facet[field] || {}) };
+const handleSavePrompt = (lang: string, field: keyof FacetQuery, value: string) => {
+  const updated = { ...(props.facet[field] as Record<string, any> || {}) };
   updated[lang] = value;
   emit('update', { [field]: updated });
+};
+
+const formatJson = (val: any) => {
+  if (!val) return '';
+  return JSON.stringify(val, null, 2);
+};
+
+const handleSaveSchema = (field: keyof FacetQuery, value: string) => {
+  if (!value.trim()) {
+    emit('update', { [field]: null });
+    return;
+  }
+  try {
+    const parsed = JSON.parse(value);
+    emit('update', { [field]: parsed });
+  } catch (e) {
+    console.error('Failed to parse JSON schema:', e);
+  }
+};
+
+const handleSaveScratchpad = (value: string) => {
+  emit('update', { schema_scratchpad: value || null });
 };
 </script>
 

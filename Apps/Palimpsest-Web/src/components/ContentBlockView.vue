@@ -103,10 +103,11 @@
 import { computed, ref, watch } from 'vue';
 import { apiFetch } from '../api';
 import { useAuth } from '../composables/useAuth';
-import type { ContentBlock, ContentSummary, FoldTrigger, Highlight, ContentEmphasis, ToolbarToggle, FindingOccurrence, ActiveFindingContext } from '../types/library';
+import type { ContentBlock, Highlight, ContentEmphasis, FindingOccurrence, ActiveFindingContext } from '../types/library';
 import { computeSegments, searchForFragments } from '../utils/text';
 import { useThemeStore } from '../stores/theme';
 import { useFacetsStore } from '../stores/facets';
+import type {FoldTrigger, ToolbarToggle} from "../types/view_state.ts";
 
 const props = defineProps<{
   block: ContentBlock;
@@ -150,13 +151,13 @@ async function gatherBlockInfo() {
   }
 }
 
-watch(
-    () => props.availableHighlights,
-    value => {
-      console.log('availableHighlights changed in ContentBlockView:', value);
-    },
-    { deep: true }
-);
+// watch(
+//     () => props.availableHighlights,
+//     value => {
+//       console.log('availableHighlights changed in ContentBlockView:', value);
+//     },
+//     { deep: true }
+// );
 
 const isFolded = ref(false);
 
@@ -171,21 +172,20 @@ watch(() => props.foldTrigger?.count, () => {
 });
 
 const summaryCaption = computed(() => {
-  const record = props.block.inforecords.find(r => r.kind === 'summary');
-  return (record?.content_js as ContentSummary)?.caption;
+  return props.block.essentials?.digest?.caption;
 });
 
 const summaryText = computed(() => {
-  const record = props.block.inforecords.find(r => r.kind === 'summary');
-  return (record?.content_js as ContentSummary)?.summary;
+  return props.block.essentials?.digest?.prose_summary;
 });
 
 const sortedOccurrencesByFacet = computed(() => {
-  if (!props.block.finding_occurrences?.length) return [];
+  const occurrences = props.block.findings?.occurrences || [];
+  if (!occurrences.length) return [];
 
   // Group by of_facet
   const groups: Record<string, FindingOccurrence[]> = {};
-  props.block.finding_occurrences.forEach(occ => {
+  occurrences.forEach(occ => {
     const facetNameSingular = occ.of_facet || 'unknown';
     if (props.activeFacetTypes && facetNameSingular !== 'unknown') {
       const facet = facetsStore.getFacetBySingularName(facetNameSingular);
@@ -223,13 +223,11 @@ const lastPage = computed(() => {
 const allHighlights = computed(() => {
   const showSummaryQuotes = props.availableHighlights?.find(h => h.type === 'summary-quotes')?.checked ?? true;
 
-  const emphasisHighlights = showSummaryQuotes ? props.block.inforecords
-    .filter(r => r.kind === 'emphasis')
-    .flatMap(r => {
-      const content = r.content_js as ContentEmphasis;
-      if (!content.fragment) return [];
+  const emphasisHighlights = (showSummaryQuotes && props.block.info?.emphases) ? props.block.info.emphases
+    .flatMap((e: ContentEmphasis) => {
+      if (!e.fragment) return [];
 
-      return searchForFragments(props.block.content_text, content.fragment, content.color || 'green');
+      return searchForFragments(props.block.content_text, e.fragment, e.color || 'green');
     }) : [];
 
   const entityQuoteHighlights: Highlight[] = [];

@@ -1,11 +1,11 @@
 # The Palimpsest Engine
 
-**Status September 2026: Still only in planning phase (albeit the web UI of the old system is being ported to Vue and improved)**
+**Status October 27th 2026: The UI is in daily use, but only running up against the testserver which still is 100% old spaghetti code**
 
 A study environment for people who still need books and paper.
 
 The Palimpsest Engine depends upon its sister project:
-[The OmniGraph Engine](https://github.com/Centipede/TheOmnigraphEngine)
+[The AetherGraph Engine](https://github.com/Centipede/TheAethergraphEngine)
 
 **OmniGraph** is a userfriendly but mostly manual tool for rebuilding the chapter structure of scanned books and of repairing OCR.
 

@@ -9,6 +9,7 @@ export interface Topic {
     prose_description: string | null;
     parent: number | null;
     children: Topic[];
+    facet_applications: FacetApplication[];
 }
 
 export interface Author {
@@ -34,6 +35,8 @@ export interface Book {
     by_author2: number | null;
     by_author3: number | null;
     topics: number[];
+    facet_applications: FacetApplication[];
+    facet_applications_cascaded: FacetApplication[];
     question_answers?: QuestionAnswerRef[];
     conversations?: ConversationRef[];
     studynotes?: StudyNoteRef[];
@@ -84,35 +87,36 @@ export interface Flow {
     tree?: Section;
 }
 
+export interface BlockDigest {
+    caption: string;
+    theme: string;
+    prose_summary: string | null;
+    brief_summary: string | null;
+    llm_summary: string | null;
+}
+
+export interface BlockEssentials {
+    digest?: BlockDigest;
+    outline?: any; // Future use
+}
+
+export interface BlockFindings {
+    occurrences: FindingOccurrence[];
+}
+
 export interface ContentBlock {
     path_id: string;
     content_type: string;
     content_text: string;
     content_json: any;
-    inforecords: InfoRecord[];
+    essentials?: BlockEssentials;
+    findings?: BlockFindings;
+    info?: {
+        processing_manifest?: ProcessingManifest;
+        emphases?: ContentEmphasis[];
+    };
     pageinfo?: PageInfo | null;
     finding_occurrences?: FindingOccurrence[];
-}
-
-export interface InfoRecord {
-    id: number;
-    of_content_pi: string;
-    in_section_pf: string;
-    in_book_mn: string;
-    kind: 'summary' | 'named_entities' | 'emphasis' | string;
-    source: string;
-    created_at: string;
-    created_info: any;
-    content_js: ContentSummary | ContentEntities | ContentEmphasis | any;
-    valid: boolean;
-    validated_at: string | null;
-    version_info: Record<string, any>;
-    of_content: number;
-}
-
-export interface ContentSummary {
-    caption: string;
-    summary: string;
 }
 
 export interface ContentEmphasis {
@@ -120,56 +124,91 @@ export interface ContentEmphasis {
     fragment: string;
 }
 
-export interface EntityInfo {
-    name: string;
-    quote: string;
-    location: string;
+// A descriptor for extraced_data in time facets (section_one data)
+export interface CentralTimePeriod {
+    interval_years: number[][];
+    specific_years: number[];
+    full_description: string;
+    specific_full_dates: string[];
+}
+
+// A descriptor for extraced_data in place facets (section_one data)
+export interface CentralGeographicalArea {
+    placenames: string[];
+    full_description: string;
+}
+
+export interface ParagraphSegment {
+    ranges: string[];
+    caption: string;
     description: string;
+    keywords: string[];
 }
 
-export interface ContentEntities {
-    entities: {
-        times: EntityInfo[];
-        works: EntityInfo[];
-        people: EntityInfo[];
-        places: EntityInfo[];
-        fuzzy_answer: string;
-    };
+export interface ParagraphSegments {
+    paragraph_segments: ParagraphSegment[];
 }
 
-export interface SectionSummary {
+export interface PMLogEntry {
+    when: string; // ISO datetime string
+    notes: Record<string, any>;
+    errors: string[];
+}
+
+export interface PMCompleted {
+    facets: string[];
+    essentials: string[];
+}
+
+export interface ProcessingManifest {
+    completed: PMCompleted;
+    log: PMLogEntry[];
+}
+
+export interface EssentialDigest {
+    id: number;
+    in_book_mn: string | null;
+    in_section: number | null;
+    in_section_pf: string | null;
+    caption: string;
     theme: string;
-    key_events: string[];
-    key_people: string[];
-    brief_summary: string;
-    prose_summary: string;
-    key_institutions: string[];
-    paragraph_segments: Array<{
-        ranges: string[];
-        caption: string;
-        description?: string;
-        keywords: string[];
-    }>;
-    central_time_period: {
-        interval_years: number[][];
-        specific_years: number[];
-        full_description: string;
-        specific_full_dates: string[];
-    };
-    central_geographical_area: {
-        placenames: string[];
-        full_description: string;
-    };
+    prose_summary: string | null;
+    brief_summary: string | null;
+    llm_summary: string | null;
 }
 
-export interface SectionEntities {
-    linked: Record<string, any>;
-    unlinked: Record<string, any>;
-    unlinkable: Record<string, any>;
-    linked_count: number;
-    unlinked_count: number;
-    unlinkable_count: number;
+export interface EssentialOutline {
+    id: number;
+    in_book_mn: string | null;
+    in_section: number | null;
+    in_section_pf: string | null;
+    segments: ParagraphSegments | null;
 }
+
+export interface EssentialApplication {
+    id: number;
+    book: number | null;
+    with_topics: number[];
+    use_section_digest: boolean;
+    use_section_outline: boolean;
+}
+
+export interface FacetApplication {
+    id: number;
+    facet: number | null;
+    book: number | null;
+    topic: number | null;
+    use_section_one: boolean;
+    use_section_few: boolean;
+    use_section_many: boolean;
+    use_segment_one: boolean;
+    use_segment_few: boolean;
+    use_segment_many: boolean;
+    use_content_all: boolean;
+    render_method: { method: 'time_period' | 'geographical_area' } | null;
+}
+
+export type ProvidedQueryData = 'full_text' | 'summary' | 'findings';
 
 /**
  * Represents a site-wide facet of interest that the system can query for automatically.
@@ -181,11 +220,15 @@ export interface FacetQuery {
     machine_name_plural: string;
     symbol: string;
     prose_description: string | null;
-    query_block_lang: Record<string, string> | null;
-    query_section_lang: Record<string, string> | null;
-    extraction_schema: Record<string, any> | null;
-    by_books: number[];
-    by_topics: number[];
+    query_block: Record<string, any> | null;
+    query_section_one: Record<string, any> | null;
+    query_section_few: Record<string, any> | null;
+    query_section_many: Record<string, any> | null;
+    query_data: ProvidedQueryData;
+    schema_scratchpad: string | null;
+    schema_section_one: Record<string, any> | null;
+    schema_section_few: Record<string, any> | null;
+    schema_section_many: Record<string, any> | null;
     // Stats included when ?stats=1 is used
     occurrences_count?: number;
     contexts_count?: number;
@@ -199,9 +242,10 @@ export interface FoundIdentity {
     of_facet: number | FacetQuery | null;
     wikidata_qid: string;
     wikipedia_url: string | null;
-    wikimedia_commons_url: string | null;
+    wikimedia_url: string | null;
     name: string;
     properties: Record<string, any> | null;
+    articles: any[];
 }
 
 /**
@@ -216,6 +260,7 @@ export interface FindingOccurrence {
     on_page: number | null;
     of_facet?: string;
     of_context: number | null;
+    extracted_data: Record<string, any> | null;
 }
 
 /**
@@ -237,7 +282,21 @@ export interface ActiveFindingContext {
 /**
  * Grouped findings by facet (e.g., "people", "places").
  */
-export type FindingFacetMap = Record<string, FindingContext[]>;
+export type FindingContextMap = Record<string, FindingContext[]>;
+
+export type FindingOccurrenceMap = Record<string, FindingOccurrence[]>;
+
+export interface SectionFindings {
+    contexts: FindingContextMap;
+    section_one: FindingOccurrenceMap;
+    section_few: FindingOccurrenceMap;
+    section_many: FindingOccurrenceMap;
+}
+
+export interface SectionEssentials {
+    digest?: EssentialDigest;
+    outline?: EssentialOutline;
+}
 
 export interface SectionDetail extends Section {
     title_html: string;
@@ -252,15 +311,16 @@ export interface SectionDetail extends Section {
     last_real_content: number;
     full_path_coded?: string;
     info?: {
-        summary?: SectionSummary;
-        entities?: SectionEntities;
-        facets?: FindingFacetMap;
+        processing_manifest?: ProcessingManifest;
     };
+    findings?: SectionFindings | null;
+    essentials?: SectionEssentials | null;
 }
 
 export interface SegmentInfo {
     summary: Record<string, unknown>;
     queries: Record<string, unknown>;
+    processing_manifest?: ProcessingManifest;
 }
 
 export interface CoverageSpec {
@@ -291,14 +351,14 @@ export interface SectionContentResponse {
     segments: Segment[];
 }
 
+export interface SectionInformationResponse {
+    essentials: SectionEssentials | null;
+    findings: SectionFindings;
+}
+
 export interface BookStructure {
     book: Book;
     flows: Flow[];
-}
-
-export interface FoldTrigger {
-    command: 'expand-all' | 'collapse-all';
-    count: number;
 }
 
 export interface Highlight {
@@ -315,26 +375,6 @@ export interface TextSegment {
     mixedColor?: string;
 }
 
-export interface ToolbarToggle {
-    name: string;
-    type: string;
-    checked: boolean;
-}
-
-export interface SectionSummaryNew {
-    theme: string;
-    brief_summary: string;
-    tag_descriptors: {
-        people: { title: string }[];
-        events: { title: string }[];
-        institutions: { title: string }[];
-    };
-    prose_descriptors: {
-        time: SectionSummary['central_time_period'];
-        place: SectionSummary['central_geographical_area'];
-    };
-    summary?: string;
-}
 
 
 export type SearchStyle = 'plain' | 'phrase' | 'raw' | 'websearch';

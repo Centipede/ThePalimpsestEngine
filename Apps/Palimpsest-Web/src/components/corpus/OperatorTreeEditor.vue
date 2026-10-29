@@ -55,12 +55,10 @@
 <script setup lang="ts">
 import type { 
   OperatorNode, 
-  PickingStep, 
   PickingOperator,
   SequenceOperator,
   UnionOperator,
   IntersectionOperator,
-  SearchPostgresFTS
 } from "../../types/corpusquery.ts";
 import OperatorTreeEditor from './OperatorTreeEditor.vue';
 import PickingTreeNode from './treeitems/PickingTreeNode.vue';

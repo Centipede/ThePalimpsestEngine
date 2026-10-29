@@ -30,6 +30,7 @@
                   type="checkbox"
                   size="small"
                   :checked="item.checked"
+                  :disabled="item.disabled"
               >
                 {{ item.name }}
               </sl-menu-item>
@@ -85,7 +86,7 @@
                 <sl-icon name="list"></sl-icon>
               </sl-button>
               <sl-button
-                  v-if="data.section.info?.summary?.paragraph_segments?.length"
+                  v-if="data.section.essentials?.outline?.segments?.paragraph_segments?.length"
                   size="small"
                   :variant="organiseMode === 'segmented' ? 'primary' : 'default'"
                   @click="organiseMode = 'segmented'"
@@ -135,6 +136,7 @@
                   type="checkbox"
                   size="small"
                   :checked="item.checked"
+                  :disabled="item.disabled"
               >
                 {{ item.name }}
               </sl-menu-item>
@@ -154,6 +156,7 @@
                   type="checkbox"
                   size="small"
                   :checked="item.checked"
+                  :disabled="item.disabled"
               >
                 {{ item.name }}
               </sl-menu-item>
@@ -214,12 +217,19 @@
           :book-structure="props.bookStructure"
           :machine-name="props.machineName"
           :rootSectionPF="props.sectionPath"
+          :findings="data?.section.findings"
+          :essentials="data?.section.essentials"
       />
 
-      <SummaryInfoRecord v-if="showSummary" :machine-name="props.machineName" :section-path="props.sectionPath"/>
-      <SectionSegmentsOverview v-if="showSegmentsOverview && data.section.info?.summary?.paragraph_segments" :segments="data.section.info.summary.paragraph_segments"/>
-      <SectionFindings v-if="showEntities && data.section.info?.facets" :facets="data.section.info.facets" v-model:open-finding-ids="openFindingIds" :selected-occurrence="selectedOccurrence" :active-facet-types="activeFacetTypes" @refresh="fetchSection"/>
-      <SectionEntities v-else-if="showEntities && data.section.info?.entities" :entities="data.section.info.entities"/>
+      <SectionInformation
+          v-if="showSummary"
+          :machine-name="props.machineName"
+          :section-path="props.sectionPath"
+          :findings="data?.section.findings"
+          :essentials="data?.section.essentials"
+      />
+      <SectionOutline v-if="showSegmentsOverview && data.section.essentials?.outline?.segments" :outline="data.section.essentials.outline.segments"/>
+      <SectionFindings v-if="showEntities && Object.keys(mergedFacets).length" :facets="mergedFacets" v-model:open-finding-ids="openFindingIds" :selected-occurrence="selectedOccurrence" :active-facet-types="activeFacetTypes" @refresh="fetchSection"/>
 
       <CorpusStudyDialog
           v-model:open="corpusDialog.open"
@@ -375,12 +385,11 @@ import { useHead } from '@unhead/vue';
 import { useRoute } from 'vue-router';
 import { useAuth } from '../composables/useAuth';
 import {apiFetch} from '../api';
-import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle, FindingOccurrence, ActiveFindingContext} from '../types/library';
+import type {SectionContentResponse, BookStructure, Section, FindingOccurrence, ActiveFindingContext, FacetQuery, FindingContextMap} from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import SectionNoteView from './studynotes/SectionNoteView.vue';
-import SummaryInfoRecord from './SummaryInfoRecord.vue';
-import SectionSegmentsOverview from './SectionSegmentsOverview.vue';
-import SectionEntities from './SectionEntities.vue';
+import SectionInformation from './SectionInformation.vue';
+import SectionOutline from './SectionOutline.vue';
 import SectionFindings from './SectionFindings.vue';
 import ContentBlockView from './ContentBlockView.vue';
 import TableOfContents from './TableOfContents.vue';
@@ -388,6 +397,7 @@ import CorpusStudyDialog from './corpus/CorpusStudyDialog.vue';
 import StudyWorkspaceDialog from './studyworkspaces/StudyWorkspaceDialog.vue';
 import {useLibraryStore} from "../stores/library.ts";
 import {useFacetsStore} from "../stores/facets.ts";
+import type {FoldTrigger, ToolbarToggle} from "../types/view_state.ts";
 
 const props = defineProps<{
   machineName: string;
@@ -453,6 +463,18 @@ const blockBorderColors = computed(() => {
   const mapping: Record<number, string> = {};
   if (!data.value?.contents) return mapping;
 
+  const paragraphSegments = data.value.section.essentials?.outline?.segments?.paragraph_segments;
+  if (paragraphSegments && paragraphSegments.length > 0) {
+    paragraphSegments.forEach((seg, index) => {
+      const color = SEGMENT_COLORS[index % SEGMENT_COLORS.length];
+      const indices = parseRanges(seg.ranges);
+      indices.forEach(i => {
+        mapping[i] = color;
+      });
+    });
+    return mapping;
+  }
+
   const roots = rootSegmentsWithColors.value;
 
   data.value.contents.forEach((_, index) => {
@@ -480,10 +502,59 @@ const availableHighlights = ref<ToolbarToggle[]>([
   { name: 'Summary Quotes', type: 'summary-quotes', checked: true },
 ]);
 
+// TODO: This got out of hand! All we wanted was a list of facet ids in actual use so the Vue could disable availableInfoRight entries not actually represented by a block occurrence.
+const mergedFacets = computed<FindingContextMap>(() => {
+  const facets: FindingContextMap = {};
+  if (!data.value) return facets;
+
+  // 1. Start with section-level findings (clustered contexts)
+  if (data.value.section.findings?.contexts) {
+    for (const [facetName, contexts] of Object.entries(data.value.section.findings.contexts)) {
+      facets[facetName] = contexts.map(c => ({
+        ...c,
+        occurrences: [...c.occurrences]
+      }));
+    }
+  }
+
+  // 2. Add block-level findings if they're not already present
+  data.value.contents.forEach(block => {
+    block.finding_occurrences?.forEach(occ => {
+      if (!occ.of_facet) return;
+      const facet = facetsStore.getFacetBySingularName(occ.of_facet);
+      if (!facet) return;
+
+      const pluralName = facet.machine_name_plural;
+      if (!facets[pluralName]) {
+        facets[pluralName] = [];
+      }
+
+      if (occ.of_context) {
+        let context = facets[pluralName].find(c => c.id === occ.of_context);
+        if (!context) {
+          context = {
+            id: occ.of_context,
+            name: occ.name,
+            of_facet: pluralName,
+            of_identity: null,
+            occurrences: []
+          };
+          facets[pluralName].push(context);
+        }
+        // Ensure this occurrence is in the context's occurrences list
+        if (!context.occurrences.some(o => o.id === occ.id)) {
+          context.occurrences.push(occ);
+        }
+      }
+    });
+  });
+
+  return facets;
+});
+
 const activeFindingContexts = computed<ActiveFindingContext[]>(() => {
-  if (!data.value?.section.info?.facets) return [];
   const active: ActiveFindingContext[] = [];
-  const facets = data.value.section.info.facets;
+  const facets = mergedFacets.value;
 
   Object.values(facets).flat().forEach(context => {
     if (openFindingIds.value[context.id]) {
@@ -514,16 +585,19 @@ watch(activeFindingContexts, (newActive) => {
 }, { immediate: true });
 
 const availableInfoRight = computed<ToolbarToggle[]>(() => {
-  if (!data.value?.section.info?.facets) return [];
+  const cascadedApps = props.bookStructure?.book.facet_applications_cascaded ?? [];
+  const facetIds = [...new Set(cascadedApps.map(app => app.facet).filter((id): id is number => id !== null))];
 
-  const presentPluralNames = Object.keys(data.value.section.info.facets);
+  const presentPluralNames = Object.keys(mergedFacets.value);
 
-  return facetsStore.facetQueries
-    .filter(fq => presentPluralNames.includes(fq.machine_name_plural))
+  return facetIds
+    .map(id => facetsStore.getFacetById(id))
+    .filter((fq): fq is FacetQuery => !!fq)
     .map(fq => ({
       name: fq.name,
       type: fq.machine_name_plural,
-      checked: activeFacetTypes.value.has(fq.machine_name_plural)
+      checked: activeFacetTypes.value.has(fq.machine_name_plural),
+      disabled: !presentPluralNames.includes(fq.machine_name_plural)
     }));
 });
 
@@ -726,7 +800,7 @@ const parseRanges = (ranges: string[]): Set<number> => {
 const segmentedData = computed(() => {
   if (!data.value) return {segments: [], orphans: []};
 
-  const paragraphSegments = data.value.section.info?.summary?.paragraph_segments;
+  const paragraphSegments = data.value.section.essentials?.outline?.segments?.paragraph_segments;
   if (!paragraphSegments || paragraphSegments.length === 0) {
     return {segments: [], orphans: data.value.contents.map( (block, index) => ({block, index}))};
   }
@@ -1046,18 +1120,38 @@ async function fetchSection() {
   loading.value = true;
   error.value = '';
   try {
-    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=sum,ents,facets&cont_info=sum,ents,facets&path_coded=1&pageinfo=1`);
+    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=essentials,findings,pm&cont_info=essentials,findings,emphasis,pm&path_coded=1&pageinfo=1`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data.value = await res.json();
     openFindingIds.value = {};
 
     // Initialize active facets
     const nextFacets = new Set<string>();
-    if (data.value?.section.info?.facets) {
-      Object.keys(data.value.section.info.facets).forEach(pluralName => {
-        nextFacets.add(pluralName);
+    if (data.value?.section.findings) {
+      const findings = data.value.section.findings;
+      const buckets: (keyof typeof findings)[] = ['contexts', 'section_one', 'section_few', 'section_many'];
+      buckets.forEach(bucket => {
+        const map = findings[bucket];
+        if (map) {
+          Object.keys(map).forEach(pluralName => {
+            nextFacets.add(pluralName);
+          });
+        }
       });
     }
+
+    // Also check content blocks for findings that might not be in section info
+    data.value?.contents.forEach(block => {
+      block.finding_occurrences?.forEach(occ => {
+        if (occ.of_facet) {
+          const facet = facetsStore.getFacetBySingularName(occ.of_facet);
+          if (facet) {
+            nextFacets.add(facet.machine_name_plural);
+          }
+        }
+      });
+    });
+
     activeFacetTypes.value = nextFacets;
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load section';
