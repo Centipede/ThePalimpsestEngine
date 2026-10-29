@@ -103,10 +103,11 @@
 import { computed, ref, watch } from 'vue';
 import { apiFetch } from '../api';
 import { useAuth } from '../composables/useAuth';
-import type { ContentBlock, ContentSummary, FoldTrigger, Highlight, ContentEmphasis, ToolbarToggle, FindingOccurrence, ActiveFindingContext } from '../types/library';
+import type { ContentBlock, ContentSummary, Highlight, ContentEmphasis, FindingOccurrence, ActiveFindingContext } from '../types/library';
 import { computeSegments, searchForFragments } from '../utils/text';
 import { useThemeStore } from '../stores/theme';
 import { useFacetsStore } from '../stores/facets';
+import type {FoldTrigger, ToolbarToggle} from "../types/view_state.ts";
 
 const props = defineProps<{
   block: ContentBlock;

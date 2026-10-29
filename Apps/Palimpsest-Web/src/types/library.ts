@@ -341,6 +341,11 @@ export interface SectionFindings {
     section_many: FindingOccurrenceMap;
 }
 
+export interface SectionEssentials {
+    digest?: EssentialDigest;
+    outline?: EssentialOutline;
+}
+
 export interface SectionDetail extends Section {
     title_html: string;
     of_book: number;
@@ -354,11 +359,10 @@ export interface SectionDetail extends Section {
     last_real_content: number;
     full_path_coded?: string;
     info?: {
-        summary?: any;
-        entities?: any;
         processing_manifest?: ProcessingManifest;
     };
     findings?: SectionFindings | null;
+    essentials?: SectionEssentials | null;
 }
 
 export interface SegmentInfo {
@@ -395,14 +399,14 @@ export interface SectionContentResponse {
     segments: Segment[];
 }
 
+export interface SectionInformationResponse {
+    essentials: SectionEssentials | null;
+    findings: SectionFindings;
+}
+
 export interface BookStructure {
     book: Book;
     flows: Flow[];
-}
-
-export interface FoldTrigger {
-    command: 'expand-all' | 'collapse-all';
-    count: number;
 }
 
 export interface Highlight {
@@ -419,19 +423,7 @@ export interface TextSegment {
     mixedColor?: string;
 }
 
-export interface ToolbarToggle {
-    name: string;
-    type: string;
-    checked: boolean;
-    disabled?: boolean;
-}
 
-
-export interface SectionInformationResponse {
-    digest: EssentialDigest | null;
-    outline: EssentialOutline | null;
-    findings: SectionFindings;
-}
 
 export type SearchStyle = 'plain' | 'phrase' | 'raw' | 'websearch';
 
