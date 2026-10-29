@@ -377,7 +377,7 @@ import { useHead } from '@unhead/vue';
 import { useRoute } from 'vue-router';
 import { useAuth } from '../composables/useAuth';
 import {apiFetch} from '../api';
-import type {SectionContentResponse, BookStructure, Section, FoldTrigger, ToolbarToggle, FindingOccurrence, ActiveFindingContext, FacetQuery, FindingContextMap} from '../types/library';
+import type {SectionContentResponse, BookStructure, Section, FindingOccurrence, ActiveFindingContext, FacetQuery, FindingContextMap} from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import SectionNoteView from './studynotes/SectionNoteView.vue';
 import SectionInformation from './SectionInformation.vue';
@@ -389,6 +389,7 @@ import CorpusStudyDialog from './corpus/CorpusStudyDialog.vue';
 import StudyWorkspaceDialog from './studyworkspaces/StudyWorkspaceDialog.vue';
 import {useLibraryStore} from "../stores/library.ts";
 import {useFacetsStore} from "../stores/facets.ts";
+import type {FoldTrigger, ToolbarToggle} from "../types/view_state.ts";
 
 const props = defineProps<{
   machineName: string;
@@ -1099,7 +1100,7 @@ async function fetchSection() {
   loading.value = true;
   error.value = '';
   try {
-    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=sum,ents,facets,pm&cont_info=sum,ents,facets,pm&path_coded=1&pageinfo=1`);
+    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=essentials,findings,pm&cont_info=essentials,findings,pm&path_coded=1&pageinfo=1`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data.value = await res.json();
     openFindingIds.value = {};
