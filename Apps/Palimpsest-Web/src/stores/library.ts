@@ -109,6 +109,32 @@ export const useLibraryStore = defineStore('library', {
       }
     },
 
+    async fetchBook(machineName: string, force = false) {
+      const existingBook = this.books.find((b) => b.machine_name === machineName);
+      if (!force && existingBook) return existingBook;
+
+      this.isLoadingBooks = true;
+      this.error = '';
+      try {
+        const res = await apiFetch(`/testbooks/api/v1/book/${machineName}/`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const book = await res.json();
+        const index = this.books.findIndex((b) => b.machine_name === machineName);
+        if (index !== -1) {
+          this.books[index] = book;
+        } else {
+          this.books.push(book);
+        }
+        return book;
+      } catch (e) {
+        this.error = e instanceof Error ? e.message : 'Failed to load book';
+        console.error(this.error);
+        throw e;
+      } finally {
+        this.isLoadingBooks = false;
+      }
+    },
+
     async fetchTopics(force = false) {
       if (!force && this.topics.length > 0) return;
 

@@ -10,12 +10,7 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router';
 import NavBar from './components/NavBar.vue';
-import { useLibraryStore } from './stores/library';
 
-const libraryStore = useLibraryStore();
-libraryStore.fetchTopics();
-libraryStore.fetchAuthors();
-libraryStore.fetchBooks();
 </script>
 
 <style>

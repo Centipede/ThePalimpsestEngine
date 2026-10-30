@@ -75,6 +75,9 @@ export interface Section {
     studynotes?: StudyNoteRef[];
     pageinfo?: PageInfo | null;
     ancestors?: Section[] | null;
+    info?: {
+        processing_manifest?: ProcessingManifest;
+    };
 }
 
 export interface Flow {
@@ -310,9 +313,6 @@ export interface SectionDetail extends Section {
     first_real_content: number;
     last_real_content: number;
     full_path_coded?: string;
-    info?: {
-        processing_manifest?: ProcessingManifest;
-    };
     findings?: SectionFindings | null;
     essentials?: SectionEssentials | null;
 }
