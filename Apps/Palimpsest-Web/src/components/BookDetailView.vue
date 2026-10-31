@@ -12,51 +12,115 @@
         </header>
       </Teleport>
 
-      <template v-if="!isSectionActive">
-        <div class="book-study__toolbar">
-          <div class="toolbar-infoleft" />
-          <div class="tools-left" />
-          <div class="tools-mid">
-            <sl-button-group>
-              <sl-tooltip content="Expand All">
-                <sl-icon-button name="arrows-expand" label="Expand All" @click="tocRef?.expandAll()"></sl-icon-button>
-              </sl-tooltip>
-              <sl-tooltip content="Collapse All">
-                <sl-icon-button name="arrows-collapse" label="Collapse All" @click="tocRef?.collapseAll()"></sl-icon-button>
-              </sl-tooltip>
-            </sl-button-group>
+      <sl-split-panel v-if="isStaff" position="80" class="admin-split-panel">
 
-            <sl-divider vertical></sl-divider>
+        <!-- Toolbar + book or section (staff) -->
+        <div slot="start" class="admin-split-panel__content">
+          <template v-if="!isSectionActive">
+            <div class="book-study__toolbar">
+              <div class="toolbar-infoleft" />
+              <div class="tools-left" />
+              <div class="tools-mid">
+                <sl-button-group>
+                  <sl-tooltip content="Expand All">
+                    <sl-icon-button name="arrows-expand" label="Expand All" @click="tocRef?.expandAll()"></sl-icon-button>
+                  </sl-tooltip>
+                  <sl-tooltip content="Collapse All">
+                    <sl-icon-button name="arrows-collapse" label="Collapse All" @click="tocRef?.collapseAll()"></sl-icon-button>
+                  </sl-tooltip>
+                </sl-button-group>
 
-            <div class="depth-control">
-              <sl-input
-                type="number"
-                size="small"
-                v-model.number="depthLevel"
-                min="0"
-                max="9"
-                class="depth-input"
-              ></sl-input>
-              <sl-button-group>
-                <sl-button size="small" @click="tocRef?.expandToDepth(depthLevel)">
-                  Expand &lt; {{ depthLevel }}
-                </sl-button>
-                <sl-button size="small" @click="tocRef?.collapseBelowDepth(depthLevel)">
-                  Collapse &gt; {{ depthLevel }}
-                </sl-button>
-              </sl-button-group>
+                <sl-divider vertical></sl-divider>
+
+                <div class="depth-control">
+                  <sl-input
+                    type="number"
+                    size="small"
+                    v-model.number="depthLevel"
+                    min="0"
+                    max="9"
+                    class="depth-input"
+                  ></sl-input>
+                  <sl-button-group>
+                    <sl-button size="small" @click="tocRef?.expandToDepth(depthLevel)">
+                      Expand &lt; {{ depthLevel }}
+                    </sl-button>
+                    <sl-button size="small" @click="tocRef?.collapseBelowDepth(depthLevel)">
+                      Collapse &gt; {{ depthLevel }}
+                    </sl-button>
+                  </sl-button-group>
+                </div>
+              </div>
+              <div class="tools-right" />
+              <div class="toolbar-inforight" />
             </div>
-          </div>
-          <div class="tools-right" />
-          <div class="toolbar-inforight" />
+
+            <TableOfContents ref="tocRef" :book-structure="book" :machineName="machineName"/>
+          </template>
+          <template v-else-if="isSectionActive">
+            <router-view v-slot="{ Component }">
+              <component :is="Component" :book-structure="book"/>
+            </router-view>
+          </template>
         </div>
 
-        <TableOfContents ref="tocRef" :book-structure="book" :machineName="machineName"/>
-      </template>
-      <template v-else-if="isSectionActive">
-        <router-view v-slot="{ Component }">
-          <component :is="Component" :book-structure="book"/>
-        </router-view>
+        <div slot="end" class="admin-tools-portal">
+          <!-- Admin tools teleported here -->
+        </div>
+
+      </sl-split-panel>
+
+      <template v-else>
+
+        <!-- Toolbar + book or section (non-staff) -->
+        <template v-if="!isSectionActive">
+          <div class="book-study__toolbar">
+            <div class="toolbar-infoleft" />
+            <div class="tools-left" />
+            <div class="tools-mid">
+              <sl-button-group>
+                <sl-tooltip content="Expand All">
+                  <sl-icon-button name="arrows-expand" label="Expand All" @click="tocRef?.expandAll()"></sl-icon-button>
+                </sl-tooltip>
+                <sl-tooltip content="Collapse All">
+                  <sl-icon-button name="arrows-collapse" label="Collapse All" @click="tocRef?.collapseAll()"></sl-icon-button>
+                </sl-tooltip>
+              </sl-button-group>
+
+              <sl-divider vertical></sl-divider>
+
+              <div class="depth-control">
+                <sl-input
+                  type="number"
+                  size="small"
+                  v-model.number="depthLevel"
+                  min="0"
+                  max="9"
+                  class="depth-input"
+                ></sl-input>
+                <sl-button-group>
+                  <sl-button size="small" @click="tocRef?.expandToDepth(depthLevel)">
+                    Expand &lt; {{ depthLevel }}
+                  </sl-button>
+                  <sl-button size="small" @click="tocRef?.collapseBelowDepth(depthLevel)">
+                    Collapse &gt; {{ depthLevel }}
+                  </sl-button>
+                </sl-button-group>
+              </div>
+            </div>
+            <div class="tools-right" />
+            <div class="toolbar-inforight" />
+          </div>
+
+          <TableOfContents ref="tocRef" :book-structure="book" :machineName="machineName"/>
+        </template>
+
+        <template v-else-if="isSectionActive">
+          <router-view v-slot="{ Component }">
+            <component :is="Component" :book-structure="book"/>
+          </router-view>
+        </template>
+        
       </template>
 
     </template>
@@ -66,6 +130,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import { useAuth } from '../composables/useAuth';
 import { apiFetch } from '../api';
 import type { BookStructure } from '../types/library';
 import { useLibraryStore } from '../stores/library';
@@ -78,6 +143,7 @@ const route = useRoute();
 const isSectionActive = computed(() => !!route.params.path_full);
 
 const store = useLibraryStore();
+const { isStaff } = useAuth();
 const book = ref<BookStructure | null>(null);
 const author = computed(() => store.getAuthorById(book.value?.book.by_author ?? null));
 const loading = ref(true);
@@ -115,8 +181,26 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: auto;
   padding: 0.5rem 1rem;
+}
+
+.admin-split-panel {
+  height: 100%;
+  --divider-width: 4px;
+}
+
+.admin-split-panel__content {
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 1rem;
+}
+
+.admin-tools-portal {
+  height: 100%;
+  overflow-y: auto;
+  padding: 1rem;
+  background: var(--sl-color-neutral-50);
+  border-left: 1px solid var(--sl-color-neutral-200);
 }
 
 .book-study__toolbar {

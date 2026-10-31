@@ -186,22 +186,24 @@
 
       </div>
 
-      <div v-if="isStaff" class="section-admin-actions">
-        <div class="admin-actions-spacer-left"></div>
-        <div class="admin-actions-content">
-          <sl-button variant="warning" size="small" :loading="isGathering" @click="gatherSectionInfo">
-            <sl-icon slot="prefix" name="gear"></sl-icon>
-            Gather info
-          </sl-button>
+      <Teleport v-if="isStaff" to=".admin-tools-portal">
+        <div class="section-admin-actions-portal">
+          <h3 class="portal-section-title">Section Admin</h3>
+          <div class="admin-actions-group">
+            <sl-button variant="warning" size="small" :loading="isGathering" @click="gatherSectionInfo">
+              <sl-icon slot="prefix" name="gear"></sl-icon>
+              Gather info
+            </sl-button>
+          </div>
 
-          <sl-divider vertical></sl-divider>
+          <sl-divider></sl-divider>
 
-          <div class="minuscule-form">
+          <div class="admin-actions-group">
             <sl-button variant="danger" size="small" :loading="isRemoving" @click="removeRecords">
               <sl-icon slot="prefix" name="trash"></sl-icon>
               Remove
             </sl-button>
-            <div class="checkbox-group">
+            <div class="portal-checkbox-group">
               <sl-checkbox size="small" :checked="deleteOptions.section_summaries" @sl-change="deleteOptions.section_summaries = $event.target.checked">S:sum</sl-checkbox>
               <sl-checkbox size="small" :checked="deleteOptions.section_findings" @sl-change="deleteOptions.section_findings = $event.target.checked">S:find</sl-checkbox>
               <sl-checkbox size="small" :checked="deleteOptions.content_summaries" @sl-change="deleteOptions.content_summaries = $event.target.checked">C:sum</sl-checkbox>
@@ -209,8 +211,7 @@
             </div>
           </div>
         </div>
-        <div class="admin-actions-spacer-right"></div>
-      </div>
+      </Teleport>
 
       <TableOfContents
           v-if="showTableOfContents && props.bookStructure"
@@ -1198,37 +1199,41 @@ watch(() => props.sectionPath, fetchSection);
   font-size: 1.1rem;
 }
 
-.section-admin-actions {
-  display: grid;
-  grid-template-columns: 80px 1fr 4fr 1fr 80px;
-  grid-gap: 0.5rem;
-  margin-top: -0.5rem;
-  margin-bottom: 1rem;
-}
-
-.admin-actions-content {
-  grid-column: 2 / span 3;
+.section-admin-actions-portal {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 8px 0;
-  border-bottom: 2px dashed var(--sl-color-warning-400);
-}
-
-.minuscule-form {
-  display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 1rem;
+  padding: 1rem;
+  background: white;
+  border: 1px solid var(--sl-color-warning-200);
+  border-radius: var(--sl-border-radius-medium);
+  margin-bottom: 2rem;
 }
 
-.checkbox-group {
+.portal-section-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--sl-color-warning-700);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.admin-actions-group {
   display: flex;
+  flex-direction: column;
   gap: 0.75rem;
 }
 
-.checkbox-group sl-checkbox::part(label) {
-  font-size: 0.75rem;
-  line-height: 1;
+.portal-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-left: 0.5rem;
+}
+
+.portal-checkbox-group sl-checkbox::part(label) {
+  font-size: 0.8rem;
 }
 
 .toolbar-infoleft {

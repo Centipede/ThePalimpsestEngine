@@ -1,16 +1,5 @@
 <template>
   <div class="content-block-study-view">
-    <div v-if="isStaff" class="admin-actions-row">
-      <div class="admin-actions-spacer-left"></div>
-      <div class="admin-actions-content">
-        <sl-button variant="warning" size="small" :loading="isGathering" @click="gatherBlockInfo">
-          <sl-icon slot="prefix" name="gear"></sl-icon>
-          Gather block info
-        </sl-button>
-      </div>
-      <div class="admin-actions-spacer-right"></div>
-    </div>
-
     <div
         :id="'block-' + block.path_id"
         class="content-block"
@@ -101,8 +90,6 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { apiFetch } from '../api';
-import { useAuth } from '../composables/useAuth';
 import type { ContentBlock, Highlight, ContentEmphasis, FindingOccurrence, ActiveFindingContext } from '../types/library';
 import { computeSegments, searchForFragments } from '../utils/text';
 import { useThemeStore } from '../stores/theme';
@@ -128,28 +115,6 @@ const emit = defineEmits<{
 
 const themeStore = useThemeStore();
 const facetsStore = useFacetsStore();
-const { isStaff } = useAuth();
-
-const isGathering = ref(false);
-
-async function gatherBlockInfo() {
-  if (!props.machineName || !props.sectionPath) {
-    console.error('Missing context for gathering block info');
-    return;
-  }
-
-  isGathering.value = true;
-  try {
-    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/content/${props.block.path_id}/maintenance/job/run_gather_info`, {
-      method: 'POST'
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  } catch (e) {
-    console.error('Failed to gather block info:', e);
-  } finally {
-    isGathering.value = false;
-  }
-}
 
 // watch(
 //     () => props.availableHighlights,
@@ -393,30 +358,5 @@ const segments = computed(() => {
 
 .content-block-study-view {
   width: 100%;
-}
-
-.admin-actions-row {
-  display: grid;
-  grid-template-columns: 80px 1fr 4fr 1fr 80px;
-  grid-gap: 0.5rem;
-  padding-left: 0.5rem;
-  margin-bottom: 2px;
-}
-
-.admin-actions-content {
-  grid-column: 2 / span 3;
-  display: flex;
-  gap: 0.5rem;
-  padding: 4px 0;
-  border-bottom: 1px dashed var(--sl-color-warning-300);
-}
-
-@media (max-width: 1024px) {
-  .admin-actions-row {
-    grid-template-columns: 30px 80px 1fr 1fr 80px 30px;
-  }
-  .admin-actions-content {
-    grid-column: 2 / span 4;
-  }
 }
 </style>
