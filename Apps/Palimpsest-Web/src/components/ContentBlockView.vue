@@ -25,6 +25,18 @@
           ></sl-icon-button>
 
         </div>
+
+        <div v-if="isStaff && block.essentials?.digest" class="admin-block-badges">
+          <sl-tooltip hoist>
+            <div slot="content" class="admin-badge-tooltip">
+              <strong>{{ block.essentials.digest.caption }}</strong>
+              <div v-if="block.essentials.digest.prose_summary" class="admin-badge-tooltip__prose">
+                {{ block.essentials.digest.prose_summary }}
+              </div>
+            </div>
+            <sl-badge variant="neutral" pill size="small" class="admin-badge admin-badge--digest">D</sl-badge>
+          </sl-tooltip>
+        </div>
       </div>
 
       <template v-if="isFolded">
@@ -77,12 +89,27 @@
 
       <!-- Right outer: Page link -->
       <div class="block-pages">
-        <template v-if="firstPage || lastPage">
+        <span v-if="firstPage || lastPage">
+
           p.
           <span v-if="firstPage">{{ firstPage }}</span>
           <span v-if="firstPage && lastPage !== firstPage"> - </span>
           <span v-if="lastPage && lastPage !== firstPage">{{ lastPage }}</span>
-        </template>
+        </span>
+
+        <div v-if="isStaff && sortedOccurrencesByFacet.length > 0" class="admin-facet-badges">
+          <sl-badge
+            v-for="group in sortedOccurrencesByFacet"
+            :key="group.facetName"
+            variant="neutral"
+            pill
+            size="small"
+            class="admin-badge admin-badge--facet"
+            :title="group.facet?.name"
+          >
+            {{ group.facet?.symbol || group.facetName.charAt(0).toUpperCase() }}
+          </sl-badge>
+        </div>
       </div>
     </div>
   </div>
@@ -94,6 +121,7 @@ import type { ContentBlock, Highlight, ContentEmphasis, FindingOccurrence, Activ
 import { computeSegments, searchForFragments } from '../utils/text';
 import { useThemeStore } from '../stores/theme';
 import { useFacetsStore } from '../stores/facets';
+import { useAuth } from '../composables/useAuth';
 import type {FoldTrigger, ToolbarToggle} from "../types/view_state.ts";
 
 const props = defineProps<{
@@ -115,6 +143,7 @@ const emit = defineEmits<{
 
 const themeStore = useThemeStore();
 const facetsStore = useFacetsStore();
+const { isStaff } = useAuth();
 
 // watch(
 //     () => props.availableHighlights,
@@ -336,6 +365,52 @@ const segments = computed(() => {
   text-align: right;
   white-space: nowrap;
   font-weight: 300;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.admin-block-badges {
+  margin-top: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.admin-facet-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  justify-content: flex-end;
+}
+
+.admin-badge {
+  cursor: help;
+  font-family: var(--sl-font-mono);
+  font-size: 0.65rem;
+  opacity: 0.7;
+}
+
+.admin-badge:hover {
+  opacity: 1;
+}
+
+.admin-badge--digest {
+  --sl-color-neutral-600: var(--sl-color-primary-600);
+  --sl-color-neutral-100: var(--sl-color-primary-100);
+}
+
+.admin-badge-tooltip {
+  max-width: 300px;
+  padding: 0.25rem;
+}
+
+.admin-badge-tooltip__prose {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: normal;
+  line-height: 1.4;
 }
 
 .block-spacer {

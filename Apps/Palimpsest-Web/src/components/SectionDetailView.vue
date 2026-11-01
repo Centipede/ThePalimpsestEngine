@@ -189,27 +189,210 @@
       <Teleport v-if="isStaff" to=".admin-tools-portal">
         <div class="section-admin-actions-portal">
           <h3 class="portal-section-title">Section Admin</h3>
-          <div class="admin-actions-group">
-            <sl-button variant="warning" size="small" :loading="isGathering" @click="gatherSectionInfo">
-              <sl-icon slot="prefix" name="gear"></sl-icon>
-              Gather info
-            </sl-button>
+
+          <sl-details summary="Gather Info">
+            <div class="admin-actions-group">
+              <sl-button variant="warning" size="small" :loading="isGathering" @click="gatherSectionInfo">
+                <sl-icon slot="prefix" name="gear"></sl-icon>
+                Gather info
+              </sl-button>
+
+              <div class="portal-group-title">Section</div>
+              <div class="portal-checkbox-group">
+                <sl-checkbox size="small" :checked="gatherOptions.section.essentials.includes('digest')" @sl-change="toggleGatherOption('section', 'essentials', 'digest', $event.target.checked)">Digest</sl-checkbox>
+                <sl-checkbox size="small" :checked="gatherOptions.section.essentials.includes('outline')" @sl-change="toggleGatherOption('section', 'essentials', 'outline', $event.target.checked)">Outline</sl-checkbox>
+
+                <div v-if="bookFacetTypes.length > 0" class="portal-divider"></div>
+
+                <sl-checkbox
+                  v-for="facetType in bookFacetTypes"
+                  :key="facetType"
+                  size="small"
+                  :checked="gatherOptions.section.facets.includes(facetType)"
+                  @sl-change="toggleGatherOption('section', 'facets', facetType, $event.target.checked)"
+                >
+                  {{ facetsStore.getFacetByPluralName(facetType)?.name || facetType }}
+                </sl-checkbox>
+              </div>
+
+              <div class="portal-group-title">Content</div>
+              <div class="portal-checkbox-group">
+                <sl-checkbox size="small" :checked="gatherOptions.content.essentials.includes('digest')" @sl-change="toggleGatherOption('content', 'essentials', 'digest', $event.target.checked)">Digest</sl-checkbox>
+                <sl-checkbox size="small" :checked="gatherOptions.content.essentials.includes('outline')" @sl-change="toggleGatherOption('content', 'essentials', 'outline', $event.target.checked)">Outline</sl-checkbox>
+
+                <div v-if="bookFacetTypes.length > 0" class="portal-divider"></div>
+
+                <sl-checkbox
+                  v-for="facetType in bookFacetTypes"
+                  :key="facetType"
+                  size="small"
+                  :checked="gatherOptions.content.facets.includes(facetType)"
+                  @sl-change="toggleGatherOption('content', 'facets', facetType, $event.target.checked)"
+                >
+                  {{ facetsStore.getFacetByPluralName(facetType)?.name || facetType }}
+                </sl-checkbox>
+              </div>
+            </div>
+          </sl-details>
+
+          <sl-details summary="Remove Records">
+            <div class="admin-actions-group">
+              <sl-button variant="danger" size="small" :loading="isRemoving" @click="removeRecords">
+                <sl-icon slot="prefix" name="trash"></sl-icon>
+                Remove
+              </sl-button>
+
+              <div class="portal-group-title">Section</div>
+              <div class="portal-checkbox-group">
+                <sl-checkbox size="small" :checked="deleteOptions.section.essentials.includes('digest')" @sl-change="toggleDeleteOption('section', 'essentials', 'digest', $event.target.checked)">Digest</sl-checkbox>
+                <sl-checkbox size="small" :checked="deleteOptions.section.essentials.includes('outline')" @sl-change="toggleDeleteOption('section', 'essentials', 'outline', $event.target.checked)">Outline</sl-checkbox>
+
+                <div v-if="bookFacetTypes.length > 0" class="portal-divider"></div>
+
+                <sl-checkbox
+                  v-for="facetType in bookFacetTypes"
+                  :key="facetType"
+                  size="small"
+                  :checked="deleteOptions.section.facets.includes(facetType)"
+                  @sl-change="toggleDeleteOption('section', 'facets', facetType, $event.target.checked)"
+                >
+                  {{ facetsStore.getFacetByPluralName(facetType)?.name || facetType }}
+                </sl-checkbox>
+              </div>
+
+              <div class="portal-group-title">Content</div>
+              <div class="portal-checkbox-group">
+                <sl-checkbox size="small" :checked="deleteOptions.content.essentials.includes('digest')" @sl-change="toggleDeleteOption('content', 'essentials', 'digest', $event.target.checked)">Digest</sl-checkbox>
+                <sl-checkbox size="small" :checked="deleteOptions.content.essentials.includes('outline')" @sl-change="toggleDeleteOption('content', 'essentials', 'outline', $event.target.checked)">Outline</sl-checkbox>
+
+                <div v-if="bookFacetTypes.length > 0" class="portal-divider"></div>
+
+                <sl-checkbox
+                  v-for="facetType in bookFacetTypes"
+                  :key="facetType"
+                  size="small"
+                  :checked="deleteOptions.content.facets.includes(facetType)"
+                  @sl-change="toggleDeleteOption('content', 'facets', facetType, $event.target.checked)"
+                >
+                  {{ facetsStore.getFacetByPluralName(facetType)?.name || facetType }}
+                </sl-checkbox>
+              </div>
+            </div>
+          </sl-details>
+        </div>
+      </Teleport>
+
+      <Teleport v-if="isStaff" to=".admin-info-portal">
+        <div class="section-admin-info-portal">
+          <div class="admin-jobs-header">
+            <h3 class="portal-section-title">Active Jobs</h3>
+            <sl-icon-button name="arrow-clockwise" label="Reload" @click="fetchActiveBackgroundTask"></sl-icon-button>
+          </div>
+
+          <div v-if="activeBackgroundTask" class="active-task">
+            <div class="active-task__goal">{{ activeBackgroundTask.goal }}</div>
+            <div v-if="activeBackgroundTask.title" class="active-task__title">{{ activeBackgroundTask.title }}</div>
+
+            <div v-for="job in activeBackgroundTask.jobs" :key="job.id" class="active-job">
+              <div class="active-job__phase">{{ job.gather_info_status.phase }}</div>
+              <div class="active-job__stats">
+                <div v-if="job.gather_info_status.remaining_blocks?.length">
+                  Blocks: {{ job.gather_info_status.remaining_blocks.length }} left
+                </div>
+                <div v-if="job.gather_info_status.remaining_facets?.length">
+                  Facets: {{ job.gather_info_status.remaining_facets.length }} left
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="no-active-task">No active background tasks</div>
+
+          <sl-divider></sl-divider>
+
+          <h3 class="portal-section-title">Section Insight</h3>
+          <div class="section-insight-badges">
+            <div class="insight-group">
+              <div class="insight-group__label">Essentials</div>
+              <div class="insight-group__badges">
+                <sl-tooltip v-if="data?.section.essentials?.digest" content="Digest Present" hoist>
+                  <sl-badge variant="success" pill size="small">D</sl-badge>
+                </sl-tooltip>
+                <sl-tooltip v-if="data?.section.essentials?.outline" content="Outline Present" hoist>
+                  <sl-badge variant="success" pill size="small">O</sl-badge>
+                </sl-tooltip>
+                <span v-if="!data?.section.essentials?.digest && !data?.section.essentials?.outline" class="no-badges">-</span>
+              </div>
+            </div>
+
+            <div class="insight-group">
+              <div class="insight-group__label">Findings</div>
+              <div class="insight-group__badges">
+                <sl-tooltip v-for="badge in sectionFacetBadges" :key="badge.facet.id" :content="badge.facet.name + ' (' + badge.bucket + ')'" hoist>
+                  <sl-badge variant="neutral" pill size="small" class="facet-badge">
+                    {{ badge.facet.symbol }}
+                  </sl-badge>
+                </sl-tooltip>
+                <span v-if="sectionFacetBadges.length === 0" class="no-badges">-</span>
+              </div>
+            </div>
           </div>
 
           <sl-divider></sl-divider>
 
-          <div class="admin-actions-group">
-            <sl-button variant="danger" size="small" :loading="isRemoving" @click="removeRecords">
-              <sl-icon slot="prefix" name="trash"></sl-icon>
-              Remove
-            </sl-button>
-            <div class="portal-checkbox-group">
-              <sl-checkbox size="small" :checked="deleteOptions.section_summaries" @sl-change="deleteOptions.section_summaries = $event.target.checked">S:sum</sl-checkbox>
-              <sl-checkbox size="small" :checked="deleteOptions.section_findings" @sl-change="deleteOptions.section_findings = $event.target.checked">S:find</sl-checkbox>
-              <sl-checkbox size="small" :checked="deleteOptions.content_summaries" @sl-change="deleteOptions.content_summaries = $event.target.checked">C:sum</sl-checkbox>
-              <sl-checkbox size="small" :checked="deleteOptions.content_findings" @sl-change="deleteOptions.content_findings = $event.target.checked">C:find</sl-checkbox>
+          <h3 class="portal-section-title">Processing Manifest</h3>
+          <div v-if="processingManifest" class="pm-manifest">
+            <div class="insight-group">
+              <div class="insight-group__label">Essentials</div>
+              <div class="insight-group__badges">
+                <sl-tooltip content="Digest" hoist>
+                  <sl-badge :variant="isEssentialCompleted('digest') ? 'success' : 'neutral'" pill size="small">D</sl-badge>
+                </sl-tooltip>
+                <sl-tooltip content="Outline" hoist>
+                  <sl-badge :variant="isEssentialCompleted('outline') ? 'success' : 'neutral'" pill size="small">O</sl-badge>
+                </sl-tooltip>
+              </div>
             </div>
+
+            <div class="insight-group">
+              <div class="insight-group__label">Facets</div>
+              <div class="insight-group__badges">
+                <sl-tooltip v-for="facetType in bookFacetTypes" :key="facetType" :content="facetsStore.getFacetByPluralName(facetType)?.name || facetType" hoist>
+                  <sl-badge
+                    :variant="isFacetCompleted(facetType) ? 'success' : 'neutral'"
+                    pill
+                    size="small"
+                    class="facet-badge"
+                  >
+                    {{ facetsStore.getFacetByPluralName(facetType)?.symbol || facetType[0].toUpperCase() }}
+                  </sl-badge>
+                </sl-tooltip>
+                <span v-if="bookFacetTypes.length === 0" class="no-badges">-</span>
+              </div>
+            </div>
+
+            <sl-details summary="Processing Log" class="pm-log-details">
+              <div class="pm-log">
+                <div v-for="(entry, index) in formattedLog" :key="index" class="pm-log-entry" :class="{ 'pm-log-entry--error': entry.errors?.length > 0 }">
+                  <div class="pm-log-entry__header">
+                    <span class="pm-log-entry__time">{{ new Date(entry.when).toLocaleString() }}</span>
+                  </div>
+                  <div v-if="Object.keys(entry.notes || {}).length > 0" class="pm-log-entry__notes">
+                    <div v-for="(val, key) in entry.notes" :key="key" class="pm-log-note">
+                      <span class="pm-log-note__key">{{ key }}:</span>
+                      <span class="pm-log-note__val">{{ val }}</span>
+                    </div>
+                  </div>
+                  <div v-if="entry.errors?.length > 0" class="pm-log-entry__errors">
+                    <div v-for="(err, errIdx) in entry.errors" :key="errIdx" class="pm-log-error">
+                      {{ err }}
+                    </div>
+                  </div>
+                </div>
+                <div v-if="formattedLog.length === 0" class="pm-log-empty">No log entries</div>
+              </div>
+            </sl-details>
           </div>
+          <div v-else class="no-manifest">No manifest available</div>
         </div>
       </Teleport>
 
@@ -386,7 +569,16 @@ import { useHead } from '@unhead/vue';
 import { useRoute } from 'vue-router';
 import { useAuth } from '../composables/useAuth';
 import {apiFetch} from '../api';
-import type {SectionContentResponse, BookStructure, Section, FindingOccurrence, ActiveFindingContext, FacetQuery, FindingContextMap} from '../types/library';
+import type {
+  SectionContentResponse,
+  BookStructure,
+  Section,
+  FindingOccurrence,
+  ActiveFindingContext,
+  FacetQuery,
+  FindingContextMap,
+  BackgroundTask,
+} from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import SectionNoteView from './studynotes/SectionNoteView.vue';
 import SectionInformation from './SectionInformation.vue';
@@ -420,8 +612,32 @@ const organiseMode = ref<'linear' | 'segmented'>('linear');
 const openSegments = ref<Record<number, boolean>>({});
 const showNotesDrawer = ref(false);
 const paragraphFoldTrigger = ref<FoldTrigger>({ command: 'expand-all', count: 0 });
+const activeBackgroundTask = ref<BackgroundTask | null>(null);
 const selectedOccurrence = ref<FindingOccurrence | null>(null);
 const activeFacetTypes = ref<Set<string>>(new Set());
+
+const processingManifest = computed(() => data.value?.section.info?.processing_manifest);
+
+function isEssentialCompleted(key: string) {
+  return processingManifest.value?.completed.essentials.includes(key) ?? false;
+}
+
+function isFacetCompleted(key: string) {
+  return processingManifest.value?.completed.facets.includes(key) ?? false;
+}
+
+const formattedLog = computed(() => {
+  if (!processingManifest.value?.log) return [];
+  return [...processingManifest.value.log].reverse();
+});
+
+const bookFacetTypes = computed(() => {
+  if (!props.bookStructure?.book.facet_applications_cascaded) return [];
+  const types = props.bookStructure.book.facet_applications_cascaded
+    .map(fa => facetsStore.getFacetById(fa.facet as number)?.machine_name_plural)
+    .filter((t): t is string => !!t);
+  return Array.from(new Set(types)).sort();
+});
 
 const openFindingIds = ref<Record<number, boolean>>({});
 const findingColorsMap = ref<Record<number, string>>({});
@@ -502,6 +718,38 @@ const availableInfoLeft = ref<ToolbarToggle[]>([
 const availableHighlights = ref<ToolbarToggle[]>([
   { name: 'Summary Quotes', type: 'summary-quotes', checked: true },
 ]);
+
+// const activeFacet = computed<string[]>(() => {
+//   if (!data.value) return [];
+//
+//   const findings = data.value?.section.findings;
+//   if (!findings) return [];
+//
+//   let sectionFacets =
+//     new Set<string>([
+//       ...Object.keys(findings.contexts ?? {}),
+//       ...Object.keys(findings.section_one ?? {}),
+//       ...Object.keys(findings.section_few ?? {}),
+//       ...Object.keys(findings.section_many ?? {}),
+//     ]);
+//
+//
+//   const contentFacets = new Set<string>();
+//
+//   data.value.contents.forEach(block => {
+//     block.finding_occurrences?.forEach(occ => {
+//       if (!occ.of_facet) return;
+//
+//       const facet = facetsStore.getFacetBySingularName(occ.of_facet);
+//       if (!facet) return;
+//
+//       contentFacets.add(facet.machine_name_plural);
+//     });
+//   });
+//
+//
+//   return [...new Set([...sectionFacets, ...contentFacets])];
+// });
 
 // TODO: This got out of hand! All we wanted was a list of facet ids in actual use so the Vue could disable availableInfoRight entries not actually represented by a block occurrence.
 const mergedFacets = computed<FindingContextMap>(() => {
@@ -661,12 +909,53 @@ const showEntities = ref(false);
 
 const isGathering = ref(false);
 const isRemoving = ref(false);
-const deleteOptions = ref({
-  section_summaries: false,
-  section_findings: false,
-  content_summaries: false,
-  content_findings: false,
+interface GranularDeleteOptions {
+  essentials: string[];
+  facets: string[];
+}
+
+interface DeleteOptions {
+  section: GranularDeleteOptions;
+  content: GranularDeleteOptions;
+}
+
+const deleteOptions = ref<DeleteOptions>({
+  section: { essentials: [], facets: [] },
+  content: { essentials: [], facets: [] },
 });
+
+const gatherOptions = ref<DeleteOptions>({
+  section: { essentials: [], facets: [] },
+  content: { essentials: [], facets: [] },
+});
+
+function toggleDeleteOption(type: 'section' | 'content', category: 'essentials' | 'facets', value: string, checked: boolean) {
+  const options = deleteOptions.value[type][category];
+  if (checked) {
+    if (!options.includes(value)) {
+      options.push(value);
+    }
+  } else {
+    const index = options.indexOf(value);
+    if (index > -1) {
+      options.splice(index, 1);
+    }
+  }
+}
+
+function toggleGatherOption(type: 'section' | 'content', category: 'essentials' | 'facets', value: string, checked: boolean) {
+  const options = gatherOptions.value[type][category];
+  if (checked) {
+    if (!options.includes(value)) {
+      options.push(value);
+    }
+  } else {
+    const index = options.indexOf(value);
+    if (index > -1) {
+      options.splice(index, 1);
+    }
+  }
+}
 
 const corpusDialog = ref({
   open: false,
@@ -747,13 +1036,61 @@ const getBlockLink = (blockPathId: string) => {
   return `/study/${props.machineName}/section/${props.sectionPath}/content/${blockPathId}`;
 };
 
+async function jsonOrNull<T>(res: Response): Promise<T | null> {
+  const text = await res.text();
+  return text ? JSON.parse(text) as T : null;
+}
+
+async function fetchActiveBackgroundTask() {
+  if (!isStaff.value) return;
+  try {
+    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/active_background_task/`);
+    if (res.ok) {
+      activeBackgroundTask.value = await jsonOrNull<BackgroundTask>(res);
+    }
+  } catch (e) {
+    console.error('Failed to fetch active background task:', e);
+  }
+}
+
+const sectionFacetBadges = computed(() => {
+  if (!data.value?.section.findings) return [];
+  const findings = data.value.section.findings;
+  const badges: { facet: FacetQuery, bucket: string }[] = [];
+
+  const processBucket = (bucket: 'section_one' | 'section_few', label: string) => {
+    const map = findings[bucket];
+    if (map) {
+      Object.keys(map).forEach(pluralName => {
+        const facet = facetsStore.getFacetByPluralName(pluralName);
+        if (facet && !badges.find(b => b.facet.id === facet.id)) {
+          badges.push({ facet, bucket: label });
+        }
+      });
+    }
+  };
+
+  processBucket('section_one', 'One');
+  processBucket('section_few', 'Few');
+
+  return badges.sort((a, b) => a.facet.id - b.facet.id);
+});
+
 async function gatherSectionInfo() {
   isGathering.value = true;
   try {
     const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/maintenance/job/start_gather_info`, {
-      method: 'POST'
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(gatherOptions.value)
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    await fetchActiveBackgroundTask();
+    gatherOptions.value = {
+      section: { essentials: [], facets: [] },
+      content: { essentials: [], facets: [] },
+    };
   } catch (e) {
     console.error('Failed to start gather info job:', e);
   } finally {
@@ -764,16 +1101,18 @@ async function gatherSectionInfo() {
 async function removeRecords() {
   isRemoving.value = true;
   try {
-    const params = new URLSearchParams();
-    if (deleteOptions.value.section_summaries) params.append('section_summaries', '1');
-    if (deleteOptions.value.section_findings) params.append('section_findings', '1');
-    if (deleteOptions.value.content_summaries) params.append('content_summaries', '1');
-    if (deleteOptions.value.content_findings) params.append('content_findings', '1');
-
-    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/maintenance/remove_records?${params.toString()}`, {
-      method: 'POST'
+    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/maintenance/remove_records`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(deleteOptions.value)
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    await fetchSection();
+    deleteOptions.value = {
+      section: { essentials: [], facets: [] },
+      content: { essentials: [], facets: [] },
+    };
   } catch (e) {
     console.error('Failed to remove records:', e);
   } finally {
@@ -1121,7 +1460,10 @@ async function fetchSection() {
   loading.value = true;
   error.value = '';
   try {
-    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=essentials,findings,pm&cont_info=essentials,findings,emphasis,pm&path_coded=1&pageinfo=1`);
+    const sectionPromise = apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=essentials,findings,pm&cont_info=essentials,findings,emphasis,pm&path_coded=1&pageinfo=1`);
+    const taskPromise = fetchActiveBackgroundTask();
+
+    const [res] = await Promise.all([sectionPromise, taskPromise]);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data.value = await res.json();
     openFindingIds.value = {};
@@ -1143,7 +1485,7 @@ async function fetchSection() {
 
     // Also check content blocks for findings that might not be in section info
     data.value?.contents.forEach(block => {
-      block.finding_occurrences?.forEach(occ => {
+      block.findings?.occurrences?.forEach(occ => {
         if (occ.of_facet) {
           const facet = facetsStore.getFacetBySingularName(occ.of_facet);
           if (facet) {
@@ -1225,6 +1567,21 @@ watch(() => props.sectionPath, fetchSection);
   gap: 0.75rem;
 }
 
+.portal-group-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--sl-color-neutral-500);
+  text-transform: uppercase;
+  margin-top: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.portal-divider {
+  height: 1px;
+  background-color: var(--sl-color-neutral-200);
+  margin: 0.25rem 0;
+}
+
 .portal-checkbox-group {
   display: flex;
   flex-direction: column;
@@ -1285,6 +1642,190 @@ watch(() => props.sectionPath, fetchSection);
   align-items: center;
   gap: 1.5rem;
   margin-left: 0.5rem;
+}
+
+.section-admin-info-portal {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.admin-jobs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.active-task {
+  background: var(--sl-color-neutral-100);
+  padding: 0.75rem;
+  border-radius: var(--sl-border-radius-medium);
+  font-size: 0.85rem;
+}
+
+.active-task__goal {
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--sl-color-primary-700);
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.active-task__title {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.active-job {
+  border-top: 1px solid var(--sl-color-neutral-300);
+  padding-top: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.active-job__phase {
+  font-family: var(--sl-font-mono);
+  font-size: 0.75rem;
+  color: var(--sl-color-neutral-600);
+  margin-bottom: 0.25rem;
+}
+
+.active-job__stats {
+  font-size: 0.8rem;
+  color: var(--sl-color-neutral-500);
+}
+
+.no-active-task {
+  font-size: 0.85rem;
+  color: var(--sl-color-neutral-400);
+  font-style: italic;
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.section-insight-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.insight-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.insight-group__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--sl-color-neutral-500);
+}
+
+.insight-group__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.facet-badge {
+  font-family: var(--sl-font-sans);
+}
+
+.no-badges {
+  color: var(--sl-color-neutral-300);
+  font-size: 0.8rem;
+}
+
+.pm-manifest {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pm-log-details {
+  margin-top: 0.5rem;
+}
+
+.pm-log-details::part(base) {
+  border: 1px solid var(--sl-color-neutral-200);
+  border-radius: var(--sl-border-radius-medium);
+}
+
+.pm-log-details::part(header) {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.pm-log-details::part(content) {
+  padding: 0;
+}
+
+.pm-log {
+  max-height: 300px;
+  overflow-y: auto;
+  font-size: 0.8rem;
+  background: var(--sl-color-neutral-50);
+}
+
+.pm-log-entry {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--sl-color-neutral-200);
+}
+
+.pm-log-entry:last-child {
+  border-bottom: none;
+}
+
+.pm-log-entry--error {
+  background-color: var(--sl-color-danger-50);
+}
+
+.pm-log-entry__header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.pm-log-entry__time {
+  color: var(--sl-color-neutral-500);
+  font-size: 0.75rem;
+}
+
+.pm-log-entry__notes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.pm-log-note {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pm-log-note__key {
+  font-weight: 600;
+  color: var(--sl-color-neutral-600);
+  min-width: 60px;
+}
+
+.pm-log-note__val {
+  color: var(--sl-color-neutral-800);
+  word-break: break-all;
+}
+
+.pm-log-entry__errors {
+  margin-top: 0.25rem;
+  color: var(--sl-color-danger-600);
+  font-weight: 500;
+}
+
+.pm-log-empty, .no-manifest {
+  padding: 1rem;
+  text-align: center;
+  color: var(--sl-color-neutral-400);
+  font-style: italic;
+  font-size: 0.85rem;
 }
 
 .segments-container {

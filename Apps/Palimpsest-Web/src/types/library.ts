@@ -127,6 +127,29 @@ export interface ContentEmphasis {
     fragment: string;
 }
 
+export interface BackgroundJobStatus {
+  phase: 'blocks_summarize' | 'blocks_find_facets' | 'section_cluster_findings' | 'section_digest_essentials';
+  remaining_facets: string[];
+  remaining_blocks: string[];
+}
+
+export interface BackgroundJob {
+  id: number;
+  in_section: string;
+  started_at: string;
+  stopped_at: string | null;
+  finished_at: string | null;
+  gather_info_status: BackgroundJobStatus;
+}
+
+export interface BackgroundTask {
+  id: number;
+  goal: 'translate' | 'gather-info';
+  title: string | null;
+  language_target: string;
+  jobs: BackgroundJob[];
+}
+
 // A descriptor for extraced_data in time facets (section_one data)
 export interface CentralTimePeriod {
     interval_years: number[][];
