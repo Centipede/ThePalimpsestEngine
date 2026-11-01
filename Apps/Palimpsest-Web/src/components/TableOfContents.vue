@@ -1,10 +1,14 @@
 <template>
   <div class="toc-wrapper">
-    <div class="toc" :class="{ 'toc--hide-discussions': !props.showDiscussions }">
+    <div class="toc" :class="{ 
+      'toc--hide-discussions': !props.showDiscussions,
+      'toc--staff': isStaff,
+      'toc--user': !isStaff
+    }">
 
       <!-- Book-wide discussion rows -->
       <div
-        v-if="props.showDiscussions && !props.rootSectionPF && (props.bookStructure.book.conversations?.length || props.bookStructure.book.question_answers?.length)"
+        v-if="props.showDiscussions && !props.rootSectionPF && (activeBook?.conversations?.length || activeBook?.question_answers?.length || activeBook?.studynotes?.length)"
         class="toc__row toc__row--book-level"
       >
         <sl-icon name="book" class="toc__book-icon" />
@@ -12,7 +16,7 @@
 
         <div class="toc__badges">
           <a
-            v-for="ref in props.bookStructure.book.conversations"
+            v-for="ref in activeBook?.conversations"
             :key="'conv-' + ref.id"
             :href="getConversationHref(ref)"
             target="_blank"
@@ -26,7 +30,7 @@
           </a>
 
           <a
-            v-for="ref in props.bookStructure.book.question_answers"
+            v-for="ref in activeBook?.question_answers"
             :key="'qa-' + ref.id"
             :href="getQuestionAnswerHref(ref)"
             target="_blank"
@@ -40,7 +44,7 @@
           </a>
 
           <a
-            v-for="ref in props.bookStructure.book.studynotes"
+            v-for="ref in activeBook?.studynotes"
             :key="'note-' + ref.id"
             :href="getStudyNoteHref(ref)"
             target="_blank"
@@ -72,6 +76,44 @@
           >
             {{ entry.section.path_coded ?? entry.section.path_full }}
           </span>
+
+          <sl-tooltip hoist>
+            <div slot="content" class="pm-tooltip">
+              <div class="pm-tooltip__group">
+                <span class="pm-tooltip__group-label">Essentials</span>
+                <span class="pm-tooltip__item" :class="{'pm-tooltip__item--dimmed': !isEssentialCompleted(entry.section, 'digest')}">Digest</span>
+                <span class="pm-tooltip__item" :class="{'pm-tooltip__item--dimmed': !isEssentialCompleted(entry.section, 'outline')}">Outline</span>
+              </div>
+              <div class="pm-tooltip__group" v-if="expectedFacets.length">
+                <span class="pm-tooltip__group-label">Facets</span>
+                <span v-for="facet in expectedFacets" :key="facet.id" 
+                      class="pm-tooltip__item"
+                      :class="{'pm-tooltip__item--dimmed': !isFacetCompleted(entry.section, facet.machine_name_plural)}">
+                  {{ facet.symbol }} {{ facet.name }}
+                </span>
+              </div>
+              <div class="pm-tooltip__log" v-if="isStaff && entry.section.info?.processing_manifest?.log?.length">
+                <div v-for="(log, idx) in entry.section.info.processing_manifest.log" :key="idx" class="pm-tooltip__log-entry">
+                  {{ formatLog(log) }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Staff Badge -->
+            <span v-if="isStaff" class="toc__badge toc__badge--pm toc__badge--pm-admin">
+              <span v-for="(item, idx) in getAdminPmItems(entry.section)" 
+                    :key="idx"
+                    class="toc__pm-letter"
+                    :class="item.ok ? 'toc__pm-letter--success' : 'toc__pm-letter--danger'">
+                {{ item.label }}
+              </span>
+            </span>
+
+            <!-- User Badge -->
+            <span v-else class="toc__badge toc__badge--pm" :class="userBadgeClass(entry.section)">
+              {{ userBadgeText(entry.section) }}
+            </span>
+          </sl-tooltip>
 
           <sl-icon
             v-if="entry.hasChildren && !entry.isAncestor"
@@ -177,16 +219,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
-import type { BookStructure, Section, SectionFindings, SectionEssentials } from '../types/library';
+import type {Book, BookStructure, Section, SectionFindings, SectionEssentials, FacetQuery} from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef, StudyNote, StudyNoteRef } from '../types/study';
 import { useStudyWorkspaceItem } from '../composables/useStudyWorkspaceItem';
+import { useAuth } from '../composables/useAuth';
 import SectionInformation from './SectionInformation.vue';
 import StudyWorkspaceDialog from './studyworkspaces/StudyWorkspaceDialog.vue';
+import { useLibraryStore } from '../stores/library';
+import { useFacetsStore } from '../stores/facets';
+import { apiFetch } from '../api';
 
 const props = withDefaults(defineProps<{
-  bookStructure: BookStructure,
+  bookStructure?: BookStructure,
+  book?: Book,
   machineName: string,
   rootSectionPF?: string,
   mode?: 'nav' | 'select',
@@ -198,6 +245,44 @@ const props = withDefaults(defineProps<{
   mode: 'nav',
   showDiscussions: true,
   selectedIds: () => []
+});
+
+const libraryStore = useLibraryStore();
+const facetsStore = useFacetsStore();
+const { isStaff } = useAuth();
+
+const internalBook = ref<Book | null>(null);
+const internalStructure = ref<BookStructure | null>(null);
+
+const activeBook = computed(() => props.book || internalBook.value || props.bookStructure?.book || libraryStore.books.find(b => b.machine_name === props.machineName));
+const activeStructure = computed(() => props.bookStructure || internalStructure.value);
+
+async function initializeData() {
+  if (!props.bookStructure) {
+    try {
+      const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/structure/?tree_depth=5&qas=1&conversations=1&studynotes=1&ref_title=1&pageinfo=1&path_coded=1&pm=1`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      internalStructure.value = await res.json();
+    } catch (e) {
+      console.error('Failed to fetch book structure', e);
+    }
+  }
+
+  if (!activeBook.value) {
+    await libraryStore.fetchBook(props.machineName);
+  }
+}
+
+onMounted(() => {
+  facetsStore.fetchFacetQueries();
+  initializeData();
+});
+
+watch(() => props.machineName, () => {
+  initialized = false;
+  internalStructure.value = null;
+  internalBook.value = null;
+  initializeData();
 });
 
 const emit = defineEmits<{
@@ -263,7 +348,7 @@ function findPath(sections: Section[], targetPath: string): Section[] {
   return [];
 }
 
-const mainFlow = computed(() => props.bookStructure.flows.find(f => f.name === 'main'));
+const mainFlow = computed(() => activeStructure.value?.flows.find(f => f.name === 'main'));
 
 const allEntries = computed<TocEntry[]>(() => {
   const root = mainFlow.value?.tree;
@@ -468,6 +553,71 @@ function collapseBelowDepth(depth: number) {
   saveState();
 }
 
+const expectedFacets = computed(() => {
+  if (!activeBook.value?.facet_applications_cascaded) return [];
+  return activeBook.value.facet_applications_cascaded
+    .map(app => facetsStore.getFacetById(app.facet as number))
+    .filter((f): f is FacetQuery => !!f)
+    .sort((a, b) => a.id - b.id);
+});
+
+function isEssentialsOk(section: Section) {
+  const completed = section.info?.processing_manifest?.completed?.essentials || [];
+  return completed.includes('digest') && completed.includes('outline');
+}
+
+function isFindingsOk(section: Section) {
+  const completed = section.info?.processing_manifest?.completed?.facets || [];
+  if (expectedFacets.value.length === 0) return true;
+  return expectedFacets.value.every(f => completed.includes(f.machine_name_plural));
+}
+
+function userBadgeText(section: Section) {
+  const essOk = isEssentialsOk(section);
+  const findOk = isFindingsOk(section);
+  if (essOk && findOk) return 'E+F';
+  if (essOk) return 'E';
+  if (findOk) return 'F';
+  return '-';
+}
+
+function userBadgeClass(section: Section) {
+  const essOk = isEssentialsOk(section);
+  const findOk = isFindingsOk(section);
+  if (essOk && findOk) return 'toc__badge--pm-user-ok';
+  return 'toc__badge--pm-user';
+}
+
+function getAdminPmItems(section: Section) {
+  const pm = section.info?.processing_manifest?.completed || { essentials: [], facets: [] };
+  const items = [
+    { label: 'D', ok: pm.essentials.includes('digest') },
+    { label: 'O', ok: pm.essentials.includes('outline') }
+  ];
+  for (const facet of expectedFacets.value) {
+    items.push({
+      label: facet.machine_name_singular.charAt(0).toUpperCase(),
+      ok: pm.facets.includes(facet.machine_name_plural)
+    });
+  }
+  return items;
+}
+
+function isEssentialCompleted(section: Section, key: string) {
+  return section.info?.processing_manifest?.completed?.essentials?.includes(key);
+}
+
+function isFacetCompleted(section: Section, key: string) {
+  return section.info?.processing_manifest?.completed?.facets?.includes(key);
+}
+
+function formatLog(log: any) {
+  const date = new Date(log.when).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const notes = Object.entries(log.notes || {}).map(([k, v]) => `${k}: ${v}`).join(', ');
+  const errors = (log.errors || []).join(', ');
+  return `[${date}] ${notes}${errors ? ' ERR: ' + errors : ''}`;
+}
+
 defineExpose({
   expandAll,
   collapseAll,
@@ -551,14 +701,14 @@ function handleTitleUpdated(newTitle: string) {
   const itemType = type.value;
 
   // 2a. Update book-level items
-  if (itemType === 'conversation' && props.bookStructure.book.conversations) {
-    const ref = props.bookStructure.book.conversations.find(c => c.of_conversation === itemId);
+  if (itemType === 'conversation' && activeBook.value?.conversations) {
+    const ref = activeBook.value.conversations.find(c => c.of_conversation === itemId);
     if (ref) ref.title = newTitle;
-  } else if (itemType === 'question_answer' && props.bookStructure.book.question_answers) {
-    const ref = props.bookStructure.book.question_answers.find(qa => qa.of_questionanswer === itemId);
+  } else if (itemType === 'question_answer' && activeBook.value?.question_answers) {
+    const ref = activeBook.value.question_answers.find(qa => qa.of_questionanswer === itemId);
     if (ref) ref.title = newTitle;
-  } else if (itemType === 'studynote' && props.bookStructure.book.studynotes) {
-    const ref = props.bookStructure.book.studynotes.find(n => n.of_studynote === itemId);
+  } else if (itemType === 'studynote' && activeBook.value?.studynotes) {
+    const ref = activeBook.value.studynotes.find(n => n.of_studynote === itemId);
     if (ref) ref.title = newTitle;
   }
 
@@ -581,7 +731,7 @@ function handleTitleUpdated(newTitle: string) {
     }
   };
 
-  props.bookStructure.flows.forEach(flow => {
+  activeStructure.value?.flows.forEach(flow => {
     if (flow.tree) {
       updateTitleInTree([flow.tree]);
     }
@@ -606,14 +756,14 @@ function handlePinUpdated(isPinned: boolean) {
   // 3. Find and update the pin status in the collections
 
   // 3a. Update book-level collections
-  if (itemType === 'conversation' && props.bookStructure.book.conversations) {
-    const ref = props.bookStructure.book.conversations.find(c => c.id === refId);
+  if (itemType === 'conversation' && activeBook.value?.conversations) {
+    const ref = activeBook.value.conversations.find(c => c.id === refId);
     if (ref) ref.is_pinned = isPinned;
-  } else if (itemType === 'question_answer' && props.bookStructure.book.question_answers) {
-    const ref = props.bookStructure.book.question_answers.find(qa => qa.id === refId);
+  } else if (itemType === 'question_answer' && activeBook.value?.question_answers) {
+    const ref = activeBook.value.question_answers.find(qa => qa.id === refId);
     if (ref) ref.is_pinned = isPinned;
-  } else if (itemType === 'studynote' && props.bookStructure.book.studynotes) {
-    const ref = props.bookStructure.book.studynotes.find(n => n.id === refId);
+  } else if (itemType === 'studynote' && activeBook.value?.studynotes) {
+    const ref = activeBook.value.studynotes.find(n => n.id === refId);
     if (ref) ref.is_pinned = isPinned;
   }
 
@@ -636,7 +786,7 @@ function handlePinUpdated(isPinned: boolean) {
     }
   };
 
-  props.bookStructure.flows.forEach(flow => {
+  activeStructure.value?.flows.forEach(flow => {
     if (flow.tree) {
       updatePinInTree([flow.tree]);
     }
@@ -682,7 +832,7 @@ function handleContentUpdated(newContent: string) {
 
 .toc__row {
   display: grid;
-  grid-template-columns: 4.5rem 1.5rem 2fr 5rem 2fr;
+  grid-template-columns: 4.5rem 3.5rem 1.5rem 2fr 5rem 2fr;
   align-items: center;
   column-gap: 0.5rem;
   padding: 0.05rem 0.5rem;
@@ -690,8 +840,16 @@ function handleContentUpdated(newContent: string) {
   user-select: none;
 }
 
+.toc--staff .toc__row {
+  grid-template-columns: 4.5rem 7rem 1.5rem 2fr 5rem 2fr;
+}
+
 .toc--hide-discussions .toc__row {
-  grid-template-columns: 4.5rem 1.5rem 2fr 5rem;
+  grid-template-columns: 4.5rem 3.5rem 1.5rem 2fr 5rem;
+}
+
+.toc--staff.toc--hide-discussions .toc__row {
+  grid-template-columns: 4.5rem 7rem 1.5rem 2fr 5rem;
 }
 
 .toc__row:hover {
@@ -705,15 +863,15 @@ function handleContentUpdated(newContent: string) {
 }
 
 .toc__row--book-level .toc__book-icon {
-  grid-column: 2;
-}
-
-.toc__row--book-level .toc__title {
   grid-column: 3;
 }
 
+.toc__row--book-level .toc__title {
+  grid-column: 4;
+}
+
 .toc__row--book-level .toc__badges {
-  grid-column: 5;
+  grid-column: 6;
 }
 
 .toc__book-icon {
@@ -867,9 +1025,115 @@ function handleContentUpdated(newContent: string) {
   padding: 0.1em 0.25em;
 }
 
+.toc__badge--pm {
+  width: 3.5rem;
+  padding: 0.1em 0;
+  border: 1px solid transparent;
+  font-size: 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+}
+
+.toc__badge--pm-user {
+  background: transparent;
+  border-color: var(--sl-color-neutral-300);
+  color: var(--sl-color-neutral-500);
+}
+
+[data-theme="dark"] .toc__badge--pm-user {
+  border-color: var(--sl-color-neutral-700);
+  color: var(--sl-color-neutral-400);
+}
+
+.toc__badge--pm-user-ok {
+  background: transparent;
+  border-color: var(--sl-color-success-500);
+  color: var(--sl-color-success-600);
+}
+
+[data-theme="dark"] .toc__badge--pm-user-ok {
+  border-color: var(--sl-color-success-700);
+  color: var(--sl-color-success-400);
+}
+
+.toc__badge--pm-admin {
+  width: 7rem;
+  background: var(--sl-color-neutral-100);
+  color: var(--sl-color-neutral-600);
+}
+
+[data-theme="dark"] .toc__badge--pm-admin {
+  background: var(--sl-color-neutral-900);
+  color: var(--sl-color-neutral-400);
+}
+
+.toc__pm-letter {
+  font-weight: 700;
+}
+
+.toc__pm-letter--success {
+  color: var(--sl-color-success-600);
+}
+
+.toc__pm-letter--danger {
+  color: var(--sl-color-danger-600);
+}
+
 .toc__badges {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
+}
+
+.pm-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.1rem 0;
+  max-width: 400px;
+}
+
+.pm-tooltip__group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  line-height: 1.2;
+}
+
+.pm-tooltip__group-label {
+  color: var(--sl-color-neutral-500);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 0.2rem;
+  font-weight: 600;
+}
+
+.pm-tooltip__item {
+  font-size: 0.7rem;
+}
+
+.pm-tooltip__item--dimmed {
+  color: var(--sl-color-neutral-400);
+  opacity: 0.4;
+}
+
+.pm-tooltip__log {
+  border-top: 1px solid var(--sl-color-neutral-700);
+  padding-top: 0.25rem;
+  margin-top: 0.15rem;
+}
+
+.pm-tooltip__log-entry {
+  font-size: 0.6rem;
+  color: var(--sl-color-neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--sl-font-mono);
+  line-height: 1.4;
 }
 </style>

@@ -1,16 +1,5 @@
 <template>
   <div class="content-block-study-view">
-    <div v-if="isStaff" class="admin-actions-row">
-      <div class="admin-actions-spacer-left"></div>
-      <div class="admin-actions-content">
-        <sl-button variant="warning" size="small" :loading="isGathering" @click="gatherBlockInfo">
-          <sl-icon slot="prefix" name="gear"></sl-icon>
-          Gather block info
-        </sl-button>
-      </div>
-      <div class="admin-actions-spacer-right"></div>
-    </div>
-
     <div
         :id="'block-' + block.path_id"
         class="content-block"
@@ -35,6 +24,18 @@
               @click="isFolded = !isFolded"
           ></sl-icon-button>
 
+        </div>
+
+        <div v-if="isStaff && block.essentials?.digest" class="admin-block-badges">
+          <sl-tooltip hoist>
+            <div slot="content" class="admin-badge-tooltip">
+              <strong>{{ block.essentials.digest.caption }}</strong>
+              <div v-if="block.essentials.digest.prose_summary" class="admin-badge-tooltip__prose">
+                {{ block.essentials.digest.prose_summary }}
+              </div>
+            </div>
+            <sl-badge variant="neutral" pill size="small" class="admin-badge admin-badge--digest">D</sl-badge>
+          </sl-tooltip>
         </div>
       </div>
 
@@ -88,12 +89,27 @@
 
       <!-- Right outer: Page link -->
       <div class="block-pages">
-        <template v-if="firstPage || lastPage">
+        <span v-if="firstPage || lastPage">
+
           p.
           <span v-if="firstPage">{{ firstPage }}</span>
           <span v-if="firstPage && lastPage !== firstPage"> - </span>
           <span v-if="lastPage && lastPage !== firstPage">{{ lastPage }}</span>
-        </template>
+        </span>
+
+        <div v-if="isStaff && sortedOccurrencesByFacet.length > 0" class="admin-facet-badges">
+          <sl-badge
+            v-for="group in sortedOccurrencesByFacet"
+            :key="group.facetName"
+            variant="neutral"
+            pill
+            size="small"
+            class="admin-badge admin-badge--facet"
+            :title="group.facet?.name"
+          >
+            {{ group.facet?.symbol || group.facetName.charAt(0).toUpperCase() }}
+          </sl-badge>
+        </div>
       </div>
     </div>
   </div>
@@ -101,12 +117,11 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { apiFetch } from '../api';
-import { useAuth } from '../composables/useAuth';
 import type { ContentBlock, Highlight, ContentEmphasis, FindingOccurrence, ActiveFindingContext } from '../types/library';
 import { computeSegments, searchForFragments } from '../utils/text';
 import { useThemeStore } from '../stores/theme';
 import { useFacetsStore } from '../stores/facets';
+import { useAuth } from '../composables/useAuth';
 import type {FoldTrigger, ToolbarToggle} from "../types/view_state.ts";
 
 const props = defineProps<{
@@ -129,27 +144,6 @@ const emit = defineEmits<{
 const themeStore = useThemeStore();
 const facetsStore = useFacetsStore();
 const { isStaff } = useAuth();
-
-const isGathering = ref(false);
-
-async function gatherBlockInfo() {
-  if (!props.machineName || !props.sectionPath) {
-    console.error('Missing context for gathering block info');
-    return;
-  }
-
-  isGathering.value = true;
-  try {
-    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/content/${props.block.path_id}/maintenance/job/run_gather_info`, {
-      method: 'POST'
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  } catch (e) {
-    console.error('Failed to gather block info:', e);
-  } finally {
-    isGathering.value = false;
-  }
-}
 
 // watch(
 //     () => props.availableHighlights,
@@ -371,6 +365,52 @@ const segments = computed(() => {
   text-align: right;
   white-space: nowrap;
   font-weight: 300;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.admin-block-badges {
+  margin-top: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.admin-facet-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  justify-content: flex-end;
+}
+
+.admin-badge {
+  cursor: help;
+  font-family: var(--sl-font-mono);
+  font-size: 0.65rem;
+  opacity: 0.7;
+}
+
+.admin-badge:hover {
+  opacity: 1;
+}
+
+.admin-badge--digest {
+  --sl-color-neutral-600: var(--sl-color-primary-600);
+  --sl-color-neutral-100: var(--sl-color-primary-100);
+}
+
+.admin-badge-tooltip {
+  max-width: 300px;
+  padding: 0.25rem;
+}
+
+.admin-badge-tooltip__prose {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: normal;
+  line-height: 1.4;
 }
 
 .block-spacer {
@@ -393,30 +433,5 @@ const segments = computed(() => {
 
 .content-block-study-view {
   width: 100%;
-}
-
-.admin-actions-row {
-  display: grid;
-  grid-template-columns: 80px 1fr 4fr 1fr 80px;
-  grid-gap: 0.5rem;
-  padding-left: 0.5rem;
-  margin-bottom: 2px;
-}
-
-.admin-actions-content {
-  grid-column: 2 / span 3;
-  display: flex;
-  gap: 0.5rem;
-  padding: 4px 0;
-  border-bottom: 1px dashed var(--sl-color-warning-300);
-}
-
-@media (max-width: 1024px) {
-  .admin-actions-row {
-    grid-template-columns: 30px 80px 1fr 1fr 80px 30px;
-  }
-  .admin-actions-content {
-    grid-column: 2 / span 4;
-  }
 }
 </style>

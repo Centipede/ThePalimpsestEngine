@@ -75,6 +75,9 @@ export interface Section {
     studynotes?: StudyNoteRef[];
     pageinfo?: PageInfo | null;
     ancestors?: Section[] | null;
+    info?: {
+        processing_manifest?: ProcessingManifest;
+    };
 }
 
 export interface Flow {
@@ -124,11 +127,35 @@ export interface ContentEmphasis {
     fragment: string;
 }
 
+export interface BackgroundJobStatus {
+  phase: 'blocks_summarize' | 'blocks_find_facets' | 'section_cluster_findings' | 'section_digest_essentials';
+  remaining_facets: string[];
+  remaining_blocks: string[];
+}
+
+export interface BackgroundJob {
+  id: number;
+  in_section: string;
+  started_at: string;
+  stopped_at: string | null;
+  finished_at: string | null;
+  gather_info_status: BackgroundJobStatus;
+}
+
+export interface BackgroundTask {
+  id: number;
+  goal: 'translate' | 'gather-info';
+  title: string | null;
+  language_target: string;
+  jobs: BackgroundJob[];
+}
+
 // A descriptor for extraced_data in time facets (section_one data)
 export interface CentralTimePeriod {
     interval_years: number[][];
     specific_years: number[];
     full_description: string;
+    brief_description: string;
     specific_full_dates: string[];
 }
 
@@ -136,6 +163,7 @@ export interface CentralTimePeriod {
 export interface CentralGeographicalArea {
     placenames: string[];
     full_description: string;
+    brief_description: string;
 }
 
 export interface ParagraphSegment {
@@ -310,9 +338,6 @@ export interface SectionDetail extends Section {
     first_real_content: number;
     last_real_content: number;
     full_path_coded?: string;
-    info?: {
-        processing_manifest?: ProcessingManifest;
-    };
     findings?: SectionFindings | null;
     essentials?: SectionEssentials | null;
 }
