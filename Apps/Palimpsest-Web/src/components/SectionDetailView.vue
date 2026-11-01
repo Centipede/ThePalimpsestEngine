@@ -315,10 +315,10 @@
               <div class="insight-group__label">Essentials</div>
               <div class="insight-group__badges">
                 <sl-tooltip v-if="data?.section.essentials?.digest" content="Digest Present" hoist>
-                  <sl-badge variant="success" pill size="small">D</sl-badge>
+                  <sl-badge variant="success" pill size="small" class="interactive-badge" @click="toggleInfo('digest', data.section.essentials.digest)">D</sl-badge>
                 </sl-tooltip>
                 <sl-tooltip v-if="data?.section.essentials?.outline" content="Outline Present" hoist>
-                  <sl-badge variant="success" pill size="small">O</sl-badge>
+                  <sl-badge variant="success" pill size="small" class="interactive-badge" @click="toggleInfo('outline', data.section.essentials.outline)">O</sl-badge>
                 </sl-tooltip>
                 <span v-if="!data?.section.essentials?.digest && !data?.section.essentials?.outline" class="no-badges">-</span>
               </div>
@@ -328,7 +328,7 @@
               <div class="insight-group__label">Findings</div>
               <div class="insight-group__badges">
                 <sl-tooltip v-for="badge in sectionFacetBadges" :key="badge.facet.id" :content="badge.facet.name + ' (' + badge.bucket + ')'" hoist>
-                  <sl-badge variant="neutral" pill size="small" class="facet-badge">
+                  <sl-badge variant="neutral" pill size="small" class="facet-badge interactive-badge" @click="toggleInfo('facet', badge.facet)">
                     {{ badge.facet.symbol }}
                   </sl-badge>
                 </sl-tooltip>
@@ -336,6 +336,27 @@
               </div>
             </div>
           </div>
+
+          <transition name="expand">
+            <div v-if="expandedInfoType" class="expanded-info-container">
+              <DigestInfo
+                  v-if="expandedInfoType === 'digest'"
+                  :digest="expandedInfoData"
+              />
+
+              <OutlineInfo
+                  v-else-if="expandedInfoType === 'outline'"
+                  :outline="expandedInfoData"
+              />
+
+              <FacetInfo
+                  v-else-if="expandedInfoType === 'facet'"
+                  :contexts="data?.section.findings?.contexts[expandedInfoData.machine_name_plural] || []"
+                  :label="expandedInfoData.name"
+                  :symbol="expandedInfoData.symbol"
+              />
+            </div>
+          </transition>
 
           <sl-divider></sl-divider>
 
@@ -588,6 +609,9 @@ import ContentBlockView from './ContentBlockView.vue';
 import TableOfContents from './TableOfContents.vue';
 import CorpusStudyDialog from './corpus/CorpusStudyDialog.vue';
 import StudyWorkspaceDialog from './studyworkspaces/StudyWorkspaceDialog.vue';
+import DigestInfo from './admin/info/DigestInfo.vue';
+import OutlineInfo from './admin/info/OutlineInfo.vue';
+import FacetInfo from './admin/info/FacetInfo.vue';
 import {useLibraryStore} from "../stores/library.ts";
 import {useFacetsStore} from "../stores/facets.ts";
 import type {FoldTrigger, ToolbarToggle} from "../types/view_state.ts";
@@ -615,6 +639,19 @@ const paragraphFoldTrigger = ref<FoldTrigger>({ command: 'expand-all', count: 0 
 const activeBackgroundTask = ref<BackgroundTask | null>(null);
 const selectedOccurrence = ref<FindingOccurrence | null>(null);
 const activeFacetTypes = ref<Set<string>>(new Set());
+
+const expandedInfoType = ref<string | null>(null);
+const expandedInfoData = ref<any>(null);
+
+function toggleInfo(type: string, data: any) {
+  if (expandedInfoType.value === type && expandedInfoData.value === data) {
+    expandedInfoType.value = null;
+    expandedInfoData.value = null;
+  } else {
+    expandedInfoType.value = type;
+    expandedInfoData.value = data;
+  }
+}
 
 const processingManifest = computed(() => data.value?.section.info?.processing_manifest);
 
@@ -1826,6 +1863,34 @@ watch(() => props.sectionPath, fetchSection);
   color: var(--sl-color-neutral-400);
   font-style: italic;
   font-size: 0.85rem;
+}
+
+.interactive-badge {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.interactive-badge:hover {
+  transform: scale(1.1);
+}
+
+.expanded-info-container {
+  margin: 0.5rem 0;
+  overflow: hidden;
+}
+
+.expand-enter-active,
+.expand-leave-active {
+  transition: all 0.3s ease-in-out;
+  max-height: 2000px;
+}
+
+.expand-enter-from,
+.expand-leave-to {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .segments-container {

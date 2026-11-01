@@ -155,6 +155,7 @@ export interface CentralTimePeriod {
     interval_years: number[][];
     specific_years: number[];
     full_description: string;
+    brief_description: string;
     specific_full_dates: string[];
 }
 
@@ -162,6 +163,7 @@ export interface CentralTimePeriod {
 export interface CentralGeographicalArea {
     placenames: string[];
     full_description: string;
+    brief_description: string;
 }
 
 export interface ParagraphSegment {
