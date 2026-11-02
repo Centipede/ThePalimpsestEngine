@@ -119,7 +119,6 @@ export interface ContentBlock {
         emphases?: ContentEmphasis[];
     };
     pageinfo?: PageInfo | null;
-    finding_occurrences?: FindingOccurrence[];
 }
 
 export interface ContentEmphasis {

@@ -157,6 +157,7 @@
                   size="small"
                   :checked="item.checked"
                   :disabled="item.disabled"
+                  :class="{ 'toolbar-menu-item--extraordinary': item.extraordinary }"
               >
                 {{ item.name }}
               </sl-menu-item>
@@ -351,7 +352,7 @@
 
               <FacetInfo
                   v-else-if="expandedInfoType === 'facet'"
-                  :contexts="data?.section.findings?.contexts[expandedInfoData.machine_name_plural] || []"
+                  :contexts="sectionContexts[expandedInfoData.machine_name_plural] || []"
                   :label="expandedInfoData.name"
                   :symbol="expandedInfoData.symbol"
               />
@@ -434,7 +435,7 @@
           :essentials="data?.section.essentials"
       />
       <SectionOutline v-if="showSegmentsOverview && data.section.essentials?.outline?.segments" :outline="data.section.essentials.outline.segments"/>
-      <SectionFindings v-if="showEntities && Object.keys(mergedFacets).length" :facets="mergedFacets" v-model:open-finding-ids="openFindingIds" :selected-occurrence="selectedOccurrence" :active-facet-types="activeFacetTypes" @refresh="fetchSection"/>
+      <SectionFindings v-if="showEntities && Object.keys(sectionContexts).length" :facets="sectionContexts" v-model:open-finding-ids="openFindingIds" :selected-occurrence="selectedOccurrence" :active-facet-types="activeFacetTypes" @refresh="fetchSection"/>
 
       <CorpusStudyDialog
           v-model:open="corpusDialog.open"
@@ -626,7 +627,6 @@ const { isStaff } = useAuth();
 const route = useRoute();
 
 const facetsStore = useFacetsStore();
-facetsStore.fetchFacetQueries(); // Make ready for content blocks
 
 const data = ref<SectionContentResponse | null>(null);
 provide('sectionData', data);
@@ -747,100 +747,55 @@ const blockBorderColors = computed(() => {
 });
 
 const availableInfoLeft = ref<ToolbarToggle[]>([
-  { name: 'General', type: 'general', checked: true },
-  { name: 'Annotations (#3+#17)', type: 'annotations', checked: true },
-  { name: 'Notes (Study #10)', type: 'notes', checked: true },
+  { name: 'General', type: 'general', checked: true, extraordinary: false},
+  { name: 'Annotations (#3+#17)', type: 'annotations', checked: true, extraordinary: false },
+  { name: 'Notes (Study #10)', type: 'notes', checked: true, extraordinary: false },
 ]);
 
 const availableHighlights = ref<ToolbarToggle[]>([
-  { name: 'Summary Quotes', type: 'summary-quotes', checked: true },
+  { name: 'Summary Quotes', type: 'summary-quotes', checked: true, extraordinary: false },
 ]);
 
-// const activeFacet = computed<string[]>(() => {
-//   if (!data.value) return [];
-//
-//   const findings = data.value?.section.findings;
-//   if (!findings) return [];
-//
-//   let sectionFacets =
-//     new Set<string>([
-//       ...Object.keys(findings.contexts ?? {}),
-//       ...Object.keys(findings.section_one ?? {}),
-//       ...Object.keys(findings.section_few ?? {}),
-//       ...Object.keys(findings.section_many ?? {}),
-//     ]);
-//
-//
-//   const contentFacets = new Set<string>();
-//
-//   data.value.contents.forEach(block => {
-//     block.finding_occurrences?.forEach(occ => {
-//       if (!occ.of_facet) return;
-//
-//       const facet = facetsStore.getFacetBySingularName(occ.of_facet);
-//       if (!facet) return;
-//
-//       contentFacets.add(facet.machine_name_plural);
-//     });
-//   });
-//
-//
-//   return [...new Set([...sectionFacets, ...contentFacets])];
-// });
+/**
+ * Concern: which facets are represented in this section at all.
+ * Unions the section-level finding buckets with the facets of every block
+ * occurrence, so the "Entities" toolbar can disable facets with no presence
+ * here. Counts a facet as used even if its occurrences are orphaned (no
+ * context) - the facet is still represented in the text.
+ */
+const usedFacetTypes = computed<Set<string>>(() => {
+  const used = new Set<string>();
 
-// TODO: This got out of hand! All we wanted was a list of facet ids in actual use so the Vue could disable availableInfoRight entries not actually represented by a block occurrence.
-const mergedFacets = computed<FindingContextMap>(() => {
-  const facets: FindingContextMap = {};
-  if (!data.value) return facets;
-
-  // 1. Start with section-level findings (clustered contexts)
-  if (data.value.section.findings?.contexts) {
-    for (const [facetName, contexts] of Object.entries(data.value.section.findings.contexts)) {
-      facets[facetName] = contexts.map(c => ({
-        ...c,
-        occurrences: [...c.occurrences]
-      }));
+  const findings = data.value?.section.findings;
+  if (findings) {
+    for (const bucket of ['contexts', 'section_one', 'section_few', 'section_many'] as const) {
+      Object.keys(findings[bucket] ?? {}).forEach(pluralName => used.add(pluralName));
     }
   }
 
-  // 2. Add block-level findings if they're not already present
-  data.value.contents.forEach(block => {
-    block.finding_occurrences?.forEach(occ => {
+  // Occurrences are the only place carrying a SINGULAR of_facet; map it to
+  // plural to match the section buckets and the toolbar keys.
+  data.value?.contents.forEach(block => {
+    block.findings?.occurrences?.forEach(occ => {
       if (!occ.of_facet) return;
       const facet = facetsStore.getFacetBySingularName(occ.of_facet);
-      if (!facet) return;
-
-      const pluralName = facet.machine_name_plural;
-      if (!facets[pluralName]) {
-        facets[pluralName] = [];
-      }
-
-      if (occ.of_context) {
-        let context = facets[pluralName].find(c => c.id === occ.of_context);
-        if (!context) {
-          context = {
-            id: occ.of_context,
-            name: occ.name,
-            of_facet: pluralName,
-            of_identity: null,
-            occurrences: []
-          };
-          facets[pluralName].push(context);
-        }
-        // Ensure this occurrence is in the context's occurrences list
-        if (!context.occurrences.some(o => o.id === occ.id)) {
-          context.occurrences.push(occ);
-        }
-      }
+      if (facet) used.add(facet.machine_name_plural);
     });
   });
 
-  return facets;
+  return used;
 });
+
+/**
+ * Concern: which FindingContexts to show for this section - only the real
+ * ones the API delivered. Orphaned block occurrences are deliberately not
+ * synthesised into contexts here.
+ */
+const sectionContexts = computed<FindingContextMap>(() => data.value?.section.findings?.contexts ?? {});
 
 const activeFindingContexts = computed<ActiveFindingContext[]>(() => {
   const active: ActiveFindingContext[] = [];
-  const facets = mergedFacets.value;
+  const facets = sectionContexts.value;
 
   Object.values(facets).flat().forEach(context => {
     if (openFindingIds.value[context.id]) {
@@ -864,7 +819,8 @@ watch(activeFindingContexts, (newActive) => {
     return {
       name: afc.context.name,
       type,
-      checked: existing ? existing.checked : true
+      checked: existing ? existing.checked : true,
+      extraordinary: false,
     };
   });
   availableHighlights.value = [...nonFindingHighlights, ...findingHighlights];
@@ -872,18 +828,19 @@ watch(activeFindingContexts, (newActive) => {
 
 const availableInfoRight = computed<ToolbarToggle[]>(() => {
   const cascadedApps = props.bookStructure?.book.facet_applications_cascaded ?? [];
-  const facetIds = [...new Set(cascadedApps.map(app => app.facet).filter((id): id is number => id !== null))];
+  const assignedFacetIds = [...new Set(cascadedApps.map(app => app.facet).filter((id): id is number => id !== null))];
+  const appliedFacetIds = [...usedFacetTypes.value].map( namePlural => facetsStore.getFacetByPluralName(namePlural)?.id || null );
+  const allFacetIds = [...new Set([...assignedFacetIds, ...appliedFacetIds])].filter(id => id !== null).sort();
 
-  const presentPluralNames = Object.keys(mergedFacets.value);
-
-  return facetIds
+  return allFacetIds
     .map(id => facetsStore.getFacetById(id))
     .filter((fq): fq is FacetQuery => !!fq)
     .map(fq => ({
       name: fq.name,
       type: fq.machine_name_plural,
+      extraordinary: !assignedFacetIds.includes(fq.id),
       checked: activeFacetTypes.value.has(fq.machine_name_plural),
-      disabled: !presentPluralNames.includes(fq.machine_name_plural)
+      disabled: !usedFacetTypes.value.has(fq.machine_name_plural)
     }));
 });
 
@@ -1499,40 +1456,16 @@ async function fetchSection() {
   try {
     const sectionPromise = apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=essentials,findings,pm&cont_info=essentials,findings,emphasis,pm&path_coded=1&pageinfo=1`);
     const taskPromise = fetchActiveBackgroundTask();
+    // Awaited: the singular->plural facet lookups below depend on it. Memoised in the store.
+    const facetsPromise = facetsStore.fetchFacetQueries();
 
-    const [res] = await Promise.all([sectionPromise, taskPromise]);
+    const [res] = await Promise.all([sectionPromise, taskPromise, facetsPromise]);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data.value = await res.json();
     openFindingIds.value = {};
 
-    // Initialize active facets
-    const nextFacets = new Set<string>();
-    if (data.value?.section.findings) {
-      const findings = data.value.section.findings;
-      const buckets: (keyof typeof findings)[] = ['contexts', 'section_one', 'section_few', 'section_many'];
-      buckets.forEach(bucket => {
-        const map = findings[bucket];
-        if (map) {
-          Object.keys(map).forEach(pluralName => {
-            nextFacets.add(pluralName);
-          });
-        }
-      });
-    }
-
-    // Also check content blocks for findings that might not be in section info
-    data.value?.contents.forEach(block => {
-      block.findings?.occurrences?.forEach(occ => {
-        if (occ.of_facet) {
-          const facet = facetsStore.getFacetBySingularName(occ.of_facet);
-          if (facet) {
-            nextFacets.add(facet.machine_name_plural);
-          }
-        }
-      });
-    });
-
-    activeFacetTypes.value = nextFacets;
+    // Start with every facet represented in this section switched on.
+    activeFacetTypes.value = new Set(usedFacetTypes.value);
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load section';
   } finally {
@@ -1662,6 +1595,10 @@ watch(() => props.sectionPath, fetchSection);
 .section-study__toolbar sl-dropdown sl-menu::part(base),
 .section-study__toolbar sl-dropdown sl-menu-item::part(base) {
   font-size: 0.85rem;
+}
+
+.toolbar-menu-item--extraordinary::part(label) {
+  font-style: italic;
 }
 
 .breadcrumb-link {

@@ -86,7 +86,7 @@ const backLink = computed(() => {
 });
 
 const availableHighlights: ToolbarToggle[] = [
-  { name: 'Summary Quotes', type: 'summary-quotes', checked: true },
+  { name: 'Summary Quotes', type: 'summary-quotes', checked: true, extraordinary: false },
 ];
 </script>
 
