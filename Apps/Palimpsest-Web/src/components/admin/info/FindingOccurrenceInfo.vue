@@ -3,8 +3,8 @@
     <div class="info-header">
       <h3 class="title">{{ symbol }} {{ label }}</h3>
       <div class="header-badges">
-        <sl-badge variant="neutral" pill size="small">{{ bucket }}</sl-badge>
-        <sl-badge v-if="renderMethod" variant="primary" pill size="small">{{ renderMethod }}</sl-badge>
+        <sl-badge variant="neutral" pill>{{ bucket }}</sl-badge>
+        <sl-badge v-if="renderMethod" variant="primary" pill>{{ renderMethod }}</sl-badge>
         <span v-else class="no-render-method">no render method</span>
       </div>
     </div>

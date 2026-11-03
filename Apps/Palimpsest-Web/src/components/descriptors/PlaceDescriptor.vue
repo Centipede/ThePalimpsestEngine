@@ -2,7 +2,7 @@
   <div class="summary-info-record__tag-group">
     <span class="summary-info-record__tag-label">Place:</span>
     <div class="summary-info-record__descriptor-content">
-      <div v-if="central_geographical_area.brief_description" class="summary-info-record__descriptor-prose">{{ central_geographical_area.brief_description }}</div>
+      <div v-if="central_geographical_area.brief_description" class="summary-info-record__descriptor-prose">{{ central_geographical_area.brief_description || central_geographical_area.full_description }}</div>
       <div v-if="central_geographical_area.placenames?.length" class="summary-info-record__tag-list">
         <sl-badge v-for="p in central_geographical_area.placenames" :key="p" pill class="place-badge">{{ p }}</sl-badge>
       </div>

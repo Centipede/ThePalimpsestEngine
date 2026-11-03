@@ -155,6 +155,9 @@ function handleLinked() {
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+const byName = (a: FindingContext, b: FindingContext) =>
+  a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
+
 type SortedFacetGroup = {
   facetName: string;
   label: string;
@@ -177,15 +180,14 @@ const sortedFacets = computed<SortedFacetGroup[]>(() => {
     })
     .map(([facetName, findings]) => {
       const facet = facetsStore.getFacetByPluralName(facetName);
-      const order = facetsStore.facetQueries.findIndex(fq => fq.id === facet?.id);
-      const linked = findings.filter(f => f.of_identity !== null);
-      const unlinked = findings.filter(f => f.of_identity === null);
+      const linked = findings.filter(f => f.of_identity !== null).sort(byName);
+      const unlinked = findings.filter(f => f.of_identity === null).sort(byName);
 
       return {
         facetName,
         label: capitalize(facetName),
         symbol: facet?.symbol || '❓',
-        order: order === -1 ? Infinity : order,
+        order: facet?.id ?? Infinity,
         linked,
         unlinked
       };
