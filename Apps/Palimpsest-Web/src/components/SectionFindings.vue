@@ -37,12 +37,18 @@
                     class="occurrence-item"
                     :class="{ 'is-selected': props.selectedOccurrence?.id === occurrence.id }"
                   >
-                    <div class="occurrence-name">{{ occurrence.name }}</div>
+                    <div class="occurrence-header">
+                      <div class="occurrence-name">{{ occurrence.name }}</div>
+                      <sl-icon-button
+                        v-if="occurrence.in_block_pi"
+                        name="arrow-down-right-circle"
+                        label="Jump to paragraph"
+                        class="jump-button"
+                        @click="emit('jump-to-block', occurrence)"
+                      ></sl-icon-button>
+                    </div>
                     <blockquote class="occurrence-quote">{{ occurrence.quote }}</blockquote>
                     <div class="occurrence-description">{{ occurrence.description }}</div>
-                    <div v-if="occurrence.extracted_data" class="occurrence-data">
-                      <pre>{{ JSON.stringify(occurrence.extracted_data, null, 2) }}</pre>
-                    </div>
                   </div>
                 </template>
                 <div v-else class="no-occurrences">No occurrences found.</div>
@@ -78,12 +84,18 @@
                     class="occurrence-item"
                     :class="{ 'is-selected': props.selectedOccurrence?.id === occurrence.id }"
                   >
-                    <div class="occurrence-name">{{ occurrence.name }}</div>
+                    <div class="occurrence-header">
+                      <div class="occurrence-name">{{ occurrence.name }}</div>
+                      <sl-icon-button
+                        v-if="occurrence.in_block_pi"
+                        name="arrow-down-right-circle"
+                        label="Jump to paragraph"
+                        class="jump-button"
+                        @click="emit('jump-to-block', occurrence)"
+                      ></sl-icon-button>
+                    </div>
                     <blockquote class="occurrence-quote">{{ occurrence.quote }}</blockquote>
                     <div class="occurrence-description">{{ occurrence.description }}</div>
-                    <div v-if="occurrence.extracted_data" class="occurrence-data">
-                      <pre>{{ JSON.stringify(occurrence.extracted_data, null, 2) }}</pre>
-                    </div>
                   </div>
                 </template>
                 <div v-else class="no-occurrences">No occurrences found.</div>
@@ -104,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue';
+import { computed, ref } from 'vue';
 import type { FindingContext, FindingContextMap, FindingOccurrence } from '../types/library';
 import { useFacetsStore } from '../stores/facets';
 import { useAuth } from '../composables/useAuth';
@@ -123,23 +135,12 @@ const { isStaff } = useAuth();
 const emit = defineEmits<{
   (e: 'refresh'): void;
   (e: 'update:openFindingIds', val: Record<number, boolean>): void;
+  (e: 'jump-to-block', occurrence: FindingOccurrence): void;
 }>();
 
 const selectedFinding = ref<FindingContext | null>(null);
 const selectedFacetName = ref<string | null>(null);
 const showToolset = ref(false);
-
-watch(() => props.selectedOccurrence, (newOcc) => {
-  if (newOcc && newOcc.of_context) {
-    emit('update:openFindingIds', { ...props.openFindingIds, [newOcc.of_context]: true });
-    nextTick(() => {
-      const el = document.getElementById(`occurrence-${newOcc.id}`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    });
-  }
-}, { immediate: true });
 
 function openToolset(finding: FindingContext, facetNamePlural: string) {
   selectedFinding.value = finding;
@@ -299,6 +300,23 @@ const sortedFacets = computed<SortedFacetGroup[]>(() => {
   margin: -0.25rem;
 }
 
+.occurrence-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+
+.jump-button {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  color: var(--sl-color-primary-600);
+}
+
+.jump-button::part(base) {
+  padding: 0;
+}
+
 .occurrence-name {
   font-weight: 600;
   color: var(--sl-color-neutral-800);
@@ -316,22 +334,6 @@ const sortedFacets = computed<SortedFacetGroup[]>(() => {
   font-size: 0.75rem;
   color: var(--sl-color-neutral-500);
   margin-top: 0.2rem;
-}
-
-.occurrence-data {
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  background-color: var(--sl-color-neutral-50);
-  border-radius: var(--sl-border-radius-small);
-  font-family: var(--sl-font-mono);
-  font-size: 0.7rem;
-  overflow-x: auto;
-}
-
-.occurrence-data pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-all;
 }
 
 .no-occurrences {

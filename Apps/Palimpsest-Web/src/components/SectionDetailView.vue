@@ -435,7 +435,7 @@
           :essentials="data?.section.essentials"
       />
       <SectionOutline v-if="showSegmentsOverview && data.section.essentials?.outline?.segments" :outline="data.section.essentials.outline.segments"/>
-      <SectionFindings v-if="showEntities && Object.keys(sectionContexts).length" :facets="sectionContexts" v-model:open-finding-ids="openFindingIds" :selected-occurrence="selectedOccurrence" :active-facet-types="activeFacetTypes" @refresh="fetchSection"/>
+      <SectionFindings v-if="showEntities && Object.keys(sectionContexts).length" :facets="sectionContexts" v-model:open-finding-ids="openFindingIds" :selected-occurrence="selectedOccurrence" :active-facet-types="activeFacetTypes" @refresh="fetchSection" @jump-to-block="handleJumpToBlock"/>
 
       <CorpusStudyDialog
           v-model:open="corpusDialog.open"
@@ -853,15 +853,57 @@ useHead({
   title: pageTitle
 });
 
+// Clicking an entity in a paragraph toggles its context: the first click
+// activates it (expands the finding in the Entities panel and highlights its
+// quotes), a second click on any occurrence of that same context switches it
+// off again. Deliberately no viewport motion either way.
 function handleOccurrenceSelected(occ: FindingOccurrence) {
+  const contextId = occ.of_context;
+
+  if (contextId && openFindingIds.value[contextId]) {
+    openFindingIds.value = { ...openFindingIds.value, [contextId]: false };
+    selectedOccurrence.value = null;
+    return;
+  }
+
   selectedOccurrence.value = occ;
+  if (contextId) {
+    openFindingIds.value = { ...openFindingIds.value, [contextId]: true };
+  }
   showEntities.value = true;
-  nextTick(() => {
-    const el = document.querySelector('.section-findings');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
+}
+
+// The opposite direction: from an occurrence in the Entities panel down to the
+// content block it was found in.
+async function handleJumpToBlock(occ: FindingOccurrence) {
+  const pathId = occ.in_block_pi;
+  if (!pathId) return;
+
+  // In segmented mode the target block may sit inside a collapsed sl-details.
+  if (organiseMode.value === 'segmented') {
+    const idx = segmentedData.value.segments.findIndex(
+        seg => seg.blocks.some(b => b.block.path_id === pathId)
+    );
+    if (idx > -1 && !openSegments.value[idx]) {
+      toggleSegment(idx, true);
     }
-  });
+  }
+
+  await nextTick();
+  scrollToBlockWhenReady(pathId);
+}
+
+// sl-details un-hides its body as the open animation starts, so poll a few
+// frames until the block is actually laid out before scrolling to it.
+function scrollToBlockWhenReady(pathId: string, attempts = 20) {
+  const el = document.getElementById(`block-${pathId}`);
+  if (el && el.getClientRects().length > 0) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  if (attempts > 0) {
+    requestAnimationFrame(() => scrollToBlockWhenReady(pathId, attempts - 1));
+  }
 }
 
 function handleToolbarSelect(group: ToolbarToggleGroup, event: Event) {
@@ -1463,6 +1505,7 @@ async function fetchSection() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data.value = await res.json();
     openFindingIds.value = {};
+    selectedOccurrence.value = null;
 
     // Start with every facet represented in this section switched on.
     activeFacetTypes.value = new Set(usedFacetTypes.value);
