@@ -316,30 +316,30 @@
               <div class="insight-group__label">Essentials</div>
               <div class="insight-group__badges">
                 <sl-tooltip v-if="data?.section.essentials?.digest" content="Digest Present" hoist>
-                  <sl-badge variant="success" pill size="small" class="interactive-badge" @click="toggleInfo('digest', data.section.essentials.digest)">D</sl-badge>
+                  <sl-badge variant="success" pill size="small" class="interactive-badge" @click="toggleInfo('digest', 'digest', data.section.essentials.digest)">D</sl-badge>
                 </sl-tooltip>
                 <sl-tooltip v-if="data?.section.essentials?.outline" content="Outline Present" hoist>
-                  <sl-badge variant="success" pill size="small" class="interactive-badge" @click="toggleInfo('outline', data.section.essentials.outline)">O</sl-badge>
+                  <sl-badge variant="success" pill size="small" class="interactive-badge" @click="toggleInfo('outline', 'outline', data.section.essentials.outline)">O</sl-badge>
                 </sl-tooltip>
                 <span v-if="!data?.section.essentials?.digest && !data?.section.essentials?.outline" class="no-badges">-</span>
               </div>
             </div>
 
-            <div class="insight-group">
-              <div class="insight-group__label">Findings</div>
+            <div v-for="group in sectionFindingGroups" :key="group.bucket" class="insight-group">
+              <div class="insight-group__label">Findings ({{ group.bucket }})</div>
               <div class="insight-group__badges">
-                <sl-tooltip v-for="badge in sectionFacetBadges" :key="badge.facet.id" :content="badge.facet.name + ' (' + badge.bucket + ')'" hoist>
-                  <sl-badge variant="neutral" pill size="small" class="facet-badge interactive-badge" @click="toggleInfo('facet', badge.facet)">
+                <sl-tooltip v-for="badge in group.badges" :key="badge.key" :content="badge.facet.name" hoist>
+                  <sl-badge variant="neutral" pill size="small" class="facet-badge interactive-badge" @click="toggleInfo('occurrences', badge.key, badge)">
                     {{ badge.facet.symbol }}
                   </sl-badge>
                 </sl-tooltip>
-                <span v-if="sectionFacetBadges.length === 0" class="no-badges">-</span>
+                <span v-if="group.badges.length === 0" class="no-badges">-</span>
               </div>
             </div>
           </div>
 
           <transition name="expand">
-            <div v-if="expandedInfoType" class="expanded-info-container">
+            <div v-if="expandedInfoType && expandedInfoType !== 'context'" class="expanded-info-container">
               <DigestInfo
                   v-if="expandedInfoType === 'digest'"
                   :digest="expandedInfoData"
@@ -350,11 +350,43 @@
                   :outline="expandedInfoData"
               />
 
-              <FacetInfo
-                  v-else-if="expandedInfoType === 'facet'"
-                  :contexts="sectionContexts[expandedInfoData.machine_name_plural] || []"
-                  :label="expandedInfoData.name"
-                  :symbol="expandedInfoData.symbol"
+              <div v-else class="occurrence-info-stack">
+                <FindingOccurrenceInfo
+                    v-for="occ in expandedInfoData.occurrences"
+                    :key="occ.id"
+                    :occurrence="occ"
+                    :label="expandedInfoData.facet.name"
+                    :symbol="expandedInfoData.facet.symbol"
+                    :bucket="expandedInfoData.bucket"
+                    :render-method="facetsStore.getRenderMethodByPluralName(expandedInfoData.facet.machine_name_plural)"
+                />
+              </div>
+            </div>
+          </transition>
+
+          <sl-divider></sl-divider>
+
+          <h3 class="portal-section-title">Block Insight</h3>
+          <div class="section-insight-badges">
+            <div class="insight-group">
+              <div class="insight-group__label">Contexts</div>
+              <div class="insight-group__badges">
+                <sl-tooltip v-for="badge in blockContextBadges" :key="badge.key" :content="badge.facet.name" hoist>
+                  <sl-badge variant="neutral" pill size="small" class="facet-badge interactive-badge" @click="toggleInfo('context', badge.key, badge)">
+                    {{ badge.facet.symbol }}
+                  </sl-badge>
+                </sl-tooltip>
+                <span v-if="blockContextBadges.length === 0" class="no-badges">-</span>
+              </div>
+            </div>
+          </div>
+
+          <transition name="expand">
+            <div v-if="expandedInfoType === 'context'" class="expanded-info-container">
+              <FindingContextInfo
+                  :contexts="expandedInfoData.contexts"
+                  :label="expandedInfoData.facet.name"
+                  :symbol="expandedInfoData.facet.symbol"
               />
             </div>
           </transition>
@@ -596,6 +628,7 @@ import type {
   BookStructure,
   Section,
   FindingOccurrence,
+  FindingContext,
   ActiveFindingContext,
   FacetQuery,
   FindingContextMap,
@@ -612,7 +645,8 @@ import CorpusStudyDialog from './corpus/CorpusStudyDialog.vue';
 import StudyWorkspaceDialog from './studyworkspaces/StudyWorkspaceDialog.vue';
 import DigestInfo from './admin/info/DigestInfo.vue';
 import OutlineInfo from './admin/info/OutlineInfo.vue';
-import FacetInfo from './admin/info/FacetInfo.vue';
+import FindingContextInfo from './admin/info/FindingContextInfo.vue';
+import FindingOccurrenceInfo from './admin/info/FindingOccurrenceInfo.vue';
 import {useLibraryStore} from "../stores/library.ts";
 import {useFacetsStore} from "../stores/facets.ts";
 import type {FoldTrigger, ToolbarToggle} from "../types/view_state.ts";
@@ -640,16 +674,23 @@ const activeBackgroundTask = ref<BackgroundTask | null>(null);
 const selectedOccurrence = ref<FindingOccurrence | null>(null);
 const activeFacetTypes = ref<Set<string>>(new Set());
 
+// 'digest' | 'outline' | 'occurrences' (section-level findings) | 'context' (block-level)
 const expandedInfoType = ref<string | null>(null);
+// Identifies the badge that opened the panel ('digest', 'One:places', 'context:people', ...).
+// Keyed rather than compared by payload identity: the badge payloads are rebuilt
+// by a computed on every render, so identity comparison would never match.
+const expandedInfoKey = ref<string | null>(null);
 const expandedInfoData = ref<any>(null);
 
-function toggleInfo(type: string, data: any) {
-  if (expandedInfoType.value === type && expandedInfoData.value === data) {
+function toggleInfo(type: string, key: string, payload: any) {
+  if (expandedInfoKey.value === key) {
     expandedInfoType.value = null;
+    expandedInfoKey.value = null;
     expandedInfoData.value = null;
   } else {
     expandedInfoType.value = type;
-    expandedInfoData.value = data;
+    expandedInfoKey.value = key;
+    expandedInfoData.value = payload;
   }
 }
 
@@ -1089,27 +1130,60 @@ async function fetchActiveBackgroundTask() {
   }
 }
 
-const sectionFacetBadges = computed(() => {
-  if (!data.value?.section.findings) return [];
-  const findings = data.value.section.findings;
-  const badges: { facet: FacetQuery, bucket: string }[] = [];
+interface SectionFindingBadge {
+  key: string;
+  bucket: string;
+  facet: FacetQuery;
+  occurrences: FindingOccurrence[];
+}
 
-  const processBucket = (bucket: 'section_one' | 'section_few', label: string) => {
-    const map = findings[bucket];
-    if (map) {
-      Object.keys(map).forEach(pluralName => {
+/**
+ * Concern: SECTION INSIGHT - the occurrences the section itself owns, per
+ * bucket. These are NOT the block-level finding contexts; a badge here expands
+ * the section_one/section_few/section_many occurrences that produced it, with
+ * their extracted_data. One row per bucket; 'Many' is only shown once the
+ * backend starts filling it.
+ */
+const sectionFindingGroups = computed<{ bucket: string; badges: SectionFindingBadge[] }[]>(() => {
+  const findings = data.value?.section.findings;
+
+  const buildBadges = (bucket: 'section_one' | 'section_few' | 'section_many', label: string) => {
+    const map = findings?.[bucket] ?? {};
+    return Object.entries(map)
+      .flatMap(([pluralName, occurrences]): SectionFindingBadge[] => {
+        if (!occurrences?.length) return [];
         const facet = facetsStore.getFacetByPluralName(pluralName);
-        if (facet && !badges.find(b => b.facet.id === facet.id)) {
-          badges.push({ facet, bucket: label });
-        }
-      });
-    }
+        if (!facet) return [];
+        return [{ key: `${label}:${pluralName}`, bucket: label, facet, occurrences }];
+      })
+      .sort((a, b) => a.facet.id - b.facet.id);
   };
 
-  processBucket('section_one', 'One');
-  processBucket('section_few', 'Few');
+  const groups = [
+    { bucket: 'One', badges: buildBadges('section_one', 'One') },
+    { bucket: 'Few', badges: buildBadges('section_few', 'Few') },
+  ];
 
-  return badges.sort((a, b) => a.facet.id - b.facet.id);
+  const many = buildBadges('section_many', 'Many');
+  if (many.length > 0) groups.push({ bucket: 'Many', badges: many });
+
+  return groups;
+});
+
+/**
+ * Concern: BLOCK INSIGHT - the finding contexts, which group occurrences across
+ * content blocks. They are delivered on the section only because a context can
+ * span several blocks.
+ */
+const blockContextBadges = computed<{ key: string; facet: FacetQuery; contexts: FindingContext[] }[]>(() => {
+  return Object.entries(sectionContexts.value)
+    .flatMap(([pluralName, contexts]) => {
+      if (!contexts?.length) return [];
+      const facet = facetsStore.getFacetByPluralName(pluralName);
+      if (!facet) return [];
+      return [{ key: `context:${pluralName}`, facet, contexts }];
+    })
+    .sort((a, b) => a.facet.id - b.facet.id);
 });
 
 async function gatherSectionInfo() {
@@ -1500,12 +1574,19 @@ async function fetchSection() {
     const taskPromise = fetchActiveBackgroundTask();
     // Awaited: the singular->plural facet lookups below depend on it. Memoised in the store.
     const facetsPromise = facetsStore.fetchFacetQueries();
+    // The admin portal reads render_method off the facet applications. Not fatal
+    // to the section if it fails - the panels just lose their render-method badge.
+    const facetAppsPromise = facetsStore.fetchFacetApplications().catch(() => []);
 
-    const [res] = await Promise.all([sectionPromise, taskPromise, facetsPromise]);
+    const [res] = await Promise.all([sectionPromise, taskPromise, facetsPromise, facetAppsPromise]);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data.value = await res.json();
     openFindingIds.value = {};
     selectedOccurrence.value = null;
+    // The expanded admin panel holds slices of the old payload.
+    expandedInfoType.value = null;
+    expandedInfoKey.value = null;
+    expandedInfoData.value = null;
 
     // Start with every facet represented in this section switched on.
     activeFacetTypes.value = new Set(usedFacetTypes.value);
@@ -1857,6 +1938,12 @@ watch(() => props.sectionPath, fetchSection);
 .expanded-info-container {
   margin: 0.5rem 0;
   overflow: hidden;
+}
+
+.occurrence-info-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .expand-enter-active,

@@ -20,6 +20,17 @@ export const useFacetsStore = defineStore('facets', {
     getFacetByPluralName: (state) => (name: string) => {
       return state.facetQueries.find((f) => f.machine_name_plural === name);
     },
+    /**
+     * How a facet's extracted_data wants to be rendered. The method sits on the
+     * FacetApplication, not on the facet itself; the first application found for
+     * the facet wins. Requires fetchFacetApplications() to have run.
+     * TODO: Shouldn't we use book.facet_applications_cascaded instead?
+     */
+    getRenderMethodByPluralName: (state) => (namePlural: string) => {
+      const facet = state.facetQueries.find((f) => f.machine_name_plural === namePlural);
+      if (!facet) return undefined;
+      return state.facetApplications.find((a) => a.facet === facet.id)?.render_method?.method;
+    },
   },
 
   actions: {

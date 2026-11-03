@@ -192,16 +192,8 @@ const hasInformation = computed(() => {
   return hasDigest || hasSectionOne || hasSectionFew;
 });
 
-function getFacetApplication(facetPlural: string) {
-  const facet = facetsStore.getFacetByPluralName(facetPlural);
-  if (!facet) return null;
-
-  return facetsStore.facetApplications.find(a => a.facet === facet.id);
-}
-
 function getRenderMethod(facetPlural: string) {
-  const app = getFacetApplication(facetPlural);
-  return app?.render_method?.method;
+  return facetsStore.getRenderMethodByPluralName(facetPlural);
 }
 
 function getFacetLabel(facetPlural: string) {
