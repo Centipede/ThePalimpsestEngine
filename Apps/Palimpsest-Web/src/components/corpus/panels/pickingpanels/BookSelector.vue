@@ -54,7 +54,7 @@ import type { Book } from '../../../../types/library';
 const props = withDefaults(defineProps<{
   selectedIds: number[];
   authorIds: number[];
-  mode?: 'corpus' | 'reference';
+  mode?: 'corpus' | 'reference' | 'filter';
 }>(), {
   mode: 'corpus'
 });
@@ -106,6 +106,8 @@ function toggleSelection(id: number) {
 }
 
 function handleContextMenu(book: Book, event: MouseEvent) {
+  if (props.mode === 'filter') return;
+
   contextBook.value = book;
   
   const anchor = dropdown.value?.querySelector('.context-menu-anchor') as HTMLElement | null;

@@ -72,6 +72,29 @@ export const useLibraryStore = defineStore('library', {
       flatten(state.topics);
       return result;
     },
+
+    /**
+     * Maps every topic id to itself plus all of its descendant ids, so that
+     * selecting a non-leaf topic can stand for its whole subtree.
+     */
+    topicSubtreeIds: (state): Map<number, number[]> => {
+      const result = new Map<number, number[]>();
+
+      const collect = (topic: Topic): number[] => {
+        const ids = [topic.id];
+        for (const child of topic.children || []) {
+          ids.push(...collect(child));
+        }
+        result.set(topic.id, ids);
+        return ids;
+      };
+
+      for (const topic of state.topics) {
+        collect(topic);
+      }
+
+      return result;
+    },
   },
 
   actions: {

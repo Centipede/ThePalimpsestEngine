@@ -14,7 +14,10 @@
       <div
         v-for="topic in filteredTopics"
         :key="topic.id"
-        :class="['topic-item', { 'is-selected': selectedIds.includes(topic.id) }]"
+        :class="['topic-item', {
+          'is-selected': selectedSet.has(topic.id),
+          'is-implied': !selectedSet.has(topic.id) && impliedSet.has(topic.id),
+        }]"
         @click="toggleSelection(topic.id)"
         @contextmenu.prevent="handleContextMenu(topic, $event)"
         :title="topic.fullPath"
@@ -52,8 +55,11 @@ import { useLibraryStore, type FlattenedTopic } from '../../../../stores/library
 
 const props = withDefaults(defineProps<{
   selectedIds: number[];
-  mode?: 'corpus' | 'reference';
+  /** Topic ids implied by the current selection (e.g. descendants of a selected parent). */
+  impliedIds?: number[];
+  mode?: 'corpus' | 'reference' | 'filter';
 }>(), {
+  impliedIds: () => [],
   mode: 'corpus'
 });
 
@@ -72,6 +78,9 @@ const contextTopic = ref<FlattenedTopic | null>(null);
 onMounted(() => {
   libraryStore.fetchTopics();
 });
+
+const selectedSet = computed(() => new Set(props.selectedIds));
+const impliedSet = computed(() => new Set(props.impliedIds));
 
 const filteredTopics = computed(() => {
   const query = searchQuery.value.toLowerCase().trim();
@@ -94,6 +103,8 @@ function toggleSelection(id: number) {
 }
 
 function handleContextMenu(topic: FlattenedTopic, event: MouseEvent) {
+  if (props.mode === 'filter') return;
+
   contextTopic.value = topic;
   
   const anchor = dropdown.value?.querySelector('.context-menu-anchor') as HTMLElement | null;
@@ -168,6 +179,11 @@ function handleMenuSelect(event: CustomEvent) {
 [data-theme="dark"] .topic-item.is-selected {
   background-color: var(--color-bg-selected);
   color: var(--color-text);
+}
+
+.topic-item.is-implied {
+  background-color: var(--color-bg-selected);
+  opacity: 0.45;
 }
 
 .topic-name {

@@ -17,10 +17,6 @@ useHead({
 
 <template>
   <div class="study-home-layout">
-    <aside class="logo-sidebar">
-      <img src="/logos/palimpsest-logo.png" alt="Palimpsest Logo" class="main-logo" />
-    </aside>
-
     <div class="study-home-page">
       <BookListView />
       <StudyNoteListView />
@@ -30,31 +26,19 @@ useHead({
 
 <style scoped>
 .study-home-layout {
-  position: relative;
+  /* Height of the book browser panel; its list column scrolls inside this. */
+  --panel-height: clamp(26rem, calc(100svh - 14rem), 60rem);
+
   box-sizing: border-box;
   width: 100%;
-  max-width: 80rem;
+  max-width: 110rem;
   margin: 0 auto;
   padding: 2rem 1rem;
 }
 
-.logo-sidebar {
-  position: absolute;
-  top: 2rem;
-  left: 1rem;
-  width: 12rem;
-  padding-top: 1rem;
-}
-
-.main-logo {
-  width: 100%;
-  height: auto;
-  opacity: 0.9;
-}
-
 .study-home-page {
   box-sizing: border-box;
-  width: min(100%, 48rem);
+  width: 100%;
   margin: 0 auto;
   padding: 0;
 }
@@ -65,12 +49,6 @@ useHead({
     flex-direction: column;
     align-items: center;
     gap: 2rem;
-  }
-
-  .logo-sidebar {
-    position: static;
-    width: 8rem;
-    padding-top: 0;
   }
 
   .study-home-page {
