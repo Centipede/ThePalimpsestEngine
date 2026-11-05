@@ -130,7 +130,7 @@ function handleContextCondensed(summary: string) {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background-color: var(--sl-color-neutral-50);
+  background-color: var(--color-bg);
 }
 
 .page-header {
@@ -138,7 +138,7 @@ function handleContextCondensed(summary: string) {
   align-items: center;
   gap: 1rem;
   padding: 1rem 2rem;
-  background-color: white;
+  background-color: var(--color-surface);
   border-bottom: 1px solid var(--sl-color-neutral-200);
   position: sticky;
   top: 0;

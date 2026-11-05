@@ -1,31 +1,41 @@
 :root,
 [data-theme="light"] {
   --sl-font-sans: 'Avenir Next', 'Avenir', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
-  --color-bg:           #f8f9fa;
-  --color-surface:      #ffffff;
-  --color-border:       #dee2e6;
-  --color-text:         #212529;
-  --color-text-muted:   #6c757d;
-  --color-text-dimmed:  #a2acb6;
+  /* Derived from Shoelace's neutral ramp (see the dark block for why the
+     bg/surface steps are not the same in both themes). */
+  --color-bg:           var(--sl-color-neutral-50);
+  --color-surface:      var(--sl-color-neutral-0);
+  --color-border:       var(--sl-color-neutral-200);
+  --color-text:         var(--sl-color-neutral-800);
+  --color-text-muted:   var(--sl-color-neutral-500);
+  --color-text-dimmed:  var(--sl-color-neutral-400);
+  --color-bg-muted:     var(--sl-color-neutral-100);
+  /* Brand/state colours: no clean Shoelace equivalent, so kept explicit.
+     --sl-color-primary-* is sky, not indigo. */
   --color-accent:       #2563eb;
   --color-accent-hover: #1d4ed8;
   --color-bg-selected:  #8397aa;
-  --color-bg-muted:     #f1f3f5;
   --header-height:      48px;
 }
 
 [data-theme="dark"] {
   --sl-font-sans: 'Avenir Next', 'Avenir', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
-  --color-bg:           #111317;
-  --color-surface:      #1e2025;
-  --color-border:       #2e3138;
-  --color-text:         #e1e3e8;
-  --color-text-muted:   #868e96;
-  --color-text-dimmed:  #5f646a;
+  /* Shoelace's neutral ramp runs base -> text in both themes, so neutral-0 is
+     the lightest step in light mode but the darkest in dark mode. The bg and
+     surface steps are therefore swapped here relative to the light block, so
+     that a surface stays raised above its canvas in both themes. The dark ramp
+     is also compressed rather than a mirror of the light one, hence the muted
+     and dimmed text sitting one step higher. */
+  --color-bg:           var(--sl-color-neutral-0);
+  --color-surface:      var(--sl-color-neutral-50);
+  --color-border:       var(--sl-color-neutral-200);
+  --color-text:         var(--sl-color-neutral-900);
+  --color-text-muted:   var(--sl-color-neutral-600);
+  --color-text-dimmed:  var(--sl-color-neutral-500);
+  --color-bg-muted:     var(--sl-color-neutral-100);
   --color-accent:       #60a5fa;
   --color-accent-hover: #93c5fd;
   --color-bg-selected:  #424a53;
-  --color-bg-muted:     #282c34;
   --header-height:      48px;
 }
 

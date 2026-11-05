@@ -209,7 +209,7 @@ onMounted(async () => {
   height: 100%;
   overflow-y: auto;
   padding: 1rem;
-  background: var(--sl-color-neutral-50);
+  background: var(--color-bg);
   border-right: 1px solid var(--sl-color-neutral-200);
 }
 
@@ -217,7 +217,7 @@ onMounted(async () => {
   height: 100%;
   overflow-y: auto;
   padding: 1rem;
-  background: var(--sl-color-neutral-50);
+  background: var(--color-bg);
   border-left: 1px solid var(--sl-color-neutral-200);
 }
 

@@ -133,7 +133,7 @@ const availableHighlights: ToolbarToggle[] = [
   flex-direction: column;
   gap: 1rem;
   padding: 1rem;
-  background: white;
+  background: var(--color-surface);
   border: 1px solid var(--sl-color-warning-200);
   border-radius: var(--sl-border-radius-medium);
   margin-bottom: 2rem;
