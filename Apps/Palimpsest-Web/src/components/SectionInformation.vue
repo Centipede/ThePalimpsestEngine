@@ -26,15 +26,32 @@
           <div v-for="(occurrences, facetPlural) in data.findings?.section_few || {}" :key="facetPlural" class="summary-info-record__tag-group">
             <span class="summary-info-record__tag-label">{{ getFacetLabel(facetPlural) }}:</span>
             <div class="summary-info-record__tag-list">
-              <sl-badge
-                v-for="occ in occurrences"
-                :key="occ.id"
-                pill
-                class="facet-badge"
-                :style="{ '--facet-color': getFacetColor(facetPlural) }"
-              >
-                {{ occ.name }}
-              </sl-badge>
+              <template v-for="occ in occurrences" :key="occ.id">
+                <button
+                  v-if="hasNameRoleText(occ.extracted_data)"
+                  type="button"
+                  class="facet-badge-button"
+                  :aria-expanded="activeOccurrence?.id === occ.id"
+                  :aria-controls="activeOccurrence?.id === occ.id ? popupId : undefined"
+                  @click="toggleOccurrence(occ, $event)"
+                >
+                  <sl-badge
+                    pill
+                    class="facet-badge"
+                    :style="{ '--facet-color': getFacetColor(facetPlural) }"
+                  >
+                    {{ occ.name }}
+                  </sl-badge>
+                </button>
+                <sl-badge
+                  v-else
+                  pill
+                  class="facet-badge"
+                  :style="{ '--facet-color': getFacetColor(facetPlural) }"
+                >
+                  {{ occ.name }}
+                </sl-badge>
+              </template>
             </div>
           </div>
         </div>
@@ -43,22 +60,35 @@
     <div v-else-if="data && !hasInformation" class="summary-info-record__empty">
       (no information)
     </div>
+
+    <DescriptorPopup
+      :anchor="anchorEl"
+      :open="!!activeDescriptor"
+      :card-id="popupId"
+      :label="activeOccurrence?.name"
+      @close="closePopup"
+    >
+      <component
+        v-if="activeDescriptor"
+        :is="activeDescriptor.component"
+        v-bind="activeDescriptor.props"
+      />
+    </DescriptorPopup>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, watch } from 'vue';
+import { computed, ref, onMounted, useId, watch } from 'vue';
 import type {
   SectionInformationResponse,
   SectionFindings,
   SectionEssentials,
-  CentralTimePeriod,
-  CentralGeographicalArea
+  FindingOccurrence
 } from '../types/library';
 import { apiFetch } from '../api';
 import { useFacetsStore } from '../stores/facets';
-import TimeDescriptor from './descriptors/TimeDescriptor.vue';
-import PlaceDescriptor from './descriptors/PlaceDescriptor.vue';
+import DescriptorPopup from './descriptors/DescriptorPopup.vue';
+import { resolveDescriptor, hasNameRoleText, type ResolvedDescriptor } from '../utils/descriptors';
 
 const props = defineProps<{
   machineName: string;
@@ -119,7 +149,11 @@ async function fetchData() {
 
 onMounted(fetchData);
 
-watch(() => props.sectionPath, fetchData);
+watch(() => props.sectionPath, () => {
+  // Never leave a card hanging over a section it does not belong to.
+  closePopup();
+  fetchData();
+});
 
 const facetColors: Record<string, string> = {
   people: 'var(--sl-color-indigo-600)',
@@ -136,53 +170,46 @@ function getFacetColor(facetPlural: string) {
   return facetColors[name] || 'var(--sl-color-neutral-600)';
 }
 
-type SectionOneDescriptor =
-  | {
-      key: string;
-      component: any;
-      props: {
-        central_time_period: CentralTimePeriod;
-      };
-    }
-  | {
-      key: string;
-      component: any;
-      props: {
-        central_geographical_area: CentralGeographicalArea;
-      };
-    };
-
-const sectionOneDescriptors = computed<SectionOneDescriptor[]>(() => {
+const sectionOneDescriptors = computed<(ResolvedDescriptor & { key: string })[]>(() => {
   if (!data.value || !data.value.findings?.section_one) return [];
 
-  return Object.entries(data.value.findings.section_one).flatMap(([facetPlural, occurrences]): SectionOneDescriptor[] => {
-    const occurrence = occurrences[0];
-    if (!occurrence?.extracted_data) return [];
-
-    const method = getRenderMethod(facetPlural);
-    if (method === 'time_period') {
-      return [{
-        key: facetPlural,
-        component: TimeDescriptor,
-        props: {
-          central_time_period: occurrence.extracted_data as CentralTimePeriod
-        }
-      }];
-    }
-
-    if (method === 'geographical_area') {
-      return [{
-        key: facetPlural,
-        component: PlaceDescriptor,
-        props: {
-          central_geographical_area: occurrence.extracted_data as CentralGeographicalArea
-        }
-      }];
-    }
-
-    return [];
+  return Object.entries(data.value.findings.section_one).flatMap(([facetPlural, occurrences]) => {
+    const descriptor = resolveDescriptor(getRenderMethod(facetPlural), occurrences[0]?.extracted_data);
+    return descriptor ? [{ key: facetPlural, ...descriptor }] : [];
   });
 });
+
+// --- section_few: click a pill to see its extracted data ---------------------
+
+const activeOccurrence = ref<FindingOccurrence | null>(null);
+const anchorEl = ref<HTMLElement | null>(null);
+// Unique per information record — a table of contents mounts many of these.
+const popupId = useId();
+
+// section_few has no render method of its own yet, so we tacitly pretend the
+// facet is configured for 'name_role_text'. Once a section_few render method is
+// configurable, this is the single line to change.
+const SECTION_FEW_RENDER_METHOD = 'name_role_text';
+
+const activeDescriptor = computed<ResolvedDescriptor | null>(() =>
+  activeOccurrence.value
+    ? resolveDescriptor(SECTION_FEW_RENDER_METHOD, activeOccurrence.value.extracted_data)
+    : null
+);
+
+function toggleOccurrence(occ: FindingOccurrence, event: MouseEvent) {
+  if (activeOccurrence.value?.id === occ.id) {
+    closePopup();
+    return;
+  }
+  anchorEl.value = event.currentTarget as HTMLElement;
+  activeOccurrence.value = occ;
+}
+
+function closePopup() {
+  activeOccurrence.value = null;
+  anchorEl.value = null;
+}
 
 const hasInformation = computed(() => {
   if (!data.value) return false;
@@ -268,6 +295,25 @@ function getFacetLabel(facetPlural: string) {
   background-color: var(--facet-color);
   border-color: var(--facet-color);
   color: #fff;
+}
+
+/* A pill that can be opened. Looks exactly like a plain pill; the button is
+   only there for the pointer, keyboard activation and focus ring. */
+.facet-badge-button {
+  display: inline-flex;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 999px;
+}
+
+.facet-badge-button:focus-visible {
+  outline: var(--sl-focus-ring);
+  outline-offset: var(--sl-focus-ring-offset, 1px);
 }
 
 .summary-info-record__markdown :deep(p) {

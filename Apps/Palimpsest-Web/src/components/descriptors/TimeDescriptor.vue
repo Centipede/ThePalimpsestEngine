@@ -2,7 +2,7 @@
   <div class="summary-info-record__tag-group">
     <span class="summary-info-record__tag-label">Time:</span>
     <div class="summary-info-record__descriptor-content">
-      <div v-if="central_time_period.brief_description" class="summary-info-record__descriptor-prose">{{ central_time_period.brief_description || central_time_period.full_description }}</div>
+      <div v-if="central_time_period.brief_description || central_time_period.full_description" class="summary-info-record__descriptor-prose">{{ central_time_period.brief_description || central_time_period.full_description }}</div>
       <div v-if="badges.length" class="summary-info-record__tag-list">
         <sl-badge v-for="b in badges" :key="b" pill class="time-badge">{{ b }}</sl-badge>
       </div>
