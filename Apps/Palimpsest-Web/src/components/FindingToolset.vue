@@ -417,7 +417,7 @@ watch(() => props.open, (newVal) => {
   gap: 0.5rem;
   font-size: 0.85rem;
   color: var(--sl-color-neutral-600);
-  background: white;
+  background: var(--color-surface);
   padding: 0.5rem;
   border-left: 3px solid var(--sl-color-neutral-300);
   line-height: 1.5;
@@ -432,7 +432,7 @@ watch(() => props.open, (newVal) => {
 .occurrence-data {
   margin-top: 0.75rem;
   padding: 0.75rem;
-  background-color: white;
+  background-color: var(--color-surface);
   border: 1px solid var(--sl-color-neutral-200);
   border-radius: var(--sl-border-radius-small);
   font-family: var(--sl-font-mono);

@@ -1,5 +1,5 @@
 <template>
-  <div class="facet-info">
+  <div class="finding-context-info">
     <div class="info-header">
       <h3 class="title">{{ symbol }} {{ label }}</h3>
     </div>
@@ -37,7 +37,7 @@ defineProps<{
 </script>
 
 <style scoped>
-.facet-info {
+.finding-context-info {
   padding: 1rem;
   background-color: var(--sl-color-neutral-50);
   border-radius: var(--sl-border-radius-medium);
@@ -64,7 +64,7 @@ defineProps<{
 
 .context-item {
   padding: 0.5rem 0.75rem;
-  background-color: white;
+  background-color: var(--color-surface);
   border: 1px solid var(--sl-color-neutral-200);
   border-radius: var(--sl-border-radius-small);
 }

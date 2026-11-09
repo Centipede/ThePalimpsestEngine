@@ -195,11 +195,10 @@ const sortedOccurrencesByFacet = computed(() => {
   return Object.entries(groups)
     .map(([facetName, occurrences]) => {
       const facet = facetsStore.getFacetBySingularName(facetName);
-      const order = facetsStore.facetQueries.findIndex(fq => fq.id === facet?.id);
       return {
         facetName,
         facet,
-        order: order === -1 ? Infinity : order,
+        order: facet?.id ?? Infinity,
         occurrences
       };
     })

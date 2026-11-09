@@ -15,14 +15,16 @@
     <main class="admin-content">
       <div class="admin-sidebar">
         <sl-menu @sl-select="handleMenuSelect">
-          <sl-menu-item value="facets">
-            <sl-icon name="funnel" slot="prefix"></sl-icon>
-            Facets
+          <sl-menu-item v-for="tool in ADMIN_TOOLS" :key="tool.key" :value="tool.key">
+            <sl-icon :name="tool.icon" slot="prefix"></sl-icon>
+            {{ tool.label }}
           </sl-menu-item>
-          <!-- Other admin tools can be added here later -->
         </sl-menu>
       </div>
       <div class="admin-view">
+        <p v-if="route.path === '/admin'" class="admin-hint">
+          Pick a tool from the list to begin.
+        </p>
         <router-view />
       </div>
     </main>
@@ -32,6 +34,7 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router';
 import { computed } from 'vue';
+import { ADMIN_TOOLS } from '../config/adminTools';
 
 const route = useRoute();
 const router = useRouter();
@@ -43,17 +46,19 @@ const breadcrumbs = computed(() => {
   for (const part of parts) {
     path += `/${part}`;
     crumbs.push({
-      name: part.charAt(0).toUpperCase() + part.slice(1),
+      // Route segments are kebab-case; "topic-assignments" should read as prose.
+      name: part.replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase()),
       path,
     });
   }
   return crumbs;
 });
 
-const handleMenuSelect = (event: CustomEvent) => {
-  const value = event.detail.item.value;
-  if (value === 'facets') {
-    router.push('/admin/facets');
+const handleMenuSelect = (event: Event) => {
+  const value = (event as CustomEvent).detail.item.value;
+  const tool = ADMIN_TOOLS.find((t) => t.key === value);
+  if (tool) {
+    router.push(tool.path);
   }
 };
 </script>
@@ -79,8 +84,12 @@ const handleMenuSelect = (event: CustomEvent) => {
 }
 
 .admin-sidebar {
-  width: 200px;
+  width: 220px;
   flex-shrink: 0;
+}
+
+.admin-hint {
+  color: var(--color-text-muted);
 }
 
 .admin-view {

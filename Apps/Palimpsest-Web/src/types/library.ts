@@ -119,7 +119,6 @@ export interface ContentBlock {
         emphases?: ContentEmphasis[];
     };
     pageinfo?: PageInfo | null;
-    finding_occurrences?: FindingOccurrence[];
 }
 
 export interface ContentEmphasis {
@@ -164,6 +163,13 @@ export interface CentralGeographicalArea {
     placenames: string[];
     full_description: string;
     brief_description: string;
+}
+
+// A descriptor for extracted_data in name/role/description facets (section_few data)
+export interface NameRoleText {
+    name: string;
+    role: string;
+    full_description: string;
 }
 
 export interface ParagraphSegment {
@@ -233,7 +239,7 @@ export interface FacetApplication {
     use_segment_few: boolean;
     use_segment_many: boolean;
     use_content_all: boolean;
-    render_method: { method: 'time_period' | 'geographical_area' } | null;
+    render_method: { method: 'time_period' | 'geographical_area' | 'name_role_text' } | null;
 }
 
 export type ProvidedQueryData = 'full_text' | 'summary' | 'findings';

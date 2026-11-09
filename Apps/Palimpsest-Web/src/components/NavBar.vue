@@ -62,6 +62,10 @@
               <sl-icon slot="prefix" name="shield-lock"></sl-icon>
               Admin
             </sl-menu-item>
+            <sl-menu-item v-for="tool in ADMIN_TOOLS" :key="tool.path" :value="tool.path">
+              <sl-icon slot="prefix" :name="tool.icon"></sl-icon>
+              {{ tool.label }}
+            </sl-menu-item>
           </sl-menu>
         </sl-dropdown>
       </div>
@@ -73,6 +77,7 @@
 import { RouterLink, useRouter } from 'vue-router';
 import { useAuth } from "../composables/useAuth.ts";
 import { useThemeStore } from '../stores/theme';
+import { ADMIN_TOOLS } from '../config/adminTools';
 
 const router = useRouter();
 const { logout, isAuthenticated, isStaff } = useAuth();

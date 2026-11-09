@@ -53,7 +53,7 @@ import type { Author } from '../../../../types/library';
 
 const props = withDefaults(defineProps<{
   selectedIds: number[];
-  mode?: 'corpus' | 'reference';
+  mode?: 'corpus' | 'reference' | 'filter';
 }>(), {
   mode: 'corpus'
 });
@@ -95,6 +95,8 @@ function toggleSelection(id: number) {
 }
 
 function handleContextMenu(author: Author, event: MouseEvent) {
+  if (props.mode === 'filter') return;
+
   contextAuthor.value = author;
   
   const anchor = dropdown.value?.querySelector('.context-menu-anchor') as HTMLElement | null;

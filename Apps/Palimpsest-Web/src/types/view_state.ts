@@ -6,6 +6,7 @@ export interface FoldTrigger {
 export interface ToolbarToggle {
     name: string;
     type: string;
+    extraordinary: boolean;
     checked: boolean;
     disabled?: boolean;
 }

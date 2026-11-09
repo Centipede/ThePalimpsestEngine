@@ -353,7 +353,7 @@ function getItemLabel(item: PickedObject) {
   font-family: var(--sl-font-mono);
   font-size: 0.75rem;
   padding: 0 0.25rem;
-  background: white;
+  background: var(--color-surface);
   border: 1px solid var(--sl-color-neutral-200);
   border-radius: 2px;
 }
