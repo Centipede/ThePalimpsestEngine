@@ -410,17 +410,17 @@
             <div class="insight-group">
               <div class="insight-group__label">Facets</div>
               <div class="insight-group__badges">
-                <sl-tooltip v-for="facetType in bookFacetTypes" :key="facetType" :content="facetsStore.getFacetByPluralName(facetType)?.name || facetType" hoist>
+                <sl-tooltip v-for="exp in sectionLevelFacets" :key="exp.facet.id" :content="exp.facet.name" hoist>
                   <sl-badge
-                    :variant="isFacetCompleted(facetType) ? 'success' : 'neutral'"
+                    :variant="hasSectionFacet(manifestCompleted, exp) ? 'success' : 'neutral'"
                     pill
                     size="small"
                     class="facet-badge"
                   >
-                    {{ facetsStore.getFacetByPluralName(facetType)?.symbol || facetType[0].toUpperCase() }}
+                    {{ exp.facet.symbol || exp.facet.machine_name_plural[0].toUpperCase() }}
                   </sl-badge>
                 </sl-tooltip>
-                <span v-if="bookFacetTypes.length === 0" class="no-badges">-</span>
+                <span v-if="sectionLevelFacets.length === 0" class="no-badges">-</span>
               </div>
             </div>
 
@@ -428,21 +428,21 @@
               <div class="insight-group__label">Contexts</div>
               <div class="insight-group__badges">
                 <sl-tooltip
-                  v-for="facetType in bookFacetTypes"
-                  :key="facetType"
-                  :content="`${facetsStore.getFacetByPluralName(facetType)?.name || facetType}: ${isFacetContextCompleted(facetType) ? 'clustered' : 'not clustered'}`"
+                  v-for="exp in contextLevelFacets"
+                  :key="exp.facet.id"
+                  :content="`${exp.facet.name}: ${hasFacetContexts(manifestCompleted, exp) ? 'clustered' : 'not clustered'}`"
                   hoist
                 >
                   <sl-badge
-                    :variant="isFacetContextCompleted(facetType) ? 'success' : 'neutral'"
+                    :variant="hasFacetContexts(manifestCompleted, exp) ? 'success' : 'neutral'"
                     pill
                     size="small"
                     class="facet-badge"
                   >
-                    {{ facetsStore.getFacetByPluralName(facetType)?.symbol || facetType[0].toUpperCase() }}
+                    {{ exp.facet.symbol || exp.facet.machine_name_plural[0].toUpperCase() }}
                   </sl-badge>
                 </sl-tooltip>
-                <span v-if="bookFacetTypes.length === 0" class="no-badges">-</span>
+                <span v-if="contextLevelFacets.length === 0" class="no-badges">-</span>
               </div>
             </div>
 
@@ -671,6 +671,7 @@ import FindingContextInfo from './admin/info/FindingContextInfo.vue';
 import FindingOccurrenceInfo from './admin/info/FindingOccurrenceInfo.vue';
 import {useLibraryStore} from "../stores/library.ts";
 import {useFacetsStore} from "../stores/facets.ts";
+import {useFacetExpectations} from "../composables/useFacetExpectations.ts";
 import type {FoldTrigger, ToolbarToggle} from "../types/view_state.ts";
 
 const props = defineProps<{
@@ -722,16 +723,18 @@ function isEssentialCompleted(key: string) {
   return processingManifest.value?.completed.essentials.includes(key) ?? false;
 }
 
-function isFacetCompleted(key: string) {
-  return processingManifest.value?.completed.facets.includes(key) ?? false;
-}
+// Which manifest list a facet is expected in depends on how it is applied, so the
+// Facets and Contexts rows each show their own level's facets only. Clustering of block
+// findings into FindingContexts is tracked separately from the facet extraction itself:
+// a facet can be fully extracted at section level while its contexts are not yet grouped.
+const manifestCompleted = computed(() => processingManifest.value?.completed);
 
-// Clustering of block findings into FindingContexts is tracked separately from the
-// facet extraction itself: a facet can be fully extracted while its contexts are not
-// yet grouped. The field is optional, since manifests written before it existed omit it.
-function isFacetContextCompleted(key: string) {
-  return processingManifest.value?.completed.facet_contexts?.includes(key) ?? false;
-}
+const {
+  sectionLevelFacets,
+  contextLevelFacets,
+  hasSectionFacet,
+  hasFacetContexts,
+} = useFacetExpectations(() => props.bookStructure?.book);
 
 const formattedLog = computed(() => {
   if (!processingManifest.value?.log) return [];

@@ -84,12 +84,20 @@
                 <span class="pm-tooltip__item" :class="{'pm-tooltip__item--dimmed': !isEssentialCompleted(entry.section, 'digest')}">Digest</span>
                 <span class="pm-tooltip__item" :class="{'pm-tooltip__item--dimmed': !isEssentialCompleted(entry.section, 'outline')}">Outline</span>
               </div>
-              <div class="pm-tooltip__group" v-if="expectedFacets.length">
-                <span class="pm-tooltip__group-label">Facets</span>
-                <span v-for="facet in expectedFacets" :key="facet.id" 
+              <div class="pm-tooltip__group" v-if="sectionLevelFacets.length">
+                <span class="pm-tooltip__group-label">Facets (section)</span>
+                <span v-for="exp in sectionLevelFacets" :key="exp.facet.id"
                       class="pm-tooltip__item"
-                      :class="{'pm-tooltip__item--dimmed': !isFacetCompleted(entry.section, facet.machine_name_plural)}">
-                  {{ facet.symbol }} {{ facet.name }}
+                      :class="{'pm-tooltip__item--dimmed': !hasSectionFacet(completedFor(entry.section), exp)}">
+                  {{ exp.facet.symbol }} {{ exp.facet.name }}
+                </span>
+              </div>
+              <div class="pm-tooltip__group" v-if="contextLevelFacets.length">
+                <span class="pm-tooltip__group-label">Facets (contexts)</span>
+                <span v-for="exp in contextLevelFacets" :key="exp.facet.id"
+                      class="pm-tooltip__item"
+                      :class="{'pm-tooltip__item--dimmed': !hasFacetContexts(completedFor(entry.section), exp)}">
+                  {{ exp.facet.symbol }} {{ exp.facet.name }}
                 </span>
               </div>
               <div class="pm-tooltip__log" v-if="isStaff && entry.section.info?.processing_manifest?.log?.length">
@@ -104,7 +112,7 @@
               <span v-for="(item, idx) in getAdminPmItems(entry.section)" 
                     :key="idx"
                     class="toc__pm-letter"
-                    :class="item.ok ? 'toc__pm-letter--success' : 'toc__pm-letter--danger'">
+                    :class="pmLetterClass(item.state)">
                 {{ item.label }}
               </span>
             </span>
@@ -221,7 +229,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
-import type {Book, BookStructure, Section, SectionFindings, SectionEssentials, FacetQuery} from '../types/library';
+import type {Book, BookStructure, Section, SectionFindings, SectionEssentials, PMCompleted} from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef, StudyNote, StudyNoteRef } from '../types/study';
 import { useStudyWorkspaceItem } from '../composables/useStudyWorkspaceItem';
 import { useAuth } from '../composables/useAuth';
@@ -229,6 +237,7 @@ import SectionInformation from './SectionInformation.vue';
 import StudyWorkspaceDialog from './studyworkspaces/StudyWorkspaceDialog.vue';
 import { useLibraryStore } from '../stores/library';
 import { useFacetsStore } from '../stores/facets';
+import { useFacetExpectations, type FacetState } from '../composables/useFacetExpectations';
 import { apiFetch } from '../api';
 
 const props = withDefaults(defineProps<{
@@ -256,6 +265,16 @@ const internalStructure = ref<BookStructure | null>(null);
 
 const activeBook = computed(() => props.book || internalBook.value || props.bookStructure?.book || libraryStore.books.find(b => b.machine_name === props.machineName));
 const activeStructure = computed(() => props.bookStructure || internalStructure.value);
+
+const {
+  expectations,
+  sectionLevelFacets,
+  contextLevelFacets,
+  hasSectionFacet,
+  hasFacetContexts,
+  facetState,
+  allFacetsOk,
+} = useFacetExpectations(() => activeBook.value);
 
 async function initializeData() {
   if (!props.bookStructure) {
@@ -553,23 +572,20 @@ function collapseBelowDepth(depth: number) {
   saveState();
 }
 
-const expectedFacets = computed(() => {
-  if (!activeBook.value?.facet_applications_cascaded) return [];
-  return activeBook.value.facet_applications_cascaded
-    .map(app => facetsStore.getFacetById(app.facet as number))
-    .filter((f): f is FacetQuery => !!f)
-    .sort((a, b) => a.id - b.id);
-});
+function completedFor(section: Section): PMCompleted | undefined {
+  return section.info?.processing_manifest?.completed;
+}
 
 function isEssentialsOk(section: Section) {
   const completed = section.info?.processing_manifest?.completed?.essentials || [];
   return completed.includes('digest') && completed.includes('outline');
 }
 
+// A facet owes this section whatever its applications imply: clustered contexts for a
+// content-level application, section_one/few/many results for a section-level one. Both
+// have to be in before the facet counts as done here.
 function isFindingsOk(section: Section) {
-  const completed = section.info?.processing_manifest?.completed?.facets || [];
-  if (expectedFacets.value.length === 0) return true;
-  return expectedFacets.value.every(f => completed.includes(f.machine_name_plural));
+  return allFacetsOk(completedFor(section));
 }
 
 function userBadgeText(section: Section) {
@@ -589,26 +605,29 @@ function userBadgeClass(section: Section) {
 }
 
 function getAdminPmItems(section: Section) {
-  const pm = section.info?.processing_manifest?.completed || { essentials: [], facets: [] };
-  const items = [
-    { label: 'D', ok: pm.essentials.includes('digest') },
-    { label: 'O', ok: pm.essentials.includes('outline') }
+  const completed = completedFor(section);
+  const items: { label: string, state: FacetState }[] = [
+    { label: 'D', state: completed?.essentials?.includes('digest') ? 'complete' : 'none' },
+    { label: 'O', state: completed?.essentials?.includes('outline') ? 'complete' : 'none' }
   ];
-  for (const facet of expectedFacets.value) {
+  // One letter per facet, amber when only part of what it owes has arrived.
+  for (const exp of expectations.value) {
     items.push({
-      label: facet.machine_name_singular.charAt(0).toUpperCase(),
-      ok: pm.facets.includes(facet.machine_name_plural)
+      label: exp.facet.machine_name_singular.charAt(0).toUpperCase(),
+      state: facetState(completed, exp)
     });
   }
   return items;
 }
 
-function isEssentialCompleted(section: Section, key: string) {
-  return section.info?.processing_manifest?.completed?.essentials?.includes(key);
+function pmLetterClass(state: FacetState) {
+  if (state === 'complete') return 'toc__pm-letter--success';
+  if (state === 'partial') return 'toc__pm-letter--warning';
+  return 'toc__pm-letter--danger';
 }
 
-function isFacetCompleted(section: Section, key: string) {
-  return section.info?.processing_manifest?.completed?.facets?.includes(key);
+function isEssentialCompleted(section: Section, key: string) {
+  return section.info?.processing_manifest?.completed?.essentials?.includes(key);
 }
 
 function formatLog(log: any) {
@@ -1075,6 +1094,10 @@ function handleContentUpdated(newContent: string) {
 
 .toc__pm-letter--success {
   color: var(--sl-color-success-600);
+}
+
+.toc__pm-letter--warning {
+  color: var(--sl-color-warning-600);
 }
 
 .toc__pm-letter--danger {
