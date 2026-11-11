@@ -424,6 +424,28 @@
               </div>
             </div>
 
+            <div class="insight-group">
+              <div class="insight-group__label">Contexts</div>
+              <div class="insight-group__badges">
+                <sl-tooltip
+                  v-for="facetType in bookFacetTypes"
+                  :key="facetType"
+                  :content="`${facetsStore.getFacetByPluralName(facetType)?.name || facetType}: ${isFacetContextCompleted(facetType) ? 'clustered' : 'not clustered'}`"
+                  hoist
+                >
+                  <sl-badge
+                    :variant="isFacetContextCompleted(facetType) ? 'success' : 'neutral'"
+                    pill
+                    size="small"
+                    class="facet-badge"
+                  >
+                    {{ facetsStore.getFacetByPluralName(facetType)?.symbol || facetType[0].toUpperCase() }}
+                  </sl-badge>
+                </sl-tooltip>
+                <span v-if="bookFacetTypes.length === 0" class="no-badges">-</span>
+              </div>
+            </div>
+
             <sl-details summary="Processing Log" class="pm-log-details">
               <div class="pm-log">
                 <div v-for="(entry, index) in formattedLog" :key="index" class="pm-log-entry" :class="{ 'pm-log-entry--error': entry.errors?.length > 0 }">
@@ -702,6 +724,13 @@ function isEssentialCompleted(key: string) {
 
 function isFacetCompleted(key: string) {
   return processingManifest.value?.completed.facets.includes(key) ?? false;
+}
+
+// Clustering of block findings into FindingContexts is tracked separately from the
+// facet extraction itself: a facet can be fully extracted while its contexts are not
+// yet grouped. The field is optional, since manifests written before it existed omit it.
+function isFacetContextCompleted(key: string) {
+  return processingManifest.value?.completed.facet_contexts?.includes(key) ?? false;
 }
 
 const formattedLog = computed(() => {

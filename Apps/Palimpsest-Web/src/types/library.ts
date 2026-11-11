@@ -190,7 +190,11 @@ export interface PMLogEntry {
 }
 
 export interface PMCompleted {
+    /** machine_name_plural: every enabled section_one/few/many variant ran without error */
     facets: string[];
+    /** machine_name_plural: block findings in this section are clustered into FindingContexts */
+    facet_contexts?: string[];
+    /** 'digest' / 'outline' */
     essentials: string[];
 }
 
