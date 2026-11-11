@@ -282,10 +282,9 @@ async function unlinkIdentity() {
   if (!props.finding) return;
   unlinking.value = true;
   try {
-    const response = await apiFetch(`/testbooks/api/v1/finding-context/${props.finding.id}/`, {
-      method: 'PATCH',
+    const response = await apiFetch(`/testbooks/api/v1/finding-context/${props.finding.id}/unlink_identity/`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ of_identity: null })
     });
 
     if (response.ok) {
