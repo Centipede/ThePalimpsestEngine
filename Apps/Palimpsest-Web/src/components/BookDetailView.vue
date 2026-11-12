@@ -12,18 +12,33 @@
         </header>
       </Teleport>
 
-      <sl-split-panel v-if="isStaff" position="20" class="admin-split-panel admin-split-panel--outer">
+      <sl-split-panel
+          v-if="isStaff"
+          :position="infoPosition"
+          :snap="infoSnap"
+          @sl-reposition="onInfoReposition"
+          class="admin-split-panel admin-split-panel--outer"
+      >
 
-        <div slot="start" class="admin-info-portal">
+        <!-- Always rendered, collapsed or not: a Teleport target selector has to resolve. -->
+        <div slot="start" class="admin-info-portal" :class="{ 'admin-portal--collapsed': !infoOpen }">
           <!-- Admin jobs teleported here -->
         </div>
 
-        <sl-split-panel slot="end" position="75" class="admin-split-panel admin-split-panel--inner">
+        <sl-split-panel
+            slot="end"
+            :position="toolsPosition"
+            :snap="toolsSnap"
+            @sl-reposition="onToolsReposition"
+            class="admin-split-panel admin-split-panel--inner"
+        >
           <!-- Toolbar + book or section (staff) -->
           <div slot="start" class="admin-split-panel__content">
             <template v-if="!isSectionActive">
               <div class="book-study__toolbar">
-                <div class="toolbar-infoleft" />
+                <div class="toolbar-infoleft">
+                  <AdminPanelToggle side="start" :open="infoOpen" @toggle="toggleInfoPane" />
+                </div>
                 <div class="tools-left" />
                 <div class="tools-mid">
                   <sl-button-group>
@@ -57,7 +72,9 @@
                   </div>
                 </div>
                 <div class="tools-right" />
-                <div class="toolbar-inforight" />
+                <div class="toolbar-inforight">
+                  <AdminPanelToggle side="end" :open="toolsOpen" @toggle="toggleToolsPane" />
+                </div>
               </div>
 
               <TableOfContents ref="tocRef" :book-structure="book" :machineName="machineName"/>
@@ -69,7 +86,7 @@
             </template>
           </div>
 
-          <div slot="end" class="admin-tools-portal">
+          <div slot="end" class="admin-tools-portal" :class="{ 'admin-portal--collapsed': !toolsOpen }">
             <!-- Admin tools teleported here -->
           </div>
         </sl-split-panel>
@@ -141,6 +158,8 @@ import { apiFetch } from '../api';
 import type { BookStructure } from '../types/library';
 import { useLibraryStore } from '../stores/library';
 import TableOfContents from './TableOfContents.vue';
+import AdminPanelToggle from './admin/AdminPanelToggle.vue';
+import { useAdminPanels } from '../composables/useAdminPanels';
 import {useHead} from "@unhead/vue";
 
 const props = defineProps<{ machineName: string }>();
@@ -150,6 +169,22 @@ const isSectionActive = computed(() => !!route.params.path_full);
 
 const store = useLibraryStore();
 const { isStaff } = useAuth();
+
+// The admin panes start collapsed: the usual work in a book or section is not administration.
+// The dividers stay live either way, parked against the edge while a pane is shut.
+const {
+  infoOpen,
+  toolsOpen,
+  infoPosition,
+  toolsPosition,
+  infoSnap,
+  toolsSnap,
+  toggleInfo: toggleInfoPane,
+  toggleTools: toggleToolsPane,
+  onInfoReposition,
+  onToolsReposition,
+} = useAdminPanels();
+
 const book = ref<BookStructure | null>(null);
 const author = computed(() => store.getAuthorById(book.value?.book.by_author ?? null));
 const loading = ref(true);
@@ -221,6 +256,21 @@ onMounted(async () => {
   border-left: 1px solid var(--sl-color-neutral-200);
 }
 
+/*
+ * A zero-width pane is not enough on its own: the scroll gutter, the padding and the
+ * border all survive it, which is what made the pane look broken below ~70px. Clipping
+ * and zeroing them hides the pane completely while leaving its divider in place.
+ *
+ * Last of the three on purpose - it carries no more specificity than the two rules it
+ * overrides, so only source order makes it win.
+ */
+.admin-portal--collapsed {
+  overflow: hidden;
+  padding: 0;
+  border-right-width: 0;
+  border-left-width: 0;
+}
+
 .book-study__toolbar {
   position: sticky;
   top: -0.5rem;
@@ -248,6 +298,9 @@ onMounted(async () => {
 
 .toolbar-infoleft {
   grid-area: infoleft;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .book-study__toolbar .tools-left {
@@ -273,6 +326,9 @@ onMounted(async () => {
 
 .toolbar-inforight {
   grid-area: inforight;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .depth-control {
