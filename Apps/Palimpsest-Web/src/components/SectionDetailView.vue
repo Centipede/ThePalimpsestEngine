@@ -298,17 +298,61 @@
           <div v-if="activeBackgroundTask" class="active-task">
             <div class="active-task__goal">{{ activeBackgroundTask.goal }}</div>
             <div v-if="activeBackgroundTask.title" class="active-task__title">{{ activeBackgroundTask.title }}</div>
+            <div v-if="taskRoot" class="active-task__root">{{ taskRoot }}</div>
 
-            <div v-for="job in activeBackgroundTask.jobs" :key="job.id" class="active-job">
-              <div class="active-job__phase">{{ job.gather_info_status.phase }}</div>
-              <div class="active-job__stats">
-                <div v-if="job.gather_info_status.remaining_blocks?.length">
-                  Blocks: {{ job.gather_info_status.remaining_blocks.length }} left
+            <div class="job-list">
+              <template v-for="row in jobRows" :key="row.job.id">
+                <div
+                  class="job-row"
+                  :class="[
+                    `job-row--${row.state}`,
+                    {
+                      'job-row--current': row.job.in_section === props.sectionPath,
+                      'job-row--open': expandedJobId === row.job.id,
+                    },
+                  ]"
+                  :style="{ paddingLeft: `${row.depth * 0.6}rem` }"
+                  @click="toggleJob(row.job.id)"
+                >
+                  <sl-tooltip :content="jobStateTooltip(row)" hoist>
+                    <span class="job-row__glyph">{{ jobGlyph(row.state) }}</span>
+                  </sl-tooltip>
+                  <span class="job-row__path" :title="row.job.in_section">{{ row.label }}</span>
+                  <sl-tooltip :content="row.job.gather_info_status.phase" hoist>
+                    <span class="job-row__phase">{{ phaseAbbrev(row.job.gather_info_status.phase) }}</span>
+                  </sl-tooltip>
+                  <span class="job-row__facets">
+                    <sl-tooltip
+                      v-for="facetName in row.job.gather_info_status.remaining_facets || []"
+                      :key="facetName"
+                      :content="facetLabel(facetName)"
+                      hoist
+                    >
+                      <sl-badge variant="neutral" pill size="small" class="job-row__facet">{{ facetSymbol(facetName) }}</sl-badge>
+                    </sl-tooltip>
+                  </span>
+                  <sl-tooltip
+                    v-if="row.job.gather_info_status.remaining_blocks?.length"
+                    content="Blocks left for the first remaining facet"
+                    hoist
+                  >
+                    <span class="job-row__blocks">{{ row.job.gather_info_status.remaining_blocks.length }}b</span>
+                  </sl-tooltip>
                 </div>
-                <div v-if="job.gather_info_status.remaining_facets?.length">
-                  Facets: {{ job.gather_info_status.remaining_facets.length }} left
-                </div>
-              </div>
+
+                <transition name="expand">
+                  <div v-if="expandedJobId === row.job.id" class="job-detail">
+                    <div class="job-detail__rows">
+                      <div class="job-detail__row"><span class="job-detail__key">job</span><span class="job-detail__val">#{{ row.job.id }}</span></div>
+                      <div class="job-detail__row"><span class="job-detail__key">section</span><span class="job-detail__val">{{ row.job.in_section }}</span></div>
+                      <div class="job-detail__row"><span class="job-detail__key">started</span><span class="job-detail__val">{{ formatStamp(row.job.started_at) }}</span></div>
+                      <div class="job-detail__row"><span class="job-detail__key">stopped</span><span class="job-detail__val">{{ formatStamp(row.job.stopped_at) }}</span></div>
+                      <div class="job-detail__row"><span class="job-detail__key">finished</span><span class="job-detail__val">{{ formatStamp(row.job.finished_at) }}</span></div>
+                    </div>
+                    <pre class="job-detail__json">{{ JSON.stringify(row.job, null, 2) }}</pre>
+                  </div>
+                </transition>
+              </template>
             </div>
           </div>
           <div v-else class="no-active-task">No active background tasks</div>
@@ -660,6 +704,7 @@ import type {
   FacetQuery,
   FindingContextMap,
   BackgroundTask,
+  BackgroundJobStatus,
 } from '../types/library';
 import type { Conversation, ConversationRef, ConversationTurn, QuestionAnswer, QuestionAnswerRef } from '../types/study';
 import SectionNoteView from './studynotes/SectionNoteView.vue';
@@ -684,6 +729,7 @@ import {
   suggestGatherOptions,
   type GatherOptions,
 } from '../utils/gatherSuggestion';
+import { buildJobRows, jobGlyph, taskRootPath, type JobRow } from '../utils/backgroundJobs';
 import type {FoldTrigger, ToolbarToggle} from "../types/view_state.ts";
 
 const props = defineProps<{
@@ -706,6 +752,9 @@ const openSegments = ref<Record<number, boolean>>({});
 const showNotesDrawer = ref(false);
 const paragraphFoldTrigger = ref<FoldTrigger>({ command: 'expand-all', count: 0 });
 const activeBackgroundTask = ref<BackgroundTask | null>(null);
+// The task tree arrives whole, whichever section we query it from, so the expanded row is
+// kept by job id rather than by position.
+const expandedJobId = ref<number | null>(null);
 const selectedOccurrence = ref<FindingOccurrence | null>(null);
 const activeFacetTypes = ref<Set<string>>(new Set());
 
@@ -1181,6 +1230,51 @@ const getBlockLink = (blockPathId: string) => {
 async function jsonOrNull<T>(res: Response): Promise<T | null> {
   const text = await res.text();
   return text ? JSON.parse(text) as T : null;
+}
+
+/** The section the task was started on; printed once above the rows. */
+const taskRoot = computed(() => activeBackgroundTask.value ? taskRootPath(activeBackgroundTask.value.jobs) : '');
+
+/** The task's jobs in tree order: the root section's job first, descendants indented. */
+const jobRows = computed<JobRow[]>(() => activeBackgroundTask.value ? buildJobRows(activeBackgroundTask.value.jobs) : []);
+
+function toggleJob(id: number) {
+  expandedJobId.value = expandedJobId.value === id ? null : id;
+}
+
+function formatStamp(stamp: string | null): string {
+  return stamp ? new Date(stamp).toLocaleString() : '\u2014';
+}
+
+/** The glyph is a single character, so the tooltip has to carry the whole story. */
+function jobStateTooltip(row: JobRow): string {
+  switch (row.state) {
+    case 'running': return `Processing since ${formatStamp(row.job.started_at)}`;
+    case 'stopped': return `Started ${formatStamp(row.job.started_at)}, stopped ${formatStamp(row.job.stopped_at)}`;
+    case 'finished': return `Finished ${formatStamp(row.job.finished_at)}`;
+    default: return 'Queued: no thread has picked it up yet';
+  }
+}
+
+// The phase names are far too long for a 20%-wide panel; the tooltip gives the full name.
+const PHASE_ABBREV: Record<string, string> = {
+  blocks_summarize: 'BS',
+  blocks_find_facets: 'BF',
+  section_cluster_findings: 'SC',
+  section_digest_essentials: 'SD',
+};
+
+function phaseAbbrev(phase: BackgroundJobStatus['phase']): string {
+  return PHASE_ABBREV[phase] ?? phase;
+}
+
+/** The facet's own symbol, falling back to its initial when the facet store has no entry. */
+function facetSymbol(namePlural: string): string {
+  return facetsStore.getFacetByPluralName(namePlural)?.symbol || namePlural.charAt(0).toUpperCase();
+}
+
+function facetLabel(namePlural: string): string {
+  return facetsStore.getFacetByPluralName(namePlural)?.name || namePlural;
 }
 
 async function fetchActiveBackgroundTask() {
@@ -1845,22 +1939,169 @@ watch(() => props.sectionPath, fetchSection);
   margin-bottom: 0.5rem;
 }
 
-.active-job {
-  border-top: 1px solid var(--sl-color-neutral-300);
-  padding-top: 0.5rem;
-  margin-top: 0.5rem;
-}
-
-.active-job__phase {
+.active-task__root {
   font-family: var(--sl-font-mono);
-  font-size: 0.75rem;
-  color: var(--sl-color-neutral-600);
-  margin-bottom: 0.25rem;
+  font-size: 0.7rem;
+  color: var(--sl-color-neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.active-job__stats {
-  font-size: 0.8rem;
+.job-list {
+  border-top: 1px solid var(--sl-color-neutral-300);
+  margin-top: 0.5rem;
+  padding-top: 0.35rem;
+}
+
+.job-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.2rem;
+  border-left: 2px solid transparent;
+  border-radius: var(--sl-border-radius-small);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.job-row:hover {
+  background: var(--sl-color-neutral-200);
+}
+
+.job-row--open {
+  background: var(--sl-color-neutral-200);
+}
+
+/* The job for the section we are looking at; the rest of the tree is shown regardless. */
+.job-row--current {
+  border-left-color: var(--sl-color-primary-500);
+}
+
+.job-row__glyph {
+  display: inline-block;
+  width: 1ch;
+  text-align: center;
+  font-family: var(--sl-font-mono);
+  color: var(--sl-color-neutral-600);
+}
+
+.job-row__path {
+  font-family: var(--sl-font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-row__phase {
+  font-family: var(--sl-font-mono);
+  font-size: 0.7rem;
   color: var(--sl-color-neutral-500);
+}
+
+.job-row__facets {
+  display: flex;
+  gap: 0.1rem;
+}
+
+.job-row__facet::part(base) {
+  font-size: 0.6rem;
+  padding: 0 0.3rem;
+}
+
+.job-row__blocks {
+  font-family: var(--sl-font-mono);
+  font-size: 0.7rem;
+  color: var(--sl-color-neutral-500);
+}
+
+.job-row--queued {
+  color: var(--sl-color-neutral-400);
+}
+
+.job-row--queued .job-row__glyph {
+  color: var(--sl-color-neutral-400);
+}
+
+.job-row--running .job-row__glyph {
+  color: var(--sl-color-primary-600);
+  animation: job-glyph-pulse 1.6s ease-in-out infinite;
+}
+
+.job-row--finished,
+.job-row--finished .job-row__phase,
+.job-row--finished .job-row__blocks {
+  color: var(--sl-color-success-700);
+}
+
+.job-row--finished .job-row__glyph {
+  color: var(--sl-color-success-600);
+}
+
+[data-theme="dark"] .job-row--finished,
+[data-theme="dark"] .job-row--finished .job-row__phase,
+[data-theme="dark"] .job-row--finished .job-row__blocks {
+  color: var(--sl-color-success-300);
+}
+
+[data-theme="dark"] .job-row--finished .job-row__glyph {
+  color: var(--sl-color-success-400);
+}
+
+@keyframes job-glyph-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .job-row--running .job-row__glyph {
+    animation: none;
+  }
+}
+
+.job-detail {
+  margin: 0.25rem 0 0.5rem;
+  padding: 0.4rem;
+  /* The shared `expand` transition animates max-height, so the box has to clip. */
+  overflow: hidden;
+  background: var(--sl-color-neutral-50);
+  border-radius: var(--sl-border-radius-small);
+}
+
+.job-detail__rows {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.1rem 0.4rem;
+  font-size: 0.7rem;
+  margin-bottom: 0.35rem;
+}
+
+.job-detail__row {
+  display: contents;
+}
+
+.job-detail__key {
+  color: var(--sl-color-neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.job-detail__val {
+  font-family: var(--sl-font-mono);
+  overflow-wrap: anywhere;
+}
+
+.job-detail__json {
+  margin: 0;
+  font-family: var(--sl-font-mono);
+  font-size: 0.65rem;
+  line-height: 1.35;
+  max-height: 16rem;
+  overflow: auto;
+  background: var(--sl-color-neutral-100);
+  padding: 0.35rem;
+  border-radius: var(--sl-border-radius-small);
 }
 
 .no-active-task {

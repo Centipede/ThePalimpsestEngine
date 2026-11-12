@@ -128,14 +128,17 @@ export interface ContentEmphasis {
 
 export interface BackgroundJobStatus {
   phase: 'blocks_summarize' | 'blocks_find_facets' | 'section_cluster_findings' | 'section_digest_essentials';
-  remaining_facets: string[];
-  remaining_blocks: string[];
+  // Null until the phase has something left to do, so always guard before reading .length.
+  remaining_facets: string[] | null;
+  remaining_blocks: string[] | null;
 }
 
 export interface BackgroundJob {
   id: number;
   in_section: string;
-  started_at: string;
+  // started_at/stopped_at are the thread's grip on the job: started and not stopped means a
+  // thread is working on it right now. finished_at is set only when the job is done for good.
+  started_at: string | null;
   stopped_at: string | null;
   finished_at: string | null;
   gather_info_status: BackgroundJobStatus;
