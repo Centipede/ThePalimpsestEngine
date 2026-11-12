@@ -193,10 +193,15 @@
 
           <sl-details summary="Gather Info">
             <div class="admin-actions-group">
-              <sl-button variant="warning" size="small" :loading="isGathering" @click="gatherSectionInfo">
-                <sl-icon slot="prefix" name="gear"></sl-icon>
-                Gather info
-              </sl-button>
+              <div class="admin-actions-row">
+                <sl-button variant="warning" size="small" :loading="isGathering" :disabled="nothingToGather" @click="gatherSectionInfo">
+                  <sl-icon slot="prefix" name="gear"></sl-icon>
+                  Gather info
+                </sl-button>
+                <sl-tooltip content="Reset to the work this section still owes" hoist>
+                  <sl-icon-button name="arrow-counterclockwise" label="Reset to suggested" @click="resetGatherOptions"></sl-icon-button>
+                </sl-tooltip>
+              </div>
 
               <div class="portal-group-title">Section</div>
               <div class="portal-checkbox-group">
@@ -672,6 +677,13 @@ import FindingOccurrenceInfo from './admin/info/FindingOccurrenceInfo.vue';
 import {useLibraryStore} from "../stores/library.ts";
 import {useFacetsStore} from "../stores/facets.ts";
 import {useFacetExpectations} from "../composables/useFacetExpectations.ts";
+import {
+  cloneGatherOptions,
+  emptyGatherOptions,
+  isGatherOptionsEmpty,
+  suggestGatherOptions,
+  type GatherOptions,
+} from '../utils/gatherSuggestion';
 import type {FoldTrigger, ToolbarToggle} from "../types/view_state.ts";
 
 const props = defineProps<{
@@ -730,6 +742,7 @@ function isEssentialCompleted(key: string) {
 const manifestCompleted = computed(() => processingManifest.value?.completed);
 
 const {
+  expectations,
   sectionLevelFacets,
   contextLevelFacets,
   hasSectionFacet,
@@ -1033,10 +1046,30 @@ const deleteOptions = ref<DeleteOptions>({
   content: { essentials: [], facets: [] },
 });
 
-const gatherOptions = ref<DeleteOptions>({
-  section: { essentials: [], facets: [] },
-  content: { essentials: [], facets: [] },
-});
+const gatherOptions = ref<GatherOptions>(emptyGatherOptions());
+
+/**
+ * The work this section still owes: the facet application scheme minus what the
+ * manifests record as done. Checking that off by hand means re-deriving a scheme the
+ * frontend already knows, so the panel opens on the gaps instead.
+ */
+const suggestedGatherOptions = computed<GatherOptions>(() => suggestGatherOptions({
+  expectations: expectations.value,
+  sectionCompleted: manifestCompleted.value,
+  blockCompleteds: (data.value?.contents ?? []).map(block => block.info?.processing_manifest?.completed),
+}));
+
+const nothingToGather = computed(() => isGatherOptionsEmpty(gatherOptions.value));
+
+function resetGatherOptions() {
+  gatherOptions.value = cloneGatherOptions(suggestedGatherOptions.value);
+}
+
+// Keyed on the serialised suggestion, not the computed itself: the computed hands back a
+// fresh object on every evaluation, which would discard the admin's own ticks on any
+// unrelated re-render. Loading another section replaces the manifests and so re-seeds,
+// which is what we want.
+watch(() => JSON.stringify(suggestedGatherOptions.value), resetGatherOptions, { immediate: true });
 
 function toggleDeleteOption(type: 'section' | 'content', category: 'essentials' | 'facets', value: string, checked: boolean) {
   const options = deleteOptions.value[type][category];
@@ -1229,10 +1262,10 @@ async function gatherSectionInfo() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     await fetchActiveBackgroundTask();
-    gatherOptions.value = {
-      section: { essentials: [], facets: [] },
-      content: { essentials: [], facets: [] },
-    };
+    // Cleared, not re-seeded: the job has started but not finished, so the suggestion
+    // still names everything it is working on and would invite a double submit. The next
+    // fetchSection() seeds again from the updated manifests.
+    gatherOptions.value = emptyGatherOptions();
   } catch (e) {
     console.error('Failed to start gather info job:', e);
   } finally {
@@ -1691,6 +1724,12 @@ watch(() => props.sectionPath, fetchSection);
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.admin-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .portal-group-title {
