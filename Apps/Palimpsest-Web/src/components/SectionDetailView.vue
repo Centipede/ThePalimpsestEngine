@@ -1133,6 +1133,11 @@ async function fetchSection() {
     data.value = await res.json();
     openFindingIds.value = {};
     selectedOccurrence.value = null;
+    // Cleared alongside openFindingIds, which is the only thing that puts entries in
+    // it. Left to accumulate, the ids of contexts a merge has deleted keep their claim
+    // on the ten pastels, and the allocator's modulo fallback then hands two findings
+    // that are open at the same time the same highlight colour.
+    findingColorsMap.value = {};
 
     // Start with every facet represented in this section switched on.
     activeFacetTypes.value = new Set(usedFacetTypes.value);

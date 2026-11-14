@@ -7,6 +7,21 @@
   >
     <div slot="summary" class="summary-content">
       <span class="summary-label">
+        <!-- @click.stop is load-bearing, not defensive: sl-details binds click on its
+             shadow-DOM <summary>, which is an ancestor of this slot in the flattened
+             tree, so without it ticking the box also toggles the finding open. .prevent
+             must NOT be added - that would cancel the tick itself. @keydown.stop is the
+             same story for Space, which sl-details also claims. -->
+        <sl-checkbox
+          v-if="isStaff"
+          size="small"
+          class="select-checkbox"
+          title="Select this finding"
+          :checked="selected"
+          @click.stop
+          @keydown.stop
+          @sl-change="emit('toggle-select', context.id, ($event.target as HTMLInputElement).checked)"
+        ></sl-checkbox>
         <span class="summary-text">{{ symbol }} {{ context.name }}</span>
       </span>
       <sl-icon-button
@@ -74,12 +89,14 @@ defineProps<{
   symbol: string;
   isStaff: boolean;
   open: boolean;
+  selected: boolean;
   selectedOccurrence?: FindingOccurrence | null;
 }>();
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void;
   (e: 'open-toolset'): void;
+  (e: 'toggle-select', contextId: number, checked: boolean): void;
   (e: 'jump-to-block', occurrence: FindingOccurrence): void;
 }>();
 </script>
@@ -124,6 +141,10 @@ const emit = defineEmits<{
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.select-checkbox {
+  flex-shrink: 0;
 }
 
 .manage-button {
