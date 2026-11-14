@@ -206,7 +206,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
-import type { FindingContext, FoundIdentity } from '../types/library';
+import type { FindingContext, FoundIdentity } from '../../../types/library.ts';
 import {
   FindingActionError,
   fetchFoundIdentity,
@@ -216,8 +216,8 @@ import {
   retryWikipediaLink,
   unlinkIdentity,
   type WikidataCandidate,
-} from '../api/findings';
-import OccurrenceTools from './worktools/findings/OccurrenceTools.vue';
+} from '../../../api/findings.ts';
+import OccurrenceTools from './OccurrenceTools.vue';
 
 const props = defineProps<{
   open: boolean;

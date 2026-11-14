@@ -115,7 +115,7 @@ import {
   type SelectedContext,
 } from '../utils/findingEligibility';
 import { FindingActionError, removeOccurrences } from '../api/findings';
-import FindingContextToolset from './FindingContextToolset.vue';
+import FindingContextToolset from './worktools/findings/FindingContextToolset.vue';
 import ContextRow from './worktools/findings/ContextRow.vue';
 import SelectionBar from './worktools/findings/SelectionBar.vue';
 import MergeDialog from './worktools/findings/MergeDialog.vue';
