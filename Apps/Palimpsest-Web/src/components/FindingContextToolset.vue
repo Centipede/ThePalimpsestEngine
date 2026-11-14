@@ -1,6 +1,8 @@
 <template>
+  <!-- The label reads the local copy, not the prop: a rename is held here until the
+       dialog closes, so until then the prop still carries the old name. -->
   <sl-dialog
-    :label="`Finding: ${findingContext?.name}`"
+    :label="`Finding: ${editedContext?.name ?? findingContext?.name ?? ''}`"
     :open="open"
     @sl-request-close="$emit('update:open', false)"
     class="finding-toolset-dialog"
