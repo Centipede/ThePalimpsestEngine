@@ -4,104 +4,33 @@
       <div v-for="facetGroup in sortedFacets" :key="facetGroup.facetName" class="category-column">
         <p class="category-title">{{ facetGroup.label }}</p>
         <div class="entities-list">
-          <template v-for="finding in facetGroup.linked" :key="`linked-${finding.id}`">
-            <sl-details
-              class="entity-details"
-              :open="props.openFindingIds[finding.id] || false"
-              @sl-show="emit('update:openFindingIds', { ...props.openFindingIds, [finding.id]: true })"
-              @sl-hide="emit('update:openFindingIds', { ...props.openFindingIds, [finding.id]: false })"
-            >
-              <div slot="summary" class="summary-content">
-                <span>{{ facetGroup.symbol }} {{ finding.name }}</span>
-                <sl-icon-button
-                  v-if="isStaff"
-                  name="gear"
-                  label="Manage Finding"
-                  class="manage-button"
-                  @click.stop="openToolset(finding, facetGroup.facetName)"
-                ></sl-icon-button>
-              </div>
-              <div class="occurrences-list">
-                <div v-if="finding.of_identity?.wikipedia_url" class="identity-link">
-                  <a :href="finding.of_identity.wikipedia_url" target="_blank" rel="noopener">
-                    <sl-icon name="link-45deg"></sl-icon>
-                    Wikipedia
-                    <sl-icon name="box-arrow-up-right" class="external-icon"></sl-icon>
-                  </a>
-                </div>
-                <template v-if="finding.occurrences.length > 0">
-                  <div
-                    v-for="occurrence in finding.occurrences"
-                    :key="occurrence.id"
-                    :id="`occurrence-${occurrence.id}`"
-                    class="occurrence-item"
-                    :class="{ 'is-selected': props.selectedOccurrence?.id === occurrence.id }"
-                  >
-                    <div class="occurrence-header">
-                      <div class="occurrence-name">{{ occurrence.name }}</div>
-                      <sl-icon-button
-                        v-if="occurrence.in_block_pi"
-                        name="arrow-down-right-circle"
-                        label="Jump to paragraph"
-                        class="jump-button"
-                        @click="emit('jump-to-block', occurrence)"
-                      ></sl-icon-button>
-                    </div>
-                    <blockquote class="occurrence-quote">{{ occurrence.quote }}</blockquote>
-                    <div class="occurrence-description">{{ occurrence.description }}</div>
-                  </div>
-                </template>
-                <div v-else class="no-occurrences">No occurrences found.</div>
-              </div>
-            </sl-details>
-          </template>
+          <ContextRow
+            v-for="finding in facetGroup.linked"
+            :key="`linked-${finding.id}`"
+            :context="finding"
+            :symbol="facetGroup.symbol"
+            :is-staff="isStaff"
+            :open="props.openFindingIds[finding.id] || false"
+            :selected-occurrence="props.selectedOccurrence"
+            @update:open="setOpen(finding.id, $event)"
+            @open-toolset="openToolset(finding, facetGroup.facetName)"
+            @jump-to-block="emit('jump-to-block', $event)"
+          />
 
           <hr v-if="facetGroup.linked.length > 0 && facetGroup.unlinked.length > 0" />
 
-          <template v-for="finding in facetGroup.unlinked" :key="`unlinked-${finding.id}`">
-            <sl-details
-              class="entity-details"
-              :open="props.openFindingIds[finding.id] || false"
-              @sl-show="emit('update:openFindingIds', { ...props.openFindingIds, [finding.id]: true })"
-              @sl-hide="emit('update:openFindingIds', { ...props.openFindingIds, [finding.id]: false })"
-            >
-              <div slot="summary" class="summary-content">
-                <span>{{ facetGroup.symbol }} {{ finding.name }}</span>
-                <sl-icon-button
-                  v-if="isStaff"
-                  name="gear"
-                  label="Manage Finding"
-                  class="manage-button"
-                  @click.stop="openToolset(finding, facetGroup.facetName)"
-                ></sl-icon-button>
-              </div>
-              <div class="occurrences-list">
-                <template v-if="finding.occurrences.length > 0">
-                  <div
-                    v-for="occurrence in finding.occurrences"
-                    :key="occurrence.id"
-                    :id="`occurrence-${occurrence.id}`"
-                    class="occurrence-item"
-                    :class="{ 'is-selected': props.selectedOccurrence?.id === occurrence.id }"
-                  >
-                    <div class="occurrence-header">
-                      <div class="occurrence-name">{{ occurrence.name }}</div>
-                      <sl-icon-button
-                        v-if="occurrence.in_block_pi"
-                        name="arrow-down-right-circle"
-                        label="Jump to paragraph"
-                        class="jump-button"
-                        @click="emit('jump-to-block', occurrence)"
-                      ></sl-icon-button>
-                    </div>
-                    <blockquote class="occurrence-quote">{{ occurrence.quote }}</blockquote>
-                    <div class="occurrence-description">{{ occurrence.description }}</div>
-                  </div>
-                </template>
-                <div v-else class="no-occurrences">No occurrences found.</div>
-              </div>
-            </sl-details>
-          </template>
+          <ContextRow
+            v-for="finding in facetGroup.unlinked"
+            :key="`unlinked-${finding.id}`"
+            :context="finding"
+            :symbol="facetGroup.symbol"
+            :is-staff="isStaff"
+            :open="props.openFindingIds[finding.id] || false"
+            :selected-occurrence="props.selectedOccurrence"
+            @update:open="setOpen(finding.id, $event)"
+            @open-toolset="openToolset(finding, facetGroup.facetName)"
+            @jump-to-block="emit('jump-to-block', $event)"
+          />
         </div>
       </div>
     </div>
@@ -121,6 +50,7 @@ import type { FindingContext, FindingContextMap, FindingOccurrence } from '../ty
 import { useFacetsStore } from '../stores/facets';
 import { useAuth } from '../composables/useAuth';
 import FindingContextToolset from './FindingContextToolset.vue';
+import ContextRow from './worktools/findings/ContextRow.vue';
 
 const props = defineProps<{
   facets: FindingContextMap;
@@ -141,6 +71,10 @@ const emit = defineEmits<{
 const selectedFindingContext = ref<FindingContext | null>(null);
 const selectedFacetName = ref<string | null>(null);
 const showToolset = ref(false);
+
+function setOpen(findingId: number, isOpen: boolean) {
+  emit('update:openFindingIds', { ...props.openFindingIds, [findingId]: isOpen });
+}
 
 function openToolset(finding: FindingContext, facetNamePlural: string) {
   selectedFindingContext.value = finding;
@@ -221,127 +155,6 @@ const sortedFacets = computed<SortedFacetGroup[]>(() => {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
-}
-
-.entity-details::part(base) {
-  border: none;
-  background: none;
-}
-
-.entity-details::part(header) {
-  padding: 0.1rem 0;
-  cursor: pointer;
-}
-
-.summary-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding-right: 0.5rem;
-}
-
-.manage-button {
-  font-size: 1rem;
-}
-
-.manage-button::part(base) {
-  padding: 0;
-}
-
-.entity-details::part(header):hover {
-  background-color: var(--sl-color-neutral-100);
-}
-
-.entity-details::part(content) {
-  padding: 0.4rem 0 0.6rem 1rem;
-}
-
-.occurrences-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  border-left: 2px solid var(--sl-color-neutral-200);
-  padding-left: 0.75rem;
-}
-
-.identity-link {
-  margin-bottom: 0.2rem;
-}
-
-.identity-link a {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  color: var(--sl-color-primary-600);
-  text-decoration: none;
-  font-weight: 500;
-  padding: 0.2rem 0.4rem;
-  background-color: var(--sl-color-primary-50);
-  border-radius: var(--sl-border-radius-small);
-  transition: background-color 0.2s ease;
-}
-
-.identity-link a:hover {
-  background-color: var(--sl-color-primary-100);
-}
-
-.external-icon {
-  font-size: 0.7rem;
-  opacity: 0.8;
-}
-
-.occurrence-item {
-  transition: background-color 0.3s ease;
-}
-
-.occurrence-item.is-selected {
-  background-color: var(--sl-color-primary-50);
-  border-radius: 4px;
-  padding: 0.25rem;
-  margin: -0.25rem;
-}
-
-.occurrence-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.25rem;
-}
-
-.jump-button {
-  font-size: 0.9rem;
-  flex-shrink: 0;
-  color: var(--sl-color-primary-600);
-}
-
-.jump-button::part(base) {
-  padding: 0;
-}
-
-.occurrence-name {
-  font-weight: 600;
-  color: var(--sl-color-neutral-800);
-  margin-bottom: 0.1rem;
-}
-
-.occurrence-quote {
-  margin: 0;
-  font-style: italic;
-  color: var(--sl-color-neutral-700);
-  line-height: 1.4;
-}
-
-.occurrence-description {
-  font-size: 0.75rem;
-  color: var(--sl-color-neutral-500);
-  margin-top: 0.2rem;
-}
-
-.no-occurrences {
-  font-size: 0.75rem;
-  color: var(--sl-color-neutral-400);
-  font-style: italic;
 }
 
 hr {
