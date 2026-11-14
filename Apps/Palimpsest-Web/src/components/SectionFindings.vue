@@ -107,9 +107,9 @@
     </div>
   </div>
 
-  <FindingToolset
+  <FindingContextToolset
     v-model:open="showToolset"
-    :finding="selectedFinding"
+    :findingContext="selectedFindingContext"
     :facet-name="selectedFacetName"
     @linked="handleLinked"
   />
@@ -120,7 +120,7 @@ import { computed, ref } from 'vue';
 import type { FindingContext, FindingContextMap, FindingOccurrence } from '../types/library';
 import { useFacetsStore } from '../stores/facets';
 import { useAuth } from '../composables/useAuth';
-import FindingToolset from './FindingToolset.vue';
+import FindingContextToolset from './FindingContextToolset.vue';
 
 const props = defineProps<{
   facets: FindingContextMap;
@@ -138,12 +138,12 @@ const emit = defineEmits<{
   (e: 'jump-to-block', occurrence: FindingOccurrence): void;
 }>();
 
-const selectedFinding = ref<FindingContext | null>(null);
+const selectedFindingContext = ref<FindingContext | null>(null);
 const selectedFacetName = ref<string | null>(null);
 const showToolset = ref(false);
 
 function openToolset(finding: FindingContext, facetNamePlural: string) {
-  selectedFinding.value = finding;
+  selectedFindingContext.value = finding;
   const facet = facetsStore.getFacetByPluralName(facetNamePlural);
   selectedFacetName.value = facet?.machine_name_singular || facetNamePlural;
   showToolset.value = true;

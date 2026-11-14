@@ -1,16 +1,12 @@
 <template>
   <sl-dialog
-    :label="`Finding: ${finding?.name}`"
+    :label="`Finding: ${findingContext?.name}`"
     :open="open"
     @sl-request-close="$emit('update:open', false)"
     class="finding-toolset-dialog"
     style="--width: 90vw;"
   >
-    <div v-if="loadingContext" class="loading-state">
-      <sl-spinner></sl-spinner>
-      <p>Loading finding details...</p>
-    </div>
-    <div v-else-if="findingContext" class="toolset-layout">
+    <div v-if="editedContext" class="toolset-layout">
       <div class="toolset-column toolset-column--tools">
         <div class="column-header">Tools & Lookup</div>
         <div class="toolset-content">
@@ -125,8 +121,8 @@
       <div class="toolset-column toolset-column--occurrences">
         <div class="column-header">Text Mentions</div>
         <h3 class="section-title">Occurrences</h3>
-        <div v-if="findingContext.occurrences && findingContext.occurrences.length > 0" class="occurrences-list">
-          <div v-for="occ in findingContext.occurrences" :key="occ.id" class="occurrence-item">
+        <div v-if="editedContext.occurrences && editedContext.occurrences.length > 0" class="occurrences-list">
+          <div v-for="occ in editedContext.occurrences" :key="occ.id" class="occurrence-item">
             <div class="occurrence-header">
               <span
                   class="occurrence-name clickable"
@@ -162,7 +158,7 @@ import { apiFetch } from '../api';
 
 const props = defineProps<{
   open: boolean;
-  finding: FindingContext | null;
+  findingContext: FindingContext | null;
   facetName: string | null;
 }>();
 
@@ -171,8 +167,7 @@ const emit = defineEmits<{
   (e: 'linked'): void;
 }>();
 
-const findingContext = ref<FindingContext | null>(null);
-const loadingContext = ref(false);
+const editedContext = ref<FindingContext | null>(null);
 const foundIdentity = ref<FoundIdentity | null>(null);
 const loadingIdentity = ref(false);
 const showSearch = ref(false);
@@ -185,10 +180,10 @@ const unlinking = ref(false);
 const retryingWikipedia = ref(false);
 
 const uniqueOccurrenceNames = computed(() => {
-  if (!findingContext.value) return [];
-  const canonicalName = findingContext.value.name.toLowerCase();
+  if (!editedContext.value) return [];
+  const canonicalName = editedContext.value.name.toLowerCase();
   const names = new Set<string>();
-  findingContext.value.occurrences.forEach(occ => {
+  editedContext.value.occurrences.forEach(occ => {
     if (occ.name && occ.name.toLowerCase() !== canonicalName) {
       names.add(occ.name);
     }
@@ -203,7 +198,7 @@ function useSuggestedName(name: string) {
 }
 
 watch(
-    () => findingContext.value?.of_identity,
+    () => editedContext.value?.of_identity,
     async (identityData) => {
       foundIdentity.value = null;
 
@@ -257,17 +252,17 @@ async function performSearch() {
 }
 
 async function linkTo(qid: string) {
-  if (!props.finding) return;
+  if (!props.findingContext) return;
   linkingQid.value = qid;
   try {
-    const response = await apiFetch(`/testbooks/api/v1/finding-context/${props.finding.id}/link_identity/`, {
+    const response = await apiFetch(`/testbooks/api/v1/finding-context/${props.findingContext.id}/link_identity/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ wikidata_id: qid })
     });
     
     if (response.ok) {
-      findingContext.value = await response.json();
+      editedContext.value = await response.json();
       showSearch.value = false;
       emit('linked');
     }
@@ -279,16 +274,16 @@ async function linkTo(qid: string) {
 }
 
 async function unlinkIdentity() {
-  if (!props.finding) return;
+  if (!props.findingContext) return;
   unlinking.value = true;
   try {
-    const response = await apiFetch(`/testbooks/api/v1/finding-context/${props.finding.id}/unlink_identity/`, {
+    const response = await apiFetch(`/testbooks/api/v1/finding-context/${props.findingContext.id}/unlink_identity/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
 
     if (response.ok) {
-      findingContext.value = await response.json();
+      editedContext.value = await response.json();
       showSearch.value = false;
       emit('linked');
     }
@@ -300,15 +295,15 @@ async function unlinkIdentity() {
 }
 
 async function retryWikipedia() {
-  if (!props.finding) return;
+  if (!props.findingContext) return;
   retryingWikipedia.value = true;
   try {
-    const response = await apiFetch(`/testbooks/api/v1/finding-context/${props.finding.id}/retry_wikipedia_link/`, {
+    const response = await apiFetch(`/testbooks/api/v1/finding-context/${props.findingContext.id}/retry_wikipedia_link/`, {
       method: 'POST'
     });
 
     if (response.ok) {
-      findingContext.value = await response.json();
+      editedContext.value = await response.json();
       emit('linked');
     }
   } catch (error) {
@@ -320,11 +315,11 @@ async function retryWikipedia() {
 
 watch(() => props.open, (newVal) => {
   if (newVal) {
-    findingContext.value = { ...props.finding! };
+    editedContext.value = { ...props.findingContext! };
     showSearch.value = false;
     searchResults.value = [];
     hasSearched.value = false;
-    searchQuery.value = findingContext.value?.name || '';
+    searchQuery.value = editedContext.value?.name || '';
   }
 });
 </script>
