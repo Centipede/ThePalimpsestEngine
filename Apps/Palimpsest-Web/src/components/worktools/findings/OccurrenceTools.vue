@@ -276,6 +276,9 @@ async function runRemove() {
     });
     const departedIds = [...result.detached_occurrence_ids, ...result.deleted_occurrence_ids];
     showRemoveConfirm.value = false;
+    // Reset, so the next removal in the same sitting does not silently inherit a
+    // decision to delete mentions outright.
+    removeFromBlock.value = false;
     emit('applied', {
       departedIds,
       contextDeleted: result.deleted_context_ids.includes(props.context.id),

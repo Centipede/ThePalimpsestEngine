@@ -97,6 +97,9 @@
         ? 'The mentions will be deleted outright. Gathering info for this section again is the only way back.'
         : 'The grouping is removed; the mentions stay in their paragraphs as unclustered findings.' }}
     </p>
+    <p v-if="emptyTargetNames.length > 0" class="remove-warning">
+      {{ emptyTargetWarning }}
+    </p>
   </ConfirmDialog>
 </template>
 
@@ -248,6 +251,22 @@ const removeTargets = ref<FindingContext[]>([]);
 const removeLabel = computed(() =>
   removeTargets.value.length === 1 ? 'Remove finding' : 'Remove findings');
 
+/**
+ * Removal works by detaching mentions, so a finding with none is out of reach of it -
+ * there is nothing to send. Named up front rather than discovered afterwards, when the
+ * grid would simply still show it.
+ */
+const emptyTargetNames = computed(() =>
+  removeTargets.value.filter(c => c.occurrences.length === 0).map(c => c.name));
+
+const emptyTargetWarning = computed(() => {
+  const names = emptyTargetNames.value;
+  if (names.length === 0) return '';
+  return names.length === 1
+    ? `${names[0]} holds no mentions, so it cannot be removed this way and will stay behind.`
+    : `${names.join(', ')} hold no mentions, so they cannot be removed this way and will stay behind.`;
+});
+
 function openRemoveConfirm() {
   removeTargets.value = selected.value.map(entry => entry.context);
   removeFromBlocks.value = false;
@@ -264,10 +283,13 @@ async function confirmRemove() {
 
   const occurrenceIds = removeTargets.value.flatMap(c => c.occurrences.map(o => o.id));
   if (occurrenceIds.length === 0) {
-    // A context with no mentions has no occurrence to detach, so nothing would reach
-    // the server and it would survive. Say so rather than appear to do nothing.
-    removeError.value = 'This finding holds no mentions, so there is nothing to detach. '
-      + 'It has to be removed in the admin tools.';
+    // Nothing to detach means nothing would reach the server and the findings would all
+    // survive. Say so rather than appear to do nothing.
+    removeError.value = removeTargets.value.length === 1
+      ? 'This finding holds no mentions, so there is nothing to detach. Remove it with the '
+        + 'section admin tools instead.'
+      : 'None of these findings hold any mentions, so there is nothing to detach. Remove '
+        + 'them with the section admin tools instead.';
     return;
   }
 
@@ -370,6 +392,14 @@ hr {
   margin-left: 0.4rem;
   font-size: 0.75rem;
   color: var(--sl-color-neutral-500);
+}
+
+.remove-warning {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  font-weight: 500;
+  color: var(--sl-color-warning-700);
 }
 
 .remove-note {
