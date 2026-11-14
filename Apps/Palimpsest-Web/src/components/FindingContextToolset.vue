@@ -8,8 +8,29 @@
   >
     <div v-if="editedContext" class="toolset-layout">
       <div class="toolset-column toolset-column--tools">
-        <div class="column-header">Tools & Lookup</div>
+        <div class="column-header">Tools &amp; Lookup</div>
         <div class="toolset-content">
+          <section class="finding-name">
+            <h3 class="section-title">Name</h3>
+            <div v-if="!isEditingName" class="name-display" @click="startEditingName">
+              <span class="name-text">{{ editedContext.name }}</span>
+              <sl-icon name="pencil" class="edit-icon"></sl-icon>
+            </div>
+            <div v-else class="name-edit">
+              <sl-input
+                ref="nameInput"
+                :value="editedName"
+                size="small"
+                :disabled="isSavingName"
+                @sl-input="editedName = ($event.target as HTMLInputElement).value"
+                @sl-blur="saveName"
+                @keydown.enter="saveName"
+                @keydown.esc="cancelEditingName"
+              ></sl-input>
+            </div>
+            <p v-if="nameError" class="inline-error">{{ nameError }}</p>
+          </section>
+
           <section class="current-identity">
             <h3 class="section-title">Current Identity</h3>
             <div v-if="foundIdentity" class="identity-card">
@@ -44,7 +65,7 @@
                   <sl-icon slot="prefix" :name="showSearch ? 'dash' : 'arrow-repeat'"></sl-icon>
                   {{ showSearch ? 'Cancel Relink' : 'Relink' }}
                 </sl-button>
-                <sl-button size="small" variant="danger" :loading="unlinking" @click="unlinkIdentity">
+                <sl-button size="small" variant="danger" :loading="unlinking" @click="unlinkIdentityAction">
                   <sl-icon slot="prefix" name="link-45deg"></sl-icon>
                   Unlink
                 </sl-button>
@@ -57,6 +78,7 @@
                 Link to Wikidata
               </sl-button>
             </div>
+            <p v-if="identityError" class="inline-error">{{ identityError }}</p>
           </section>
 
           <section v-if="showSearch" class="wikidata-search-section">
@@ -82,7 +104,7 @@
               <sl-input
                 placeholder="Search query..."
                 :value="searchQuery"
-                @sl-input="searchQuery = $event.target.value"
+                @sl-input="searchQuery = ($event.target as HTMLInputElement).value"
                 @keydown.enter="performSearch"
                 clearable
               ></sl-input>
@@ -120,15 +142,44 @@
 
       <div class="toolset-column toolset-column--occurrences">
         <div class="column-header">Text Mentions</div>
-        <h3 class="section-title">Occurrences</h3>
-        <div v-if="editedContext.occurrences && editedContext.occurrences.length > 0" class="occurrences-list">
+
+        <OccurrenceTools
+          v-if="editedContext.occurrences.length > 0"
+          :context="editedContext"
+          :sibling-contexts="siblingContexts ?? []"
+          :selected-ids="selectedOccurrenceIds"
+          @applied="handleApplied"
+          @clear-selection="selectedOccurrenceIds = []"
+        />
+
+        <div class="occurrences-heading">
+          <sl-checkbox
+            v-if="editedContext.occurrences.length > 0"
+            size="small"
+            :checked="allOccurrencesSelected"
+            :indeterminate="someOccurrencesSelected"
+            @sl-change="toggleAllOccurrences(($event.target as HTMLInputElement).checked)"
+          >
+            Occurrences
+          </sl-checkbox>
+          <h3 v-else class="section-title">Occurrences</h3>
+        </div>
+
+        <div v-if="editedContext.occurrences.length > 0" class="occurrences-list">
           <div v-for="occ in editedContext.occurrences" :key="occ.id" class="occurrence-item">
             <div class="occurrence-header">
-              <span
-                  class="occurrence-name clickable"
-                  @click="useSuggestedName(occ.name)"
-                  title="Search for this name in Wikidata"
-              >{{ occ.name }}</span>
+              <div class="occurrence-heading-left">
+                <sl-checkbox
+                  size="small"
+                  :checked="selectedOccurrenceIds.includes(occ.id)"
+                  @sl-change="setOccurrenceSelected(occ.id, ($event.target as HTMLInputElement).checked)"
+                ></sl-checkbox>
+                <span
+                    class="occurrence-name clickable"
+                    @click="useSuggestedName(occ.name)"
+                    title="Search for this name in Wikidata"
+                >{{ occ.name }}</span>
+              </div>
               <span class="occurrence-page" v-if="occ.on_page">p. {{ occ.on_page }}</span>
             </div>
             <div class="occurrence-description" v-if="occ.description">{{ occ.description }}</div>
@@ -152,32 +203,63 @@
 </template>
 
 <script setup lang="ts">
-import {computed, ref, watch} from 'vue';
-import type {FindingContext, FoundIdentity} from '../types/library';
-import { apiFetch } from '../api';
+import { computed, nextTick, ref, watch } from 'vue';
+import type { FindingContext, FoundIdentity } from '../types/library';
+import {
+  FindingActionError,
+  fetchFoundIdentity,
+  linkIdentity,
+  lookupWikidata,
+  renameContext,
+  retryWikipediaLink,
+  unlinkIdentity,
+  type WikidataCandidate,
+} from '../api/findings';
+import OccurrenceTools from './worktools/findings/OccurrenceTools.vue';
 
 const props = defineProps<{
   open: boolean;
   findingContext: FindingContext | null;
   facetName: string | null;
+  /** Other findings of the same facet in this section: the move destinations. */
+  siblingContexts?: FindingContext[];
 }>();
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void;
-  (e: 'linked'): void;
+  /** Something structural changed; the parent should refetch the section. */
+  (e: 'changed'): void;
 }>();
 
 const editedContext = ref<FindingContext | null>(null);
 const foundIdentity = ref<FoundIdentity | null>(null);
-const loadingIdentity = ref(false);
 const showSearch = ref(false);
 const searchQuery = ref('');
 const searching = ref(false);
-const searchResults = ref<any[]>([]);
+const searchResults = ref<WikidataCandidate[]>([]);
 const hasSearched = ref(false);
 const linkingQid = ref<string | null>(null);
 const unlinking = ref(false);
 const retryingWikipedia = ref(false);
+const identityError = ref('');
+const selectedOccurrenceIds = ref<number[]>([]);
+
+const isEditingName = ref(false);
+const editedName = ref('');
+const isSavingName = ref(false);
+const nameError = ref('');
+const nameInput = ref<HTMLElement & { focus: () => void } | null>(null);
+
+/**
+ * Whether anything here has changed the section's data.
+ *
+ * The refresh is deliberately deferred to the close: fetchSection raises `loading`, and
+ * the section body renders behind it, so a refresh mid-session tears this dialog down
+ * along with the grid. Updating the local copy from each response instead lets the
+ * librarian move several mentions in one sitting, and one refetch on close rebuilds the
+ * grid properly - the responses carry no occurrences, so they could never do that.
+ */
+const isDirty = ref(false);
 
 const uniqueOccurrenceNames = computed(() => {
   if (!editedContext.value) return [];
@@ -191,11 +273,47 @@ const uniqueOccurrenceNames = computed(() => {
   return Array.from(names).sort();
 });
 
-function useSuggestedName(name: string) {
-  searchQuery.value = name;
-  showSearch.value = true;
-  performSearch();
+const allOccurrencesSelected = computed(() => {
+  const total = editedContext.value?.occurrences.length ?? 0;
+  return total > 0 && selectedOccurrenceIds.value.length === total;
+});
+
+const someOccurrencesSelected = computed(() =>
+  selectedOccurrenceIds.value.length > 0 && !allOccurrencesSelected.value);
+
+function reseed(context: FindingContext) {
+  editedContext.value = { ...context, occurrences: [...context.occurrences] };
+  showSearch.value = false;
+  searchResults.value = [];
+  hasSearched.value = false;
+  searchQuery.value = context.name;
+  selectedOccurrenceIds.value = [];
+  identityError.value = '';
+  nameError.value = '';
+  isEditingName.value = false;
 }
+
+/**
+ * Watches the context as well as the open flag. A refetch triggered elsewhere can
+ * replace or remove the finding this dialog is pointed at, and editing a context that
+ * no longer exists is worse than closing.
+ */
+watch([() => props.open, () => props.findingContext], ([isOpen]) => {
+  if (!isOpen) return;
+  if (!props.findingContext) {
+    emit('update:open', false);
+    return;
+  }
+  reseed(props.findingContext);
+}, { immediate: true });
+
+/** The one refresh, on the way out. */
+watch(() => props.open, (isOpen, wasOpen) => {
+  if (wasOpen && !isOpen && isDirty.value) {
+    isDirty.value = false;
+    emit('changed');
+  }
+});
 
 watch(
     () => editedContext.value?.of_identity,
@@ -211,117 +329,158 @@ watch(
         return;
       }
 
-      loadingIdentity.value = true;
-
       try {
-        const response = await apiFetch(`/testbooks/api/v1/found-identity/${identityData}`);
-
-        if (response.ok) {
-          foundIdentity.value = await response.json() as FoundIdentity;
-        }
+        foundIdentity.value = await fetchFoundIdentity(identityData);
       } catch (error) {
         console.error('Failed to load identity:', error);
         foundIdentity.value = null;
-      } finally {
-        loadingIdentity.value = false;
       }
     }
 );
+
+function describe(e: unknown, fallback: string) {
+  return e instanceof FindingActionError ? e.message : fallback;
+}
+
+/* ------------------------------------------------------------- occurrence ticks */
+
+function setOccurrenceSelected(id: number, checked: boolean) {
+  const next = new Set(selectedOccurrenceIds.value);
+  if (checked) next.add(id); else next.delete(id);
+  selectedOccurrenceIds.value = [...next];
+}
+
+function toggleAllOccurrences(checked: boolean) {
+  selectedOccurrenceIds.value = checked
+    ? (editedContext.value?.occurrences ?? []).map(o => o.id)
+    : [];
+}
+
+/**
+ * An operation finished: drop what left, and close if the finding itself went with it.
+ */
+function handleApplied(payload: { departedIds: number[]; contextDeleted: boolean }) {
+  isDirty.value = true;
+  selectedOccurrenceIds.value = [];
+
+  if (payload.contextDeleted) {
+    emit('update:open', false);
+    return;
+  }
+
+  if (editedContext.value) {
+    const departed = new Set(payload.departedIds);
+    editedContext.value = {
+      ...editedContext.value,
+      occurrences: editedContext.value.occurrences.filter(o => !departed.has(o.id)),
+    };
+  }
+}
+
+/* -------------------------------------------------------------------- renaming */
+
+function startEditingName() {
+  editedName.value = editedContext.value?.name ?? '';
+  nameError.value = '';
+  isEditingName.value = true;
+  nextTick(() => nameInput.value?.focus());
+}
+
+function cancelEditingName() {
+  isEditingName.value = false;
+  nameError.value = '';
+}
+
+async function saveName() {
+  if (!isEditingName.value || isSavingName.value || !editedContext.value) return;
+
+  const newName = editedName.value.trim();
+  if (!newName || newName === editedContext.value.name) {
+    isEditingName.value = false;
+    return;
+  }
+
+  isSavingName.value = true;
+  nameError.value = '';
+  try {
+    // The field is `name` to read and `name_probably` to write; the api module maps it.
+    const updated = await renameContext(editedContext.value.id, newName);
+    editedContext.value = { ...editedContext.value, name: updated.name ?? newName };
+    isEditingName.value = false;
+    isDirty.value = true;
+  } catch (e) {
+    nameError.value = describe(e, 'Renaming failed.');
+  } finally {
+    isSavingName.value = false;
+  }
+}
+
+/* ------------------------------------------------------------------- identities */
 
 async function performSearch() {
   if (!searchQuery.value) return;
   searching.value = true;
   hasSearched.value = true;
   try {
-    const url = new URL('/testbooks/api/v1/lookup/wikidata/', window.location.origin);
-    url.searchParams.append('query', searchQuery.value);
-    if (props.facetName) {
-      url.searchParams.append('facet', props.facetName);
-    }
-    
-    const response = await apiFetch(url.toString());
-    if (response.ok) {
-      const data = await response.json();
-      searchResults.value = data.results || [];
-    }
+    const data = await lookupWikidata(searchQuery.value, props.facetName);
+    searchResults.value = data.results || [];
   } catch (error) {
     console.error('Wikidata search failed:', error);
+    searchResults.value = [];
   } finally {
     searching.value = false;
   }
 }
 
+function useSuggestedName(name: string) {
+  searchQuery.value = name;
+  showSearch.value = true;
+  performSearch();
+}
+
 async function linkTo(qid: string) {
-  if (!props.findingContext) return;
+  if (!editedContext.value) return;
   linkingQid.value = qid;
+  identityError.value = '';
   try {
-    const response = await apiFetch(`/testbooks/api/v1/finding-context/${props.findingContext.id}/link_identity/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wikidata_id: qid })
-    });
-    
-    if (response.ok) {
-      editedContext.value = await response.json();
-      showSearch.value = false;
-      emit('linked');
-    }
-  } catch (error) {
-    console.error('Linking failed:', error);
+    editedContext.value = await linkIdentity(editedContext.value.id, qid);
+    showSearch.value = false;
+    isDirty.value = true;
+  } catch (e) {
+    identityError.value = describe(e, 'Linking failed.');
   } finally {
     linkingQid.value = null;
   }
 }
 
-async function unlinkIdentity() {
-  if (!props.findingContext) return;
+async function unlinkIdentityAction() {
+  if (!editedContext.value) return;
   unlinking.value = true;
+  identityError.value = '';
   try {
-    const response = await apiFetch(`/testbooks/api/v1/finding-context/${props.findingContext.id}/unlink_identity/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    if (response.ok) {
-      editedContext.value = await response.json();
-      showSearch.value = false;
-      emit('linked');
-    }
-  } catch (error) {
-    console.error('Unlinking failed:', error);
+    editedContext.value = await unlinkIdentity(editedContext.value.id);
+    showSearch.value = false;
+    isDirty.value = true;
+  } catch (e) {
+    identityError.value = describe(e, 'Unlinking failed.');
   } finally {
     unlinking.value = false;
   }
 }
 
 async function retryWikipedia() {
-  if (!props.findingContext) return;
+  if (!editedContext.value) return;
   retryingWikipedia.value = true;
+  identityError.value = '';
   try {
-    const response = await apiFetch(`/testbooks/api/v1/finding-context/${props.findingContext.id}/retry_wikipedia_link/`, {
-      method: 'POST'
-    });
-
-    if (response.ok) {
-      editedContext.value = await response.json();
-      emit('linked');
-    }
-  } catch (error) {
-    console.error('Wikipedia retry failed:', error);
+    editedContext.value = await retryWikipediaLink(editedContext.value.id);
+    isDirty.value = true;
+  } catch (e) {
+    identityError.value = describe(e, 'Looking the Wikipedia article up again failed.');
   } finally {
     retryingWikipedia.value = false;
   }
 }
-
-watch(() => props.open, (newVal) => {
-  if (newVal) {
-    editedContext.value = { ...props.findingContext! };
-    showSearch.value = false;
-    searchResults.value = [];
-    hasSearched.value = false;
-    searchQuery.value = editedContext.value?.name || '';
-  }
-});
 </script>
 
 <style scoped>
@@ -357,6 +516,52 @@ watch(() => props.open, (newVal) => {
   border-right: 1px solid var(--sl-color-neutral-200);
 }
 
+.name-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.4rem;
+  margin-left: -0.4rem;
+  border-radius: var(--sl-border-radius-small);
+  cursor: pointer;
+}
+
+.name-display:hover {
+  background-color: var(--sl-color-neutral-100);
+}
+
+.name-text {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.edit-icon {
+  font-size: 0.8rem;
+  opacity: 0;
+  color: var(--sl-color-neutral-500);
+  transition: opacity 0.15s ease;
+}
+
+.name-display:hover .edit-icon {
+  opacity: 1;
+}
+
+.inline-error {
+  margin: 0.4rem 0 0 0;
+  font-size: 0.78rem;
+  color: var(--sl-color-danger-600);
+}
+
+.occurrences-heading {
+  margin-bottom: 0.75rem;
+}
+
+.occurrences-heading sl-checkbox::part(label) {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--sl-color-neutral-600);
+}
+
 .occurrences-list {
   display: flex;
   flex-direction: column;
@@ -374,7 +579,15 @@ watch(() => props.open, (newVal) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.5rem;
   margin-bottom: 0.5rem;
+}
+
+.occurrence-heading-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .occurrence-name {
@@ -397,6 +610,7 @@ watch(() => props.open, (newVal) => {
 .occurrence-page {
   font-size: 0.8rem;
   color: var(--sl-color-neutral-500);
+  flex-shrink: 0;
 }
 
 .occurrence-description {

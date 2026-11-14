@@ -1,0 +1,168 @@
+// @vitest-environment jsdom
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
+import { readonly, ref } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
+import { mount } from '@vue/test-utils';
+import type { FindingContext, FindingContextMap, FindingOccurrence } from '../types/library';
+import { useFacetsStore } from '../stores/facets';
+import SectionFindings from './SectionFindings.vue';
+
+/**
+ * A mount test, not a behaviour suite.
+ *
+ * The selection layer put SectionFindings in reach of a failure nothing else catches:
+ * `watch(visible, ...)` evaluates its source during setup, and `visible` reads
+ * `sortedFacets`, so declaring the groups below the selection makes mounting throw a
+ * TDZ ReferenceError. It type-checks perfectly. Only mounting notices, so that is what
+ * this does - plus the few bits of selection wiring that live in the template rather
+ * than in findingEligibility, which is unit-tested on its own.
+ */
+
+// useAuth keeps its state at module scope and reads localStorage as the module is
+// evaluated - which has already happened by the time any hook runs, via the store's
+// own import of apiFetch. Mocking is the only way to choose a viewer.
+const isStaff = ref(true);
+vi.mock('../composables/useAuth', () => ({
+    useAuth: () => ({
+        isStaff: readonly(isStaff),
+        token: readonly(ref<string | null>('test-token')),
+        isAuthenticated: readonly(ref(true)),
+        login: vi.fn(),
+        logout: vi.fn(),
+    }),
+}));
+
+function occurrence(id: number): FindingOccurrence {
+    return {
+        id,
+        name: `mention ${id}`,
+        description: 'desc',
+        quote: `quote ${id}`,
+        in_block_pi: '1.p',
+        on_page: null,
+        of_context: null,
+        extracted_data: null,
+    };
+}
+
+function context(id: number, name: string): FindingContext {
+    return { id, name, of_identity: null, occurrences: [occurrence(id * 10)] };
+}
+
+const facets: FindingContextMap = {
+    people: [context(1, 'Ada'), context(2, 'Lovelace')],
+    places: [context(3, 'Potsdam')],
+};
+
+beforeAll(() => {
+    // Shoelace components observe their own size on connect; jsdom has no ResizeObserver.
+    globalThis.ResizeObserver = class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+    } as unknown as typeof ResizeObserver;
+});
+
+beforeEach(() => {
+    isStaff.value = true;
+    setActivePinia(createPinia());
+    useFacetsStore().facetQueries = [
+        { id: 1, name: 'People', machine_name_singular: 'person', machine_name_plural: 'people', symbol: '\u{1F464}' },
+        { id: 2, name: 'Places', machine_name_singular: 'place', machine_name_plural: 'places', symbol: '\u{1F4CD}' },
+    ] as never;
+});
+
+function mountPanel(props: Record<string, unknown> = {}) {
+    return mount(SectionFindings, {
+        props: { facets, openFindingIds: {}, ...props },
+        global: {
+            config: { compilerOptions: { isCustomElement: (tag: string) => tag.startsWith('sl-') } },
+            stubs: { FindingContextToolset: true, MergeDialog: true, ConfirmDialog: true },
+        },
+    });
+}
+
+function rows(wrapper: ReturnType<typeof mountPanel>) {
+    return wrapper.findAllComponents({ name: 'ContextRow' });
+}
+
+describe('SectionFindings', () => {
+    it('mounts without evaluating a computed before its declaration', () => {
+        expect(mountPanel().find('.categories-grid').exists()).toBe(true);
+    });
+
+    it('renders one column per facet and one row per finding', () => {
+        const wrapper = mountPanel();
+        expect(wrapper.findAll('.category-column')).toHaveLength(2);
+        expect(rows(wrapper)).toHaveLength(3);
+    });
+
+    it('shows the staff action bar with nothing selected', () => {
+        expect(mountPanel().find('.selection-bar').text()).toContain('0 selected');
+    });
+
+    it('hides the action bar from a non-staff viewer', () => {
+        isStaff.value = false;
+        const wrapper = mountPanel();
+        expect(wrapper.find('.categories-grid').exists()).toBe(true);
+        expect(wrapper.find('.selection-bar').exists()).toBe(false);
+    });
+
+    it('counts a finding once its checkbox reports a change', async () => {
+        const wrapper = mountPanel();
+        rows(wrapper)[0].vm.$emit('toggle-select', 1, true);
+        await wrapper.vm.$nextTick();
+        expect(wrapper.find('.selection-bar').text()).toContain('1 selected');
+    });
+
+    it('clears the selection on demand', async () => {
+        const wrapper = mountPanel();
+        rows(wrapper)[0].vm.$emit('toggle-select', 1, true);
+        await wrapper.vm.$nextTick();
+
+        wrapper.findComponent({ name: 'SelectionBar' }).vm.$emit('clear');
+        await wrapper.vm.$nextTick();
+        expect(wrapper.find('.selection-bar').text()).toContain('0 selected');
+    });
+
+    it('drops a selected finding when its facet is filtered out of view', async () => {
+        const wrapper = mountPanel({ activeFacetTypes: new Set(['people', 'places']) });
+        rows(wrapper)[0].vm.$emit('toggle-select', 1, true);
+        await wrapper.vm.$nextTick();
+        expect(wrapper.find('.selection-bar').text()).toContain('1 selected');
+
+        await wrapper.setProps({ activeFacetTypes: new Set(['places']) });
+        expect(wrapper.find('.selection-bar').text()).toContain('0 selected');
+    });
+
+    it('drops a selected finding that has left the payload', async () => {
+        const wrapper = mountPanel();
+        rows(wrapper)[0].vm.$emit('toggle-select', 1, true);
+        await wrapper.vm.$nextTick();
+
+        // What a merge looks like from here: the absorbed context is simply gone.
+        await wrapper.setProps({ facets: { ...facets, people: [context(2, 'Lovelace')] } });
+        expect(wrapper.find('.selection-bar').text()).toContain('0 selected');
+    });
+
+    it('refuses a merge across facets, naming both facets', async () => {
+        const wrapper = mountPanel();
+        rows(wrapper)[0].vm.$emit('toggle-select', 1, true);
+        rows(wrapper)[2].vm.$emit('toggle-select', 3, true);
+        await wrapper.vm.$nextTick();
+
+        const reason = wrapper.find('.selection-reason').text();
+        expect(reason).toContain('People');
+        expect(reason).toContain('Places');
+    });
+
+    it('offers the toolset the other findings of the same facet as move targets', async () => {
+        const wrapper = mountPanel();
+        rows(wrapper)[0].vm.$emit('open-toolset');
+        await wrapper.vm.$nextTick();
+
+        const toolset = wrapper.findComponent({ name: 'FindingContextToolset' });
+        const siblings = toolset.props('siblingContexts') as FindingContext[];
+        expect(siblings.map(c => c.name)).toEqual(['Lovelace']);
+    });
+});

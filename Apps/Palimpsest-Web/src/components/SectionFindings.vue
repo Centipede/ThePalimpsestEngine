@@ -55,7 +55,7 @@
     :findingContext="selectedFindingContext"
     :facet-name="selectedFacetName"
     :sibling-contexts="siblingContexts"
-    @linked="handleLinked"
+    @changed="handleChanged"
   />
 
   <MergeDialog
@@ -144,6 +144,52 @@ const removeError = ref('');
 function setOpen(findingId: number, isOpen: boolean) {
   emit('update:openFindingIds', { ...props.openFindingIds, [findingId]: isOpen });
 }
+
+/* ------------------------------------------------------- the grid's own groups */
+/* Declared before the selection: watch(visible) evaluates its source at setup, and
+   `visible` reads sortedFacets - a const, so a later declaration is a TDZ crash. */
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+const byName = (a: FindingContext, b: FindingContext) =>
+  a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
+
+type SortedFacetGroup = {
+  facetName: string;
+  label: string;
+  symbol: string;
+  order: number;
+  linked: FindingContext[];
+  unlinked: FindingContext[];
+};
+
+const hasFindings = computed(() => {
+  return Object.values(props.facets).some(findings => findings.length > 0);
+});
+
+const sortedFacets = computed<SortedFacetGroup[]>(() => {
+  return Object.entries(props.facets)
+    .filter(([facetName, findings]) => {
+      if (findings.length === 0) return false;
+      if (!props.activeFacetTypes) return true;
+      return props.activeFacetTypes.has(facetName);
+    })
+    .map(([facetName, findings]) => {
+      const facet = facetsStore.getFacetByPluralName(facetName);
+      const linked = findings.filter(f => f.of_identity !== null).sort(byName);
+      const unlinked = findings.filter(f => f.of_identity === null).sort(byName);
+
+      return {
+        facetName,
+        label: capitalize(facetName),
+        symbol: facet?.symbol || '❓',
+        order: facet?.id ?? Infinity,
+        linked,
+        unlinked
+      };
+    })
+    .sort((a, b) => a.order - b.order);
+});
 
 /* ------------------------------------------------------------------ selection */
 
@@ -271,59 +317,12 @@ function openToolset(finding: FindingContext, facetNamePlural: string) {
   showToolset.value = true;
 }
 
-function handleLinked() {
-  emit('refresh');
-}
-
 /** A structural change: only a refetch can rebuild the grid correctly. */
 function handleChanged() {
   clearSelection();
   emit('refresh');
 }
 
-/* ----------------------------------------------------------------- the groups */
-
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
-const byName = (a: FindingContext, b: FindingContext) =>
-  a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
-
-type SortedFacetGroup = {
-  facetName: string;
-  label: string;
-  symbol: string;
-  order: number;
-  linked: FindingContext[];
-  unlinked: FindingContext[];
-};
-
-const hasFindings = computed(() => {
-  return Object.values(props.facets).some(findings => findings.length > 0);
-});
-
-const sortedFacets = computed<SortedFacetGroup[]>(() => {
-  return Object.entries(props.facets)
-    .filter(([facetName, findings]) => {
-      if (findings.length === 0) return false;
-      if (!props.activeFacetTypes) return true;
-      return props.activeFacetTypes.has(facetName);
-    })
-    .map(([facetName, findings]) => {
-      const facet = facetsStore.getFacetByPluralName(facetName);
-      const linked = findings.filter(f => f.of_identity !== null).sort(byName);
-      const unlinked = findings.filter(f => f.of_identity === null).sort(byName);
-
-      return {
-        facetName,
-        label: capitalize(facetName),
-        symbol: facet?.symbol || '❓',
-        order: facet?.id ?? Infinity,
-        linked,
-        unlinked
-      };
-    })
-    .sort((a, b) => a.order - b.order);
-});
 </script>
 
 <style scoped>
