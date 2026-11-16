@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeSegments, searchForFragments } from './text';
+import { computeSegments, condenseQuotes, searchForFragments } from './text';
 import type { Highlight } from '../types/library';
 
 describe('computeSegments color mixing', () => {
@@ -73,5 +73,40 @@ describe('searchForFragments', () => {
     expect(highlights).toHaveLength(2);
     expect(highlights[0].start).toBe(6); // orange
     expect(highlights[1].start).toBe(13); // second apple
+  });
+});
+
+describe('condenseQuotes', () => {
+  it('joins quotes with a middot separator', () => {
+    const line = condenseQuotes([{ quote: 'alpha' }, { quote: 'beta' }]);
+    expect(line).toBe('alpha \u00b7 beta');
+  });
+
+  it('skips empty, whitespace-only and missing quotes', () => {
+    const line = condenseQuotes([{ quote: '' }, { quote: '   ' }, { quote: null }, {}, { quote: 'real' }]);
+    expect(line).toBe('real');
+  });
+
+  it('collapses internal whitespace so a wrapped quote stays on one line', () => {
+    expect(condenseQuotes([{ quote: ' a\n  b\tc ' }])).toBe('a b c');
+  });
+
+  it('truncates a single over-long quote', () => {
+    const line = condenseQuotes([{ quote: 'x'.repeat(80) }], { maxEach: 10 });
+    expect(line).toBe('x'.repeat(9) + '\u2026');
+  });
+
+  it('stays within the total budget', () => {
+    const many = Array.from({ length: 20 }, (_, i) => ({ quote: `quote number ${i}` }));
+    expect(condenseQuotes(many, { maxTotal: 40 }).length).toBeLessThanOrEqual(40);
+  });
+
+  it('does not let one long quote crowd out the rest', () => {
+    const line = condenseQuotes([{ quote: 'y'.repeat(200) }, { quote: 'second' }], { maxEach: 12, maxTotal: 140 });
+    expect(line).toContain('second');
+  });
+
+  it('returns an empty string for no occurrences', () => {
+    expect(condenseQuotes([])).toBe('');
   });
 });

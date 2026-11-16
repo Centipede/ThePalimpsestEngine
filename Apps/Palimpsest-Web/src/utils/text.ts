@@ -168,7 +168,6 @@ export function computeSegments(text: string, highlights: Highlight[], isDark: b
  * Returns an array of highlights, one for each part of the split fragment.
  */
 export function searchForFragments(text: string, fragment: string, color: string): Highlight[] {
-  console.log('searchForFragments called with fragment:', fragment);
   // Split the fragment by ... or unicode …
   const parts = fragment.split(/\.\.\.|\u2026/).map(p => p.trim()).filter(p => p.length > 0);
   const highlights: Highlight[] = [];
@@ -198,4 +197,36 @@ export function searchForFragments(text: string, fragment: string, color: string
   }
 
   return highlights;
+}
+
+/**
+ * A one-line digest of a finding's mentions, for telling apart candidates that share a
+ * name. Five contexts all called "Caesar" are indistinguishable by name alone; their
+ * quotes are what actually identify them.
+ *
+ * Per-quote truncation comes first so that one long opening quote cannot crowd the rest
+ * out of the line entirely.
+ */
+export function condenseQuotes(
+  occurrences: { quote?: string | null }[],
+  options: { maxTotal?: number; maxEach?: number } = {},
+): string {
+  const maxTotal = options.maxTotal ?? 140;
+  const maxEach = options.maxEach ?? 48;
+  const ellipsis = '…';
+  const separator = ' · ';
+
+  const parts: string[] = [];
+  for (const occ of occurrences) {
+    const quote = occ.quote?.trim().replace(/\s+/g, ' ');
+    if (!quote) continue;
+
+    parts.push(quote.length > maxEach ? quote.slice(0, maxEach - 1).trimEnd() + ellipsis : quote);
+
+    // Joining first and measuring after keeps the separators inside the budget.
+    if (parts.join(separator).length >= maxTotal) break;
+  }
+
+  const joined = parts.join(separator);
+  return joined.length > maxTotal ? joined.slice(0, maxTotal - 1).trimEnd() + ellipsis : joined;
 }
