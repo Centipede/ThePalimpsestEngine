@@ -3,7 +3,7 @@ import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { readonly, ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { mount } from '@vue/test-utils';
-import type { FindingContext, FindingContextMap, FindingOccurrence } from '../types/library';
+import type { ContentBlock, FindingContext, FindingContextMap, FindingOccurrence } from '../types/library';
 import { useFacetsStore } from '../stores/facets';
 import SectionFindings from './SectionFindings.vue';
 
@@ -72,12 +72,33 @@ beforeEach(() => {
     ] as never;
 });
 
+/** A block as the section payload delivers it, carrying the text the quote is checked against. */
+function block(pathId: string, text: string): ContentBlock {
+    return {
+        path_id: pathId,
+        content_type: 'paragraph',
+        content_text: text,
+        content_json: null,
+    };
+}
+
 function mountPanel(props: Record<string, unknown> = {}) {
     return mount(SectionFindings, {
-        props: { facets, openFindingIds: {}, ...props },
+        props: {
+            facets,
+            openFindingIds: {},
+            machineName: 'a-book',
+            sectionPath: 'main.ch1',
+            ...props,
+        },
         global: {
             config: { compilerOptions: { isCustomElement: (tag: string) => tag.startsWith('sl-') } },
-            stubs: { FindingContextToolset: true, MergeDialog: true, ConfirmDialog: true },
+            stubs: {
+                FindingContextToolset: true,
+                MergeDialog: true,
+                ConfirmDialog: true,
+                NewOccurrenceDialog: true,
+            },
         },
     });
 }
@@ -120,7 +141,7 @@ describe('SectionFindings', () => {
         rows(wrapper)[0].vm.$emit('toggle-select', 1, true);
         await wrapper.vm.$nextTick();
 
-        wrapper.findComponent({ name: 'SelectionBar' }).vm.$emit('clear');
+        wrapper.findComponent({ name: 'FindingsToolbar' }).vm.$emit('clear');
         await wrapper.vm.$nextTick();
         expect(wrapper.find('.selection-bar').text()).toContain('0 selected');
     });
@@ -154,6 +175,54 @@ describe('SectionFindings', () => {
         const reason = wrapper.find('.selection-reason').text();
         expect(reason).toContain('People');
         expect(reason).toContain('Places');
+    });
+
+    it('offers no add row until a block is in focus', () => {
+        const wrapper = mountPanel();
+        expect(wrapper.find('.selection-bar').exists()).toBe(true);
+        expect(wrapper.find('.add-mention-row').exists()).toBe(false);
+    });
+
+    it('grows an add row once a block is in focus', () => {
+        const wrapper = mountPanel({ focusedBlock: block('1.p', 'Ada Lovelace wrote the notes.') });
+        expect(wrapper.find('.add-mention-row').exists()).toBe(true);
+    });
+
+    it('offers the add row to staff only', () => {
+        isStaff.value = false;
+        const wrapper = mountPanel({ focusedBlock: block('1.p', 'Ada Lovelace wrote the notes.') });
+        expect(wrapper.find('.add-mention-row').exists()).toBe(false);
+    });
+
+    /**
+     * The case the whole second row exists for: with no findings yet there is no grid to
+     * hang it under, so it has to live outside the hasFindings guard.
+     */
+    it('keeps the add row in a section with no findings at all', () => {
+        const wrapper = mountPanel({
+            facets: {},
+            focusedBlock: block('1.p', 'Ada Lovelace wrote the notes.'),
+        });
+        expect(wrapper.find('.categories-grid').exists()).toBe(false);
+        expect(wrapper.find('.add-mention-row').exists()).toBe(true);
+        // Nothing to tick, so the selection half of the bar stays out of the way.
+        expect(wrapper.find('.selection-bar').exists()).toBe(false);
+    });
+
+    it('hands the typed quote and facet to the create dialog', async () => {
+        const wrapper = mountPanel({ focusedBlock: block('1.p', 'Ada Lovelace wrote the notes.') });
+        wrapper.findComponent({ name: 'FindingsToolbar' }).vm.$emit('add-occurrence', {
+            quote: 'Ada Lovelace',
+            facet: 'person',
+        });
+        await wrapper.vm.$nextTick();
+
+        const dialog = wrapper.findComponent({ name: 'NewOccurrenceDialog' });
+        expect(dialog.props('open')).toBe(true);
+        expect(dialog.props('quote')).toBe('Ada Lovelace');
+        expect(dialog.props('facet')).toBe('person');
+        // Resolved singular -> plural, so the candidate homes are the People findings.
+        expect((dialog.props('contexts') as FindingContext[]).map(c => c.name)).toEqual(['Ada', 'Lovelace']);
     });
 
     it('offers the toolset the other findings of the same facet as move targets', async () => {

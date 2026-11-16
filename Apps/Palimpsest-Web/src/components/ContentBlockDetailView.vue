@@ -23,6 +23,8 @@
           :block="block"
           :index="blockIndex"
           :available-highlights="availableHighlights"
+          @occurrence-selected="emit('occurrence-selected', $event)"
+          @open-occurrence-tools="emit('open-occurrence-tools', $event)"
       />
     </div>
   </div>
@@ -36,9 +38,19 @@ import { computed, inject, type Ref, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuth } from '../composables/useAuth';
 import { apiFetch } from '../api';
-import type { SectionContentResponse } from '../types/library';
+import type { FindingOccurrence, SectionContentResponse } from '../types/library';
 import ContentBlockView from './ContentBlockView.vue';
 import type {ToolbarToggle} from "../types/view_state.ts";
+
+/**
+ * Both of these are passed straight through to SectionDetailView, which stays mounted
+ * around this route and owns the Entities panel and the mention toolset. Until now the
+ * single-block view listened to neither, so a click on an entity here went nowhere.
+ */
+const emit = defineEmits<{
+  (e: 'occurrence-selected', occurrence: FindingOccurrence): void;
+  (e: 'open-occurrence-tools', occurrence: FindingOccurrence): void;
+}>();
 
 const route = useRoute();
 const { isStaff } = useAuth();

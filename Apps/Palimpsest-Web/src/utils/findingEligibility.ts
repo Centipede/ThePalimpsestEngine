@@ -1,4 +1,5 @@
-import type { FindingContext } from '../types/library';
+import type { FindingContext, FindingOccurrence } from '../types/library';
+import { searchForFragments } from './text';
 
 /**
  * Whether a curation act is allowed, and if not, why - in a sentence meant to be read
@@ -245,6 +246,174 @@ export function canMoveOccurrences(input: {
     }
 
     return OK;
+}
+
+/**
+ * Whether the highlighter will be able to paint this quote.
+ *
+ * Returns the warning sentence, or '' when there is nothing to say. The same fuzzy
+ * search the paragraph itself uses decides it, so the answer here and the highlight
+ * there cannot disagree. Only a courtesy: the server does its own matching and creates
+ * the mention regardless, and its verdict is the authoritative one.
+ */
+export function quoteWarning(blockText: string, quote: string): string {
+    const trimmed = quote.trim();
+    if (!trimmed || !blockText) return '';
+
+    // The colour is required by the signature and discarded with the result; nothing
+    // from this call is ever rendered.
+    if (searchForFragments(blockText, trimmed, 'probe').length > 0) return '';
+
+    return 'Those words are not in this paragraph, so the mention will be saved but ' +
+        'nothing will be highlighted.';
+}
+
+/**
+ * Enough in hand to open the new-mention dialog.
+ *
+ * Split from canCreateOccurrence because the toolbar collects only these two fields and
+ * the dialog collects the rest; one predicate covering both would have to be told which
+ * half to judge.
+ */
+export function canStartOccurrence(input: {
+    quote: string;
+    facet: string;
+    blockText?: string;
+}): Eligibility {
+    const { quote, facet, blockText } = input;
+
+    if (!quote.trim()) {
+        return no('Paste the words from the paragraph that this mention is based on.');
+    }
+    if (!facet) {
+        return no('Pick which kind of finding this is.');
+    }
+
+    const warning = quoteWarning(blockText ?? '', quote);
+    return warning ? { ok: true, reason: '', warning } : OK;
+}
+
+/**
+ * Enough in hand to create the mention.
+ *
+ * The destination is not optional even though the endpoint would accept neither key and
+ * file the mention nowhere: a mention created outside a finding is exactly the orphan
+ * the rest of this toolset exists to clean up, so the create flow always ends in one.
+ */
+export function canCreateOccurrence(input: {
+    quote: string;
+    facet: string;
+    name: string;
+    blockText?: string;
+    contextId: number | null;
+    newName: string;
+}): Eligibility {
+    const { name, contextId, newName } = input;
+
+    const started = canStartOccurrence(input);
+    if (!started.ok) return started;
+
+    if (!name.trim()) {
+        return no('Give the mention a name - what the paragraph calls it.');
+    }
+    if (contextId === null && !newName.trim()) {
+        return no('Choose the finding this mention belongs to, or name a new one.');
+    }
+
+    return started;
+}
+
+/**
+ * Attaching one mention to a finding - an orphan's first home, or a move.
+ *
+ * One rule short of canMoveOccurrences on purpose. Being clustered already is not a
+ * refusal: `add_occurrences` takes occurrences out of any context, which is what lets a
+ * single code path serve both cases here. The facet check only fires when both facets
+ * are actually known, since FindingContext.of_facet cannot be relied on and the caller
+ * resolves the destination's facet from the bucket it drew the candidates from.
+ */
+export function canAttachOccurrence(input: {
+    occurrence: FindingOccurrence;
+    to: FindingContext | null;
+    /** The destination's facet, singular, as the caller resolved it. */
+    targetFacet?: string | null;
+    /** The finding it is leaving, when it has one. Only read for the warning. */
+    from?: FindingContext | null;
+}): Eligibility {
+    const { occurrence, to, targetFacet, from } = input;
+
+    if (!to) {
+        return no('Pick the finding to attach this mention to.');
+    }
+    if (occurrence.of_context === to.id) {
+        return no('This mention is already in that finding.');
+    }
+    if (occurrence.of_facet && targetFacet && occurrence.of_facet !== targetFacet) {
+        return no('A mention can only join a finding of its own kind.');
+    }
+
+    return lastMentionWarning(occurrence, from) ?? OK;
+}
+
+/**
+ * Clustering one mention into a brand new finding.
+ *
+ * Nothing to refuse: a new finding has no facet to clash with and no identity to
+ * conflict with, and the server names it after the mention when no name is given. Like
+ * canMoveOccurrences it does not consult the source's identity either - emptying a
+ * linked finding by moving its last mention is warned about, not forbidden, because the
+ * move itself is the thing these tools exist to do.
+ */
+export function canClusterToNew(input: {
+    occurrence: FindingOccurrence;
+    /** The finding it is leaving, when it has one. Only read for the warning. */
+    from?: FindingContext | null;
+}): Eligibility {
+    return lastMentionWarning(input.occurrence, input.from) ?? OK;
+}
+
+/**
+ * Deleting or detaching one mention.
+ *
+ * Never refused on its own account - it is one record, and the paragraph keeps its text
+ * either way. The last mention in a finding is the case worth stating, because the
+ * finding goes with it: refused outright when that finding is linked to an identity,
+ * for the same reason canRemoveContext refuses it, and in the same words.
+ */
+export function canDeleteOccurrence(input: {
+    occurrence: FindingOccurrence;
+    context?: FindingContext | null;
+}): Eligibility {
+    const { occurrence, context } = input;
+
+    if (isLastMention(occurrence, context)) {
+        const removable = canRemoveContext(context!);
+        if (!removable.ok) return removable;
+    }
+
+    return lastMentionWarning(occurrence, context) ?? OK;
+}
+
+function isLastMention(
+    occurrence: FindingOccurrence,
+    context?: FindingContext | null,
+): boolean {
+    if (!context) return false;
+    return context.occurrences.length === 1 && context.occurrences[0]?.id === occurrence.id;
+}
+
+/** Shared by attach and delete: either way the emptied finding is deleted. */
+function lastMentionWarning(
+    occurrence: FindingOccurrence,
+    context?: FindingContext | null,
+): Eligibility | null {
+    if (!isLastMention(occurrence, context)) return null;
+    return {
+        ok: true,
+        reason: '',
+        warning: `This is the only mention in ${quoted(context!.name)}, so that finding ` +
+            'will be deleted too.',
+    };
 }
 
 /**

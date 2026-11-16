@@ -1,5 +1,5 @@
 import { apiFetch } from '../api';
-import type { FindingContext, FoundIdentity } from '../types/library';
+import type { FindingContext, FindingOccurrence, FoundIdentity } from '../types/library';
 
 /**
  * Every server call that curates findings. Nothing else in the app may hold one of
@@ -30,9 +30,15 @@ export class FindingActionError extends Error {
 }
 
 /**
- * The context shape the curation endpoints return. Deliberately NOT FindingContext:
- * none of them send `occurrences` back, so a response can never rebuild the findings
- * grid and the caller has to refetch the section for a correct view.
+ * The context shape most curation endpoints return. Deliberately NOT FindingContext:
+ * they send no `occurrences` back, so a response can never rebuild the findings grid
+ * and the caller has to refetch the section for a correct view.
+ *
+ * Three exceptions arrived with the occurrence-level tools, and they are typed as
+ * FindingContext instead: `add_occurrences` and `cluster_to_new_context` return their
+ * target fat, occurrences included, and `create_manual` returns one with an empty
+ * `occurrences` array. The refetch stays mandatory even so - one context was never the
+ * whole grid, and these calls can delete a context elsewhere in it.
  */
 export interface CurationContext {
   id: number;
@@ -64,6 +70,34 @@ export interface RemoveOccurrencesResult {
   /** Contexts the server dropped because they were left empty. */
   deleted_context_ids: number[];
   affected_contexts: CurationContext[];
+}
+
+/**
+ * What the two attach actions return. Not folded into MoveResult: they carry no source
+ * context at all - an orphan has none - and they send the target fat, which squeezing
+ * it into a CurationContext would quietly throw away.
+ */
+export interface ClusterResult {
+  target_context: FindingContext;
+  moved_occurrence_ids: number[];
+  /** Contexts the server dropped because the move emptied them. */
+  deleted_context_ids: number[];
+}
+
+/**
+ * What creating a mention by hand returns.
+ *
+ * `quote_located` is the part worth reading: the server fuzzy-matches the quote against
+ * the block text, and `false` means the occurrence was created all the same but nothing
+ * will highlight. A thing to say out loud, not a failure.
+ */
+export interface OccurrenceCreateResult {
+  status: string;
+  occurrence: FindingOccurrence;
+  quote_located: boolean;
+  /** Null only if neither context key was sent, which this module never does. */
+  target_context: FindingContext | null;
+  context_created: boolean;
 }
 
 /**
@@ -177,6 +211,108 @@ export function removeOccurrences(input: {
   return post<RemoveOccurrencesResult>(`${OCCURRENCE}/remove/`, {
     occurrence_ids: input.occurrenceIds,
     delete_from_block: input.deleteFromBlock,
+  });
+}
+
+/**
+ * Edit one mention's own prose.
+ *
+ * These three are the writable prose fields. `name_probably` is the *context's* field,
+ * not this one - a mention's name is plain `name`. The serializer exposes more than
+ * this, and only what the toolset can actually edit is sent.
+ */
+export function updateOccurrence(id: number, fields: {
+  name: string;
+  quote: string;
+  description: string;
+}): Promise<FindingOccurrence> {
+  return request<FindingOccurrence>(`${OCCURRENCE}/${id}/`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(fields),
+  });
+}
+
+/**
+ * Attach occurrences to a context that already exists.
+ *
+ * Takes orphans as well as occurrences already clustered elsewhere, enforcing same
+ * facet and same section itself and cleaning up any source it empties. That is what
+ * makes it the one path for both "adopt an orphan" and "move this mention":
+ * moveOccurrences is keyed on a source context id, which an orphan does not have.
+ */
+export function addOccurrencesToContext(input: {
+  contextId: number;
+  occurrenceIds: number[];
+}): Promise<ClusterResult> {
+  return post<ClusterResult>(`${CONTEXT}/${input.contextId}/add_occurrences/`, {
+    occurrence_ids: input.occurrenceIds,
+  });
+}
+
+/**
+ * Cluster occurrences into a brand new, unidentified context.
+ *
+ * The sourceless twin of splitContext, which is why an orphan can reach it. Omitting
+ * `name` is allowed: the server falls back to the first occurrence's name, then its
+ * quote.
+ */
+export async function clusterToNewContext(input: {
+  occurrenceIds: number[];
+  name?: string;
+}): Promise<ClusterResult> {
+  const raw = await post<{
+    new_context: FindingContext;
+    moved_occurrence_ids: number[];
+    deleted_context_ids: number[];
+  }>(`${OCCURRENCE}/cluster_to_new_context/`, {
+    occurrence_ids: input.occurrenceIds,
+    ...(input.name ? { name_probably: input.name } : {}),
+  });
+
+  // `new_context` normalised to `target_context`, as splitContext does with its own,
+  // so one branch in the toolset serves both attach actions.
+  return {
+    target_context: raw.new_context,
+    moved_occurrence_ids: raw.moved_occurrence_ids,
+    deleted_context_ids: raw.deleted_context_ids,
+  };
+}
+
+/**
+ * Create a mention the extraction missed.
+ *
+ * `create_manual` rather than a POST to the collection: the CRUD create is read-only
+ * now, so this action is the only way in. The location goes as the book/section/block
+ * triple because the frontend holds no numeric block pk - ContentBlock carries
+ * `path_id`, which is exactly the `block_pi` this wants.
+ *
+ * `facet` is the singular machine name, the same string occurrences report back in
+ * `of_facet`. The endpoint accepts `facet_id` too; the name reads better in a log.
+ */
+export function createOccurrence(input: {
+  machineName: string;
+  sectionPath: string;
+  blockPi: string;
+  facet: string;
+  quote: string;
+  name: string;
+  description: string;
+  /** Attach to this finding, or - when absent - to a new one called `newContextName`. */
+  contextId?: number | null;
+  newContextName?: string;
+}): Promise<OccurrenceCreateResult> {
+  return post<OccurrenceCreateResult>(`${OCCURRENCE}/create_manual/`, {
+    book_mn: input.machineName,
+    section_pf: input.sectionPath,
+    block_pi: input.blockPi,
+    facet: input.facet,
+    quote: input.quote,
+    name: input.name,
+    description: input.description,
+    ...(input.contextId
+      ? { context_id: input.contextId }
+      : { new_context: { name_probably: input.newContextName } }),
   });
 }
 

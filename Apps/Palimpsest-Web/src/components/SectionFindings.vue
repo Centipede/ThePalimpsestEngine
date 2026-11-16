@@ -1,15 +1,24 @@
 <template>
-  <div v-if="hasFindings" class="section-findings">
-    <SelectionBar
-      v-if="isStaff"
-      :count="selected.length"
-      :merge-check="mergeCheck"
-      :remove-check="removeCheck"
-      @merge="showMerge = true"
-      @remove="openRemoveConfirm"
-      @clear="clearSelection"
-    />
+  <!-- Outside the hasFindings guard below: with a block in focus this bar is the only
+       way to create the very first finding in a section, which is exactly the case
+       where there are none to show. -->
+  <FindingsToolbar
+    v-if="isStaff"
+    class="findings-bar"
+    :count="selected.length"
+    :merge-check="mergeCheck"
+    :remove-check="removeCheck"
+    :selectable="hasFindings"
+    :focused-block="focusedBlock"
+    :facet-options="facetOptions"
+    :clear-token="clearToken"
+    @merge="showMerge = true"
+    @remove="openRemoveConfirm"
+    @clear="clearSelection"
+    @add-occurrence="startAddOccurrence"
+  />
 
+  <div v-if="hasFindings" class="section-findings">
     <div class="categories-grid">
       <div v-for="facetGroup in sortedFacets" :key="facetGroup.facetName" class="category-column">
         <p class="category-title">{{ facetGroup.label }}</p>
@@ -64,6 +73,18 @@
     @merged="handleChanged"
   />
 
+  <NewOccurrenceDialog
+    v-model:open="showNewOccurrence"
+    :machine-name="machineName"
+    :section-path="sectionPath"
+    :block="focusedBlock ?? null"
+    :quote="newQuote"
+    :facet="newFacet"
+    :facet-label="newFacetLabel"
+    :contexts="newFacetContexts"
+    @created="handleCreated"
+  />
+
   <ConfirmDialog
     v-model:open="showRemoveConfirm"
     :label="removeLabel"
@@ -105,7 +126,13 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import type { FindingContext, FindingContextMap, FindingOccurrence } from '../types/library';
+import type {
+  ContentBlock,
+  FacetQuery,
+  FindingContext,
+  FindingContextMap,
+  FindingOccurrence,
+} from '../types/library';
 import { useFacetsStore } from '../stores/facets';
 import { useAuth } from '../composables/useAuth';
 import {
@@ -117,8 +144,9 @@ import {
 import { FindingActionError, removeOccurrences } from '../api/findings';
 import FindingContextToolset from './worktools/findings/FindingContextToolset.vue';
 import ContextRow from './worktools/findings/ContextRow.vue';
-import SelectionBar from './worktools/findings/SelectionBar.vue';
+import FindingsToolbar from './worktools/findings/FindingsToolbar.vue';
 import MergeDialog from './worktools/findings/MergeDialog.vue';
+import NewOccurrenceDialog from './worktools/findings/NewOccurrenceDialog.vue';
 import ConfirmDialog from './worktools/ConfirmDialog.vue';
 
 const props = defineProps<{
@@ -126,6 +154,11 @@ const props = defineProps<{
   selectedOccurrence?: FindingOccurrence | null;
   activeFacetTypes?: Set<string>;
   openFindingIds: Record<number, boolean>;
+  /** Needed by the create call, which is addressed to one block. */
+  machineName: string;
+  sectionPath: string;
+  /** The single block the URL is focused on; without one, nothing can be added. */
+  focusedBlock?: ContentBlock | null;
 }>();
 
 const facetsStore = useFacetsStore();
@@ -238,6 +271,50 @@ const facetLabel = (facetKey: string) =>
 
 const mergeCheck = computed(() => canMerge(selected.value, facetLabel));
 const removeCheck = computed(() => canRemoveSelection(selected.value));
+
+/* ------------------------------------------------------------ a new occurrence */
+
+const showNewOccurrence = ref(false);
+const newQuote = ref('');
+const newFacet = ref('');
+
+/** Bumped only once the mention exists, so a failed attempt keeps the typing. */
+const clearToken = ref(0);
+
+/**
+ * Every facet the library defines, not only the ones this section already has findings
+ * for: the point of adding by hand is the facet the gather missed entirely. Already
+ * fetched - SectionDetailView awaits fetchFacetQueries inside fetchSection.
+ */
+const facetOptions = computed<FacetQuery[]>(() =>
+  [...facetsStore.facetQueries].sort((a, b) => a.id - b.id));
+
+const newFacetQuery = computed(() => facetsStore.getFacetBySingularName(newFacet.value));
+
+const newFacetLabel = computed(() => newFacetQuery.value?.name || newFacet.value);
+
+/**
+ * The candidate homes for the new mention: findings of that facet in this section.
+ *
+ * Reached through the plural machine name, since the bucket keys are plural while an
+ * occurrence's facet - the one the toolbar hands up - is singular.
+ */
+const newFacetContexts = computed<FindingContext[]>(() => {
+  const plural = newFacetQuery.value?.machine_name_plural;
+  if (!plural) return [];
+  return [...(props.facets[plural] ?? [])].sort(byName);
+});
+
+function startAddOccurrence(payload: { quote: string; facet: string }) {
+  newQuote.value = payload.quote;
+  newFacet.value = payload.facet;
+  showNewOccurrence.value = true;
+}
+
+function handleCreated() {
+  clearToken.value += 1;
+  handleChanged();
+}
 
 /* --------------------------------------------------------------------- remove */
 
@@ -353,10 +430,22 @@ function handleChanged() {
   text-align: left;
 }
 
+/* The bar sits outside .section-findings so it survives an empty section, and so it
+   carries that block's left alignment itself. */
+.findings-bar {
+  text-align: left;
+}
+
 .categories-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 1.5rem;
+}
+
+/* A grid item's own min-width:auto would let a long finding name widen the track past
+   its 1fr share; the ellipsis in ContextRow only works if the column can shrink. */
+.category-column {
+  min-width: 0;
 }
 
 .category-title {

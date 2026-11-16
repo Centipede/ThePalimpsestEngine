@@ -22,7 +22,7 @@
           @keydown.stop
           @sl-change="emit('toggle-select', context.id, ($event.target as HTMLInputElement).checked)"
         ></sl-checkbox>
-        <span class="summary-text">{{ symbol }} {{ context.name }}</span>
+        <span class="summary-text" :title="context.name">{{ symbol }} {{ context.name }}</span>
       </span>
       <sl-icon-button
         v-if="isStaff"
@@ -112,6 +112,15 @@ const emit = defineEmits<{
   cursor: pointer;
 }
 
+/* The chain that lets a long name ellipsise instead of growing the row: every flex and
+   grid ancestor between the text and the column defaults to min-width:auto, which is
+   "never shrink below my content". The summary part is sl-details' own flex item, so it
+   has to be reached through ::part. Without this the name shoulders the gear button out
+   of the column and over the next one, where it cannot be clicked. */
+.entity-details::part(summary) {
+  min-width: 0;
+}
+
 .entity-details::part(header):hover {
   background-color: var(--sl-color-neutral-100);
 }
@@ -129,7 +138,6 @@ const emit = defineEmits<{
   gap: 0.25rem;
 }
 
-/* min-width:0 so the name truncates instead of shouldering the gear out of the column. */
 .summary-label {
   display: flex;
   align-items: center;

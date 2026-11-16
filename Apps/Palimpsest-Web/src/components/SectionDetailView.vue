@@ -229,7 +229,22 @@
           :essentials="data?.section.essentials"
       />
       <SectionOutline v-if="showSegmentsOverview && data.section.essentials?.outline?.segments" :outline="data.section.essentials.outline.segments"/>
-      <SectionFindings v-if="showEntities && Object.keys(sectionContexts).length" :facets="sectionContexts" v-model:open-finding-ids="openFindingIds" :selected-occurrence="selectedOccurrence" :active-facet-types="activeFacetTypes" @refresh="fetchSection" @jump-to-block="handleJumpToBlock"/>
+      <!-- The focusedBlock half of the guard matters: a section with no findings at all
+           used to render no panel, and so offered no way to create the first one. -->
+      <SectionFindings v-if="showEntities && (Object.keys(sectionContexts).length || focusedBlock)" :facets="sectionContexts" v-model:open-finding-ids="openFindingIds" :selected-occurrence="selectedOccurrence" :active-facet-types="activeFacetTypes" :machine-name="props.machineName" :section-path="props.sectionPath" :focused-block="focusedBlock" @refresh="fetchSection" @jump-to-block="handleJumpToBlock"/>
+
+      <!-- One instance for the whole section, reachable from both the paragraph list
+           and the single-block route, which is why it is hosted here rather than in
+           SectionFindings or ContentBlockView. -->
+      <FindingOccurrenceToolset
+          v-model:open="showOccurrenceTools"
+          :occurrence="toolsetOccurrence"
+          :context="toolsetContext"
+          :candidate-contexts="toolsetCandidates"
+          :facet-label="toolsetFacet?.name ?? null"
+          :block-text="toolsetBlockText"
+          @changed="fetchSection"
+      />
 
       <CorpusStudyDialog
           v-model:open="corpusDialog.open"
@@ -282,7 +297,16 @@
       </header>
 
       <article class="section-study__content">
-        <router-view v-if="route.params.block_id"></router-view>
+        <!-- Destructured slot rather than a bare router-view, the same way
+             BookDetailView passes bookStructure down: the block route's mention events
+             have to reach the toolset hosted here. -->
+        <router-view v-if="route.params.block_id" v-slot="{ Component }">
+          <component
+              :is="Component"
+              @occurrence-selected="handleOccurrenceSelected"
+              @open-occurrence-tools="openOccurrenceToolset"
+          />
+        </router-view>
         <template v-else>
           <template v-if="organiseMode === 'linear'">
             <ContentBlockView
@@ -299,6 +323,7 @@
                 :border-color="blockBorderColors[index]"
                 :block-link="getBlockLink(block.path_id)"
                 @occurrence-selected="handleOccurrenceSelected"
+                @open-occurrence-tools="openOccurrenceToolset"
             />
           </template>
 
@@ -347,6 +372,7 @@
                         :border-color="blockBorderColors[entry.index]"
                         :block-link="getBlockLink(entry.block.path_id)"
                         @occurrence-selected="handleOccurrenceSelected"
+                        @open-occurrence-tools="openOccurrenceToolset"
                     />
                   </template>
                 </div>
@@ -368,6 +394,7 @@
                     :border-color="blockBorderColors[entry.index]"
                     :block-link="getBlockLink(entry.block.path_id)"
                     @occurrence-selected="handleOccurrenceSelected"
+                    @open-occurrence-tools="openOccurrenceToolset"
                 />
               </div>
             </div>
@@ -388,7 +415,9 @@ import {apiFetch} from '../api';
 import type {
   SectionContentResponse,
   BookStructure,
+  ContentBlock,
   Section,
+  FindingContext,
   FindingOccurrence,
   ActiveFindingContext,
   FacetQuery,
@@ -399,6 +428,7 @@ import SectionNoteView from './studynotes/SectionNoteView.vue';
 import SectionInformation from './SectionInformation.vue';
 import SectionOutline from './SectionOutline.vue';
 import SectionFindings from './SectionFindings.vue';
+import FindingOccurrenceToolset from './worktools/findings/FindingOccurrenceToolset.vue';
 import ContentBlockView from './ContentBlockView.vue';
 import TableOfContents from './TableOfContents.vue';
 import CorpusStudyDialog from './corpus/CorpusStudyDialog.vue';
@@ -554,6 +584,73 @@ const usedFacetTypes = computed<Set<string>>(() => {
  * synthesised into contexts here.
  */
 const sectionContexts = computed<FindingContextMap>(() => data.value?.section.findings?.contexts ?? {});
+
+/* ---------------------------------------------- the one block a URL can focus on */
+
+/**
+ * The block the /content/:block_id route is pointed at, or null in the section view.
+ *
+ * Resolved here rather than in ContentBlockDetailView because the findings bar needs it
+ * too, and the bar lives in a panel that stays mounted around that route.
+ */
+const focusedBlock = computed<ContentBlock | null>(() => {
+  const pathId = route.params.block_id as string | undefined;
+  if (!pathId) return null;
+  return data.value?.contents.find(b => b.path_id === pathId) ?? null;
+});
+
+/* ------------------------------------------------- the one-mention toolset */
+
+/**
+ * Held as an id rather than as the occurrence: a refetch replaces every object in the
+ * payload, and a dialog pointed at the old one would be editing a ghost. The same
+ * reason SectionFindings holds selectedContextId.
+ */
+const occurrenceToolsId = ref<number | null>(null);
+const showOccurrenceTools = ref(false);
+
+const toolsetOccurrence = computed<FindingOccurrence | null>(() =>
+  (data.value?.contents ?? [])
+    .flatMap(block => block.findings?.occurrences ?? [])
+    .find(occ => occ.id === occurrenceToolsId.value) ?? null);
+
+const toolsetFacet = computed<FacetQuery | undefined>(() => {
+  const singular = toolsetOccurrence.value?.of_facet;
+  return singular ? facetsStore.getFacetBySingularName(singular) : undefined;
+});
+
+/** The finding it currently sits in. Null for an orphan, which is the interesting case. */
+const toolsetContext = computed<FindingContext | null>(() => {
+  const contextId = toolsetOccurrence.value?.of_context;
+  if (!contextId) return null;
+  return Object.values(sectionContexts.value).flat().find(c => c.id === contextId) ?? null;
+});
+
+/**
+ * Where it may go: findings of its own facet in this section, which satisfies the
+ * server's same-facet and same-section rules by construction. Mapped singular to plural
+ * because the buckets are keyed plural while an occurrence's of_facet is singular.
+ */
+const toolsetCandidates = computed<FindingContext[]>(() => {
+  const plural = toolsetFacet.value?.machine_name_plural;
+  if (!plural) return [];
+  return (sectionContexts.value[plural] ?? [])
+    .filter(c => c.id !== toolsetOccurrence.value?.of_context)
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true }));
+});
+
+/** Its own paragraph's text, so the toolset can warn about an unfindable quote. */
+const toolsetBlockText = computed<string>(() => {
+  const pathId = toolsetOccurrence.value?.in_block_pi;
+  if (!pathId) return '';
+  return data.value?.contents.find(b => b.path_id === pathId)?.content_text ?? '';
+});
+
+function openOccurrenceToolset(occ: FindingOccurrence) {
+  occurrenceToolsId.value = occ.id;
+  showOccurrenceTools.value = true;
+}
 
 const activeFindingContexts = computed<ActiveFindingContext[]>(() => {
   const active: ActiveFindingContext[] = [];

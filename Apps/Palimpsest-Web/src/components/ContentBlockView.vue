@@ -75,10 +75,20 @@
                     v-for="occurrence in group.occurrences"
                     :key="occurrence.id"
                     class="finding-occurrence-link"
+                    :class="{ 'finding-occurrence-link--unfiled': isStaff && occurrence.of_context === null }"
                     :title="`${occurrence.description}\n\n${occurrence.quote}`"
                     @click="emit('occurrence-selected', occurrence)"
                 >
-                  <span v-if="group.facet" class="finding-occurrence-icon">{{ group.facet.symbol }}</span>
+                  <!-- Staff get the symbol as its own handle, so the two clicks a
+                       mention now carries stay apart: the symbol opens the mention's
+                       toolset, the name still opens its finding in the panel. -->
+                  <span
+                      v-if="group.facet && isStaff"
+                      class="finding-occurrence-icon finding-occurrence-icon--tool"
+                      :title="`Tools for this mention${occurrence.of_context === null ? ' (in no finding yet)' : ''}`"
+                      @click.stop="emit('open-occurrence-tools', occurrence)"
+                  >{{ group.facet.symbol }}</span>
+                  <span v-else-if="group.facet" class="finding-occurrence-icon">{{ group.facet.symbol }}</span>
                   {{ occurrence.name }}{{ ' ' }}
                 </span>
               </i>
@@ -139,6 +149,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'occurrence-selected', occurrence: FindingOccurrence): void;
+  /** Staff asked for the one-mention toolset, by clicking the facet symbol. */
+  (e: 'open-occurrence-tools', occurrence: FindingOccurrence): void;
 }>();
 
 const themeStore = useThemeStore();
@@ -342,6 +354,27 @@ const segments = computed(() => {
 .finding-occurrence-icon {
   margin-right: 0.1rem;
   font-style: normal;
+}
+
+/* Staff only, and deliberately not a second glyph: the strip is already a crowd of
+   symbols, so the mention that was never clustered is marked by how it is drawn
+   rather than by something extra to read. */
+.finding-occurrence-link--unfiled {
+  color: var(--sl-color-neutral-500);
+  text-decoration: underline dashed var(--sl-color-warning-500);
+  text-underline-offset: 0.15em;
+}
+
+.finding-occurrence-link--unfiled:hover {
+  text-decoration: underline dashed var(--sl-color-warning-600);
+}
+
+.finding-occurrence-icon--tool {
+  cursor: pointer;
+}
+
+.finding-occurrence-icon--tool:hover {
+  filter: brightness(1.4);
 }
 
 .block-content {

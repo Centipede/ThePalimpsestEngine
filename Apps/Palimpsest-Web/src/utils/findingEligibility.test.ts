@@ -1,14 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import {
+    canAttachOccurrence,
+    canClusterToNew,
+    canCreateOccurrence,
+    canDeleteOccurrence,
     canMerge,
     canMoveOccurrences,
     canRemoveContext,
     canRemoveSelection,
     canSplit,
+    canStartOccurrence,
     identityQid,
     isIdentified,
     mergeCandidateKeepIds,
     mergeTarget,
+    quoteWarning,
     suggestMergedName,
     visibleSelection,
     type SelectedContext,
@@ -379,5 +385,242 @@ describe('visibleSelection', () => {
         const kept = visibleSelection(original, [sel(context(1))]);
         expect(original.size).toBe(2);
         expect(kept).not.toBe(original);
+    });
+});
+
+/* ------------------------------------------------- the occurrence-level rules */
+
+const PARAGRAPH = 'Ada Lovelace wrote the notes on the Analytical Engine.';
+
+/** An occurrence as a block payload delivers one: with a facet, and maybe a home. */
+function mention(
+    id: number,
+    opts: { facet?: string; contextId?: number | null; quote?: string } = {},
+): FindingOccurrence {
+    return {
+        ...occurrence(id),
+        of_facet: opts.facet,
+        of_context: opts.contextId ?? null,
+        quote: opts.quote ?? `quote ${id}`,
+    };
+}
+
+describe('quoteWarning', () => {
+    it('says nothing about an empty quote', () => {
+        expect(quoteWarning(PARAGRAPH, '')).toBe('');
+        expect(quoteWarning(PARAGRAPH, '   ')).toBe('');
+    });
+
+    it('says nothing when there is no paragraph to check against', () => {
+        expect(quoteWarning('', 'Ada Lovelace')).toBe('');
+    });
+
+    it('says nothing when the quote is in the paragraph', () => {
+        expect(quoteWarning(PARAGRAPH, 'Ada Lovelace')).toBe('');
+    });
+
+    it('warns when the highlighter will not find the quote', () => {
+        expect(quoteWarning(PARAGRAPH, 'Charles Babbage designed it')).toContain('not in this paragraph');
+    });
+
+    it('accepts a quote elided with an ellipsis, as the highlighter does', () => {
+        expect(quoteWarning(PARAGRAPH, 'Ada Lovelace ... Analytical Engine')).toBe('');
+    });
+});
+
+describe('canStartOccurrence', () => {
+    it('refuses an empty quote', () => {
+        const check = canStartOccurrence({ quote: '  ', facet: 'person', blockText: PARAGRAPH });
+        expect(check.ok).toBe(false);
+        expect(check.reason).toContain('Paste the words');
+    });
+
+    it('refuses a missing facet', () => {
+        const check = canStartOccurrence({ quote: 'Ada Lovelace', facet: '', blockText: PARAGRAPH });
+        expect(check.ok).toBe(false);
+        expect(check.reason).toContain('kind of finding');
+    });
+
+    it('asks for the quote before the facet', () => {
+        // Both are missing; the quote is the field the librarian starts in.
+        const check = canStartOccurrence({ quote: '', facet: '', blockText: PARAGRAPH });
+        expect(check.reason).toContain('Paste the words');
+    });
+
+    it('allows a quote that is in the paragraph, with nothing to add', () => {
+        const check = canStartOccurrence({ quote: 'Ada Lovelace', facet: 'person', blockText: PARAGRAPH });
+        expect(check).toEqual({ ok: true, reason: '' });
+    });
+
+    it('allows a quote that is not, and warns instead', () => {
+        const check = canStartOccurrence({
+            quote: 'Charles Babbage designed it',
+            facet: 'person',
+            blockText: PARAGRAPH,
+        });
+        expect(check.ok).toBe(true);
+        expect(check.warning).toContain('not in this paragraph');
+    });
+});
+
+describe('canCreateOccurrence', () => {
+    const base = {
+        quote: 'Ada Lovelace',
+        facet: 'person',
+        name: 'Ada Lovelace',
+        blockText: PARAGRAPH,
+        contextId: null,
+        newName: 'Ada Lovelace',
+    };
+
+    it('inherits the quote and facet refusals', () => {
+        expect(canCreateOccurrence({ ...base, quote: '' }).reason).toContain('Paste the words');
+        expect(canCreateOccurrence({ ...base, facet: '' }).reason).toContain('kind of finding');
+    });
+
+    it('refuses a mention with no name', () => {
+        const check = canCreateOccurrence({ ...base, name: '  ' });
+        expect(check.ok).toBe(false);
+        expect(check.reason).toContain('name');
+    });
+
+    it('refuses when no finding has been chosen or named', () => {
+        const check = canCreateOccurrence({ ...base, contextId: null, newName: '' });
+        expect(check.ok).toBe(false);
+        expect(check.reason).toContain('name a new one');
+    });
+
+    it('allows an existing finding as the destination', () => {
+        expect(canCreateOccurrence({ ...base, contextId: 12, newName: '' })).toEqual({ ok: true, reason: '' });
+    });
+
+    it('allows a named new finding as the destination', () => {
+        expect(canCreateOccurrence(base)).toEqual({ ok: true, reason: '' });
+    });
+
+    it('carries the quote warning through to an allowed create', () => {
+        const check = canCreateOccurrence({ ...base, quote: 'Charles Babbage designed it' });
+        expect(check.ok).toBe(true);
+        expect(check.warning).toContain('not in this paragraph');
+    });
+});
+
+describe('canAttachOccurrence', () => {
+    it('asks for a destination', () => {
+        const check = canAttachOccurrence({ occurrence: mention(1), to: null });
+        expect(check.ok).toBe(false);
+        expect(check.reason).toContain('Pick the finding');
+    });
+
+    it('refuses the finding the mention is already in', () => {
+        const check = canAttachOccurrence({
+            occurrence: mention(1, { contextId: 5 }),
+            to: context(5),
+        });
+        expect(check.ok).toBe(false);
+        expect(check.reason).toContain('already in that finding');
+    });
+
+    it('refuses a facet mismatch when both facets are known', () => {
+        const check = canAttachOccurrence({
+            occurrence: mention(1, { facet: 'person' }),
+            to: context(5),
+            targetFacet: 'place',
+        });
+        expect(check.ok).toBe(false);
+        expect(check.reason).toContain('its own kind');
+    });
+
+    it('does not invent a mismatch when either facet is unknown', () => {
+        expect(canAttachOccurrence({
+            occurrence: mention(1),
+            to: context(5),
+            targetFacet: 'place',
+        }).ok).toBe(true);
+
+        expect(canAttachOccurrence({
+            occurrence: mention(1, { facet: 'person' }),
+            to: context(5),
+        }).ok).toBe(true);
+    });
+
+    /**
+     * The refusal canMoveOccurrences has and this one deliberately lacks: add_occurrences
+     * takes a mention out of any context, so one path serves the orphan and the move.
+     */
+    it('allows a mention that already belongs to another finding', () => {
+        const check = canAttachOccurrence({
+            occurrence: mention(1, { contextId: 7 }),
+            to: context(5),
+        });
+        expect(check).toEqual({ ok: true, reason: '' });
+    });
+
+    it('allows an orphan in, with nothing to add', () => {
+        expect(canAttachOccurrence({ occurrence: mention(1), to: context(5) }))
+            .toEqual({ ok: true, reason: '' });
+    });
+
+    it('warns when the mention is the last one in the finding it leaves', () => {
+        const from = context(5, { name: 'Ada', occurrences: 1 });
+        const check = canAttachOccurrence({
+            occurrence: from.occurrences[0],
+            to: context(6),
+            from,
+        });
+        expect(check.ok).toBe(true);
+        expect(check.warning).toContain('only mention');
+        expect(check.warning).toContain('Ada');
+    });
+});
+
+describe('canClusterToNew', () => {
+    it('never refuses: a new finding has nothing to clash with', () => {
+        expect(canClusterToNew({ occurrence: mention(1) })).toEqual({ ok: true, reason: '' });
+        expect(canClusterToNew({ occurrence: mention(1, { contextId: 7 }), from: context(7) }))
+            .toEqual({ ok: true, reason: '' });
+    });
+
+    it('warns when the mention is the last one in the finding it leaves', () => {
+        const from = context(5, { name: 'Ada', occurrences: 1 });
+        const check = canClusterToNew({ occurrence: from.occurrences[0], from });
+        expect(check.ok).toBe(true);
+        expect(check.warning).toContain('only mention');
+    });
+
+    /**
+     * The identity doctrine canMoveOccurrences set: emptying a linked finding by moving
+     * its last mention out is stated, not forbidden. Only a removal refuses that.
+     */
+    it('still allows it when the finding it empties is linked', () => {
+        const from = context(5, { name: 'Ada', qid: 'Q7259', occurrences: 1 });
+        expect(canClusterToNew({ occurrence: from.occurrences[0], from }).ok).toBe(true);
+    });
+});
+
+describe('canDeleteOccurrence', () => {
+    it('allows an orphan with nothing to say', () => {
+        expect(canDeleteOccurrence({ occurrence: mention(1) })).toEqual({ ok: true, reason: '' });
+    });
+
+    it('allows one mention among several with nothing to say', () => {
+        const home = context(5);
+        expect(canDeleteOccurrence({ occurrence: home.occurrences[0], context: home }))
+            .toEqual({ ok: true, reason: '' });
+    });
+
+    it('warns that the finding goes too when it is the only mention', () => {
+        const home = context(5, { name: 'Ada', occurrences: 1 });
+        const check = canDeleteOccurrence({ occurrence: home.occurrences[0], context: home });
+        expect(check.ok).toBe(true);
+        expect(check.warning).toContain('will be deleted too');
+    });
+
+    it('refuses when deleting it would take a linked finding with it', () => {
+        // The same rule canRemoveContext enforces, reached from the other end.
+        const home = context(5, { name: 'Ada', qid: 'Q7259', occurrences: 1 });
+        const check = canDeleteOccurrence({ occurrence: home.occurrences[0], context: home });
+        expect(check.ok).toBe(false);
+        expect(check.reason).toContain('Unlink');
     });
 });
