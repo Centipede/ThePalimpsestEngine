@@ -34,6 +34,12 @@ export interface Book {
     by_author1: number | null;
     by_author2: number | null;
     by_author3: number | null;
+    /**
+     * Every author of the book. The by_author/by_author1..3 quartet above is the
+     * older, positional form of the same relation and is still read elsewhere;
+     * prefer this one via bookAuthorIds() in utils/bookGrouping.ts.
+     */
+    by_authors: number[];
     topics: number[];
     facet_applications: FacetApplication[];
     facet_applications_cascaded: FacetApplication[];
@@ -236,6 +242,8 @@ export interface EssentialApplication {
 
 export interface FacetApplication {
     id: number;
+    /** A switched-off application: present in the payload, counts for nothing. */
+    disable: boolean;
     facet: number | null;
     book: number | null;
     topic: number | null;

@@ -49,6 +49,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useLibraryStore } from '../../../../stores/library';
+import { bookAuthorIds } from '../../../../utils/bookGrouping';
 import type { Book } from '../../../../types/library';
 
 const props = withDefaults(defineProps<{
@@ -78,9 +79,10 @@ onMounted(() => {
 const filteredBooks = computed(() => {
   let books = libraryStore.books;
 
-  // Filter by author if any selected
+  // Filter by author if any selected. Matches any of the book's authors, so
+  // picking a co-author keeps the book visible here as well as in the book list.
   if (props.authorIds.length > 0) {
-    books = books.filter(b => props.authorIds.includes(b.by_author));
+    books = books.filter(b => bookAuthorIds(b).some(id => props.authorIds.includes(id)));
   }
 
   const query = searchQuery.value.toLowerCase().trim();

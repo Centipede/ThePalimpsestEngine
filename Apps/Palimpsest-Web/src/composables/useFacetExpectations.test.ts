@@ -33,6 +33,7 @@ function facet(id: number, plural: string, singular: string): FacetQuery {
 function application(facetId: number, flags: Partial<FacetApplication> = {}): FacetApplication {
     return {
         id: facetId * 100,
+        disable: false,
         facet: facetId,
         book: 1,
         topic: null,

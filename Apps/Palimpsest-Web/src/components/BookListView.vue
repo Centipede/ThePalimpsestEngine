@@ -4,8 +4,47 @@
       <h1 class="book-browser__heading">Books</h1>
       <span class="book-browser__count">
         {{ shownBookCount }}<template v-if="hasFilters"> of {{ store.books.length }}</template>
-        {{ shownBookCount === 1 ? 'book' : 'books' }}
+        <!-- "1 of 8 books": with a total alongside it, the noun follows the total. -->
+        {{ shownBookCount === 1 && !hasFilters ? 'book' : 'books' }}
       </span>
+
+      <div class="book-browser__controls">
+        <div class="book-browser__control">
+          <span class="book-browser__control-label">Group</span>
+          <sl-select
+            class="book-browser__select"
+            size="small"
+            hoist
+            :value="groupMode"
+            @sl-change="groupMode = selectValue($event) as GroupMode"
+          >
+            <sl-option value="author">Author</sl-option>
+            <sl-option value="topic">Topic</sl-option>
+          </sl-select>
+        </div>
+
+        <div class="book-browser__control">
+          <span class="book-browser__control-label">Sort</span>
+          <sl-select
+            class="book-browser__select"
+            size="small"
+            hoist
+            :value="sortMode"
+            @sl-change="sortMode = selectValue($event) as SortMode"
+          >
+            <sl-option value="published">Published</sl-option>
+            <sl-option value="title">Title</sl-option>
+          </sl-select>
+          <sl-tooltip :content="directionHint" hoist>
+            <sl-icon-button
+              :name="sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'"
+              :label="directionHint"
+              @click="toggleSortDirection"
+            ></sl-icon-button>
+          </sl-tooltip>
+        </div>
+      </div>
+
       <sl-button
         v-if="hasFilters"
         size="small"
@@ -58,67 +97,67 @@
           class="book-list__scroller"
           @scroll="saveScroll(scrollerEl)"
         >
-          <p v-if="filteredBooksByAuthor.length === 0" class="book-list__status">
+          <p v-if="visibleGroups.length === 0" class="book-list__status">
             No books match the current filters.
           </p>
 
           <section
-              v-for="group in filteredBooksByAuthor"
-              :key="group.author"
+              v-for="group in visibleGroups"
+              :key="group.key"
               class="book-list__group"
           >
-            <h2 class="book-list__author">{{ group.author }}</h2>
+            <h2 class="book-list__group-heading">{{ group.label }}</h2>
 
             <article
                 v-for="book in group.books"
-                :key="book.id"
+                :key="`${group.key}:${book.id}`"
                 class="book-list__item"
             >
               <img
-                  :src="book.thumbnail_url || book.thumbnail_local || '#'"
+                  v-if="thumbnailFor(book)"
+                  :src="thumbnailFor(book)"
                   :alt="book.title"
                   class="book-list__thumbnail"
               />
+              <span v-else class="book-list__thumbnail book-list__thumbnail--empty" aria-hidden="true"></span>
 
               <div class="book-list__details">
-                <h3 class="book-list__title">
-                  <span v-if="publishedYear(book.published)">
+                <p class="book-list__line">
+                  <span v-if="publishedYear(book.published)" class="book-list__year">
                     ({{ publishedYear(book.published) }})
                   </span>
-                  {{ book.title }}
-                </h3>
-
-                <p class="book-list__machine-name">
-                  {{ book.machine_name }}
+                  <span class="book-list__title">{{ book.title }}</span>
+                  <span class="book-list__machine-name">{{ book.machine_name }}</span>
+                  <!-- Grouping by topic drops the author heading, so name the author here instead. -->
+                  <span v-if="groupMode === 'topic' && authorNames(book)" class="book-list__author">
+                    {{ authorNames(book) }}
+                  </span>
                 </p>
 
-                <div v-if="book.topics && book.topics.length > 0" class="book-list__topics">
-                  <sl-tag
+                <p
+                  v-if="book.topics?.length || facetsFor(book).length"
+                  class="book-list__chips"
+                >
+                  <sl-tooltip
                     v-for="topicId in book.topics"
-                    :key="topicId"
-                    size="small"
-                    variant="neutral"
-                    class="topic-tag"
+                    :key="`topic-${topicId}`"
+                    :content="topicPath(topicId)"
+                    hoist
                   >
-                    {{ getTopicPath(topicId) }}
-                  </sl-tag>
-                  <sl-icon-button
-                    v-if="isStaff"
-                    name="pencil"
-                    label="Edit Topics"
-                    @click="openEditTopics(book)"
-                  ></sl-icon-button>
-                </div>
-                <div v-else-if="isStaff" class="book-list__topics">
-                  <sl-button
-                    variant="default"
-                    size="small"
-                    @click="openEditTopics(book)"
+                    <sl-tag size="small" variant="neutral" class="book-list__chip">
+                      {{ topicName(topicId) }}
+                    </sl-tag>
+                  </sl-tooltip>
+
+                  <sl-tooltip
+                    v-for="facet in facetsFor(book)"
+                    :key="`facet-${facet.id}`"
+                    :content="facet.name"
+                    hoist
                   >
-                    <sl-icon slot="prefix" name="plus"></sl-icon>
-                    Add Topics
-                  </sl-button>
-                </div>
+                    <span class="book-list__facet">{{ facet.symbol }}</span>
+                  </sl-tooltip>
+                </p>
               </div>
 
               <nav class="book-list__actions" aria-label="Book actions">
@@ -129,22 +168,6 @@
         </div>
       </div>
     </div>
-
-    <sl-dialog
-      ref="dialog"
-      label="Edit Book Topics"
-      class="edit-topics-dialog"
-    >
-      <div v-if="editingBook">
-        <p>Managing topics for <strong>{{ editingBook.title }}</strong></p>
-        <TopicSelector
-          :selectedIds="editingBook.topics"
-          mode="filter"
-          @update:selectedIds="handleUpdateTopics"
-        />
-      </div>
-      <sl-button slot="footer" variant="primary" @click="dialog?.hide()">Done</sl-button>
-    </sl-dialog>
   </div>
 </template>
 
@@ -153,17 +176,25 @@ import { onMounted, nextTick, ref, computed, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useLibraryStore } from '../stores/library';
-import { useAuth } from '../composables/useAuth';
+import { useFacetsStore } from '../stores/facets';
 import { useBookListUiState } from '../composables/useBookListUiState';
+import {
+  bookAuthorIds,
+  groupBooks,
+  publishedYear,
+  sortBooks,
+  type GroupMode,
+  type SortMode,
+} from '../utils/bookGrouping';
+import { facetsForBook } from '../utils/bookFacets';
 import type { Book } from '../types/library';
 import TopicSelector from './corpus/panels/pickingpanels/TopicSelector.vue';
 import AuthorSelector from './corpus/panels/pickingpanels/AuthorSelector.vue';
 import BookSelector from './corpus/panels/pickingpanels/BookSelector.vue';
 
 const store = useLibraryStore();
-const { isStaff } = useAuth();
+const facetsStore = useFacetsStore();
 const {
-  booksByAuthor,
   isLoadingBooks: loading,
   error
 } = storeToRefs(store);
@@ -172,17 +203,18 @@ const {
   selectedTopicIds,
   selectedAuthorIds,
   selectedBookIds,
+  groupMode,
+  sortMode,
+  sortDirection,
   saveScroll,
   restoreScroll,
   clearSelections,
 } = useBookListUiState();
 
-const editingBook = ref<Book | null>(null);
-const dialog = ref<any>(null);
 const scrollerEl = ref<HTMLElement | null>(null);
 
-// Only take over the column while there is nothing to show: a topic edit also
-// flips isLoadingBooks, and blanking the list would throw away the reader's place.
+// Only take over the column while there is nothing to show: a background refetch
+// also flips isLoadingBooks, and blanking the list would throw away the reader's place.
 const showLoading = computed(() => loading.value && store.books.length === 0);
 const showError = computed(() => !!error.value && store.books.length === 0);
 
@@ -209,36 +241,85 @@ const impliedTopicIds = computed(() => {
   return [...effectiveTopicIds.value].filter((id) => !explicit.has(id));
 });
 
-const filteredBooksByAuthor = computed(() => {
+/** One entry per book, before grouping fans any of them out across several groups. */
+const filteredBooks = computed(() => {
   const topicIds = effectiveTopicIds.value;
   const authorIds = selectedAuthorIds.value;
   const bookIds = selectedBookIds.value;
 
   if (topicIds.size === 0 && authorIds.length === 0 && bookIds.length === 0) {
-    return booksByAuthor.value;
+    return store.books;
   }
 
-  return booksByAuthor.value
-    .map(group => ({
-      ...group,
-      books: group.books.filter(book =>
-        (topicIds.size === 0 || book.topics?.some(topicId => topicIds.has(topicId))) &&
-        (authorIds.length === 0 || authorIds.includes(book.by_author)) &&
-        (bookIds.length === 0 || bookIds.includes(book.id))
-      )
-    }))
-    .filter(group => group.books.length > 0);
+  return store.books.filter(book =>
+    (topicIds.size === 0 || book.topics?.some(topicId => topicIds.has(topicId))) &&
+    (authorIds.length === 0 || bookAuthorIds(book).some(id => authorIds.includes(id))) &&
+    (bookIds.length === 0 || bookIds.includes(book.id))
+  );
 });
 
-const shownBookCount = computed(() =>
-  filteredBooksByAuthor.value.reduce((total, group) => total + group.books.length, 0)
+const topicsById = computed(
+  () => new Map(store.flattenedTopics.map((topic) => [topic.id, topic]))
 );
+
+function topicPath(topicId: number): string {
+  return topicsById.value.get(topicId)?.fullPath ?? `Topic ${topicId}`;
+}
+
+/** The leaf name alone: the full path lives in the chip's tooltip, to keep rows narrow. */
+function topicName(topicId: number): string {
+  return topicsById.value.get(topicId)?.name ?? `Topic ${topicId}`;
+}
+
+function authorLabel(authorId: number): string {
+  return store.getAuthorById(authorId)?.abbrev || 'Unknown';
+}
+
+function authorNames(book: Book): string {
+  return bookAuthorIds(book).map(authorLabel).join(', ');
+}
+
+const visibleGroups = computed(() =>
+  groupBooks(filteredBooks.value, groupMode.value, {
+    authorLabel,
+    topicLabel: topicPath,
+  }).map((group) => ({
+    ...group,
+    books: sortBooks(group.books, sortMode.value, sortDirection.value),
+  }))
+);
+
+// Counts books, not rows: grouping can place one book under several headings.
+const shownBookCount = computed(() => filteredBooks.value.length);
 
 const hasFilters = computed(() =>
   selectedTopicIds.value.length > 0 ||
   selectedAuthorIds.value.length > 0 ||
   selectedBookIds.value.length > 0
 );
+
+const directionHint = computed(() => {
+  if (sortMode.value === 'published') {
+    return sortDirection.value === 'asc' ? 'Oldest first' : 'Newest first';
+  }
+  return sortDirection.value === 'asc' ? 'A to Z' : 'Z to A';
+});
+
+function toggleSortDirection() {
+  sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
+}
+
+function selectValue(event: Event): string {
+  return (event.target as HTMLInputElement).value;
+}
+
+function thumbnailFor(book: Book): string {
+  return book.thumbnail_url || book.thumbnail_local || '';
+}
+
+function facetsFor(book: Book) {
+  return facetsForBook(book, facetsStore.getFacetById);
+}
 
 // Picking an author hides other authors' books in the Books column; drop any
 // picked book that is no longer visible there, so it cannot silently empty the list.
@@ -247,7 +328,7 @@ watch(selectedAuthorIds, (authorIds) => {
 
   const stillVisible = selectedBookIds.value.filter((bookId) => {
     const book = store.books.find(b => b.id === bookId);
-    return book ? authorIds.includes(book.by_author) : false;
+    return book ? bookAuthorIds(book).some(id => authorIds.includes(id)) : false;
   });
 
   if (stillVisible.length !== selectedBookIds.value.length) {
@@ -255,40 +336,12 @@ watch(selectedAuthorIds, (authorIds) => {
   }
 });
 
-function getTopicPath(topicId: number): string {
-  const topic = store.flattenedTopics.find(t => t.id === topicId);
-  return topic ? topic.fullPath : `Topic ${topicId}`;
-}
-
-function openEditTopics(book: Book) {
-  editingBook.value = { ...book };
-  dialog.value?.show();
-}
-
-async function handleUpdateTopics(newTopicIds: number[]) {
-  if (editingBook.value) {
-    editingBook.value.topics = newTopicIds;
-    await store.updateBook(editingBook.value.machine_name, { topics: newTopicIds });
-  }
-}
-
-function publishedYear(value: string): string {
-  if (!value) return '';
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value.slice(0, 4);
-  }
-
-  return String(date.getFullYear());
-}
-
 onMounted(async () => {
   await Promise.all([
     store.fetchAuthors(),
     store.fetchBooks(),
     store.fetchTopics(),
+    facetsStore.fetchFacetQueries(),
   ]);
 
   await nextTick();
@@ -305,6 +358,7 @@ onMounted(async () => {
 .book-browser__header {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.75rem;
   margin: 0 0 1rem;
 }
@@ -317,6 +371,31 @@ onMounted(async () => {
 .book-browser__count {
   color: var(--color-text-muted);
   font-size: 0.875rem;
+}
+
+.book-browser__controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.book-browser__control {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.book-browser__control-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.book-browser__select {
+  width: 8.5rem;
 }
 
 .book-browser__columns {
@@ -359,7 +438,7 @@ onMounted(async () => {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 1rem;
+  padding: 0 0.75rem;
   background: var(--color-surface, #fff);
   border: 1px solid var(--color-border);
   border-radius: var(--sl-border-radius-medium);
@@ -375,68 +454,110 @@ onMounted(async () => {
 }
 
 .book-list__group {
-  margin-bottom: 2rem;
+  margin-bottom: 0.75rem;
 }
 
-.book-list__author {
+.book-list__group-heading {
   position: sticky;
   top: 0;
   z-index: 1;
-  margin: 0 0 0.75rem;
-  padding: 0.75rem 0 0.5rem;
-  font-size: 1.25rem;
+  margin: 0;
+  padding: 0.4rem 0 0.25rem;
+  font-size: 0.95rem;
   background: var(--color-surface, #fff);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .book-list__item {
   display: grid;
-  grid-template-columns: 72px 1fr auto;
-  gap: 1rem;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  gap: 0.5rem;
   align-items: center;
-  padding: 1rem 0;
+  padding: 0.25rem 0;
   border-bottom: 1px solid var(--color-border, #ddd);
+  font-size: 0.8rem;
 }
 
 .book-list__thumbnail {
-  width: 72px;
-  height: 96px;
+  width: 32px;
+  height: 44px;
   object-fit: cover;
+  border-radius: var(--sl-border-radius-small);
+  border: 1px solid var(--color-border);
   background: var(--color-bg-muted, #f4f4f4);
+  flex-shrink: 0;
+}
+
+.book-list__thumbnail--empty {
+  display: block;
 }
 
 .book-list__details {
   min-width: 0;
 }
 
-.book-list__title {
+.book-list__line {
   margin: 0;
-  font-size: 1rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.book-list__year {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.book-list__title {
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .book-list__machine-name {
-  margin: 0.25rem 0 0;
   color: var(--color-text-muted, #666);
-  font-size: 0.875rem;
+  font-size: 0.7rem;
+  font-family: var(--sl-font-mono);
 }
 
-.book-list__topics {
-  margin-top: 0.5rem;
+.book-list__author {
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+}
+
+.book-list__chips {
+  margin: 0.1rem 0 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: 0.2rem;
   align-items: center;
 }
 
-.topic-tag::part(base) {
-  font-size: 0.75rem;
-  padding: 0 0.25rem;
+.book-list__chip::part(base) {
+  font-size: 0.65rem;
+  padding: 0 0.3rem;
 }
 
-.edit-topics-dialog::part(body) {
-  min-height: 400px;
-  display: flex;
-  flex-direction: column;
+/*
+ * Facets are symbols, not words, so they get a light pill of their own rather
+ * than sl-badge's filled one: an emoji on a dark fill reads as a smudge at this
+ * size. The shape still differs from the topic tags beside them.
+ */
+.book-list__facet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3rem;
+  padding: 0.05rem 0.3rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-muted);
+  font-size: 0.85rem;
+  line-height: 1.3;
+  cursor: default;
 }
 
 .book-list__actions {
@@ -457,6 +578,10 @@ onMounted(async () => {
   .book-browser__columns {
     flex-direction: column;
     height: auto;
+  }
+
+  .book-browser__controls {
+    margin-left: 0;
   }
 
   .selector-column,
@@ -482,8 +607,13 @@ onMounted(async () => {
     border: none;
   }
 
-  .book-list__author {
+  .book-list__group-heading {
     position: static;
+  }
+
+  /* The one-line row cannot ellipsis itself down to phone width; let it wrap. */
+  .book-list__line {
+    white-space: normal;
   }
 }
 </style>
