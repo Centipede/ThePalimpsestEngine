@@ -62,6 +62,31 @@ To uniquely identify entities across the entire system, a `FindingContext` can b
 2. **To Books**: Books inherit facets from their topics, but specific applications can be adjusted at the book level.
 3. **Scanning**: Admins trigger background jobs to scan chapters/sections for the assigned facets.
 
+### Auto-scanning for similar findings across books and chapters
+
+A dedicated screen must be constructed for the staff that maintains facets.
+A background system scans for candidates for matches between facets found in various chapters.
+The system progresses in a two-level fashion:
+- Nightly scans finds coarse candidates for further examination. Fast and expedient but not very precise.
+- A more thorough scan compares the triaged candidates with the information available in either Wikipedia and/or the existing material. If an AI deems it a good fit for a match (remember, a chapter will not necessarily contain much revealing information), it receives a suitable score and must be adjudicated by a staff member.
+
+For all findings shown in a section (grouped findings, that is), both users and staff must be able to see how many candidate matches the system has found. Users, because they must be able to poke to a staff that they want those tied together.
+
+Present like this: Leopold I (**3**/_72_) ... meaning 3 AI-recommended strong candidates, 72 coarse matches.
+Clicking on that statistics is one way to get to the work area for candidate matches.
+
+### Staff work area
+
+- Tools to select by facet and book and filter by name (broadly inclusive - either the name of the found identity or the candidate identity)
+- Column 1: A list of found identities with facets as section headers. The user selects an already found identity. It expands and the dense summary from the current dense summary of all occurrences is shown along with the summary of the wikipedia article.
+- Column 2: A list of candidates for the selected found identity. The user clicks on a candidate.
+- Column 3: A presentation of reasons for matching (the LLM information) and the occurrences that describe that candidate group/context. The occurrences must contain quotes and descriptions (basically the occurrence list from sections). 
+- The user can accept or reject, or just move on to another.
+- For each found identity, it must be possible to expand and see the list of books/sections that it already is found in. Bssically a list of sections grouped by books. Sections are name+coded path. Next to it must be an arrow allowing to open the section in a new tab. Each section can click-expand to a list of the group occurrences.
+- In this way the user can compare descriptions and quotes from both found and candidate identity.
+
+
+
 ## Implementation Details
 
 ### Data Extraction (Pydantic Scratchpad)

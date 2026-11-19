@@ -23,7 +23,7 @@ To accelerate the implementation of necessary frontend features, the project has
 -   **Frontend Focus:** All coding tasks should be directed at the Vue.js application. Do not attempt to modify or locate backend logic within this repository.
 -   **API Integration:** Develop against the existing Django REST Framework API. Since you cannot access the backend code, rely on existing frontend patterns or request clarification regarding API endpoints and data structures.
 -   **Maintain Flexibility:** The system favors experimentation and extension. Ensure that entity types, tools, and "observables" are configurable and not hard-coded.
--   **OmniGraph Split:** Maintain the intentional split between OmniGraph (structure reconstruction) and Palimpsest (study experience).
+-   **AetherGraph Split:** Maintain the intentional split between AetherGraph (structure reconstruction) and Palimpsest (study experience).
 
 ## Key Constraints to Carry Forward
 

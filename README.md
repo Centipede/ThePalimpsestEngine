@@ -1,15 +1,27 @@
 # The Palimpsest Engine
 
-**Status October 27th 2026: The UI is in daily use, but only running up against the testserver which still is 100% old spaghetti code**
 
 A study environment for people who still need books and paper.
 
 The Palimpsest Engine depends upon its sister project:
 [The AetherGraph Engine](https://github.com/Centipede/TheAethergraphEngine)
 
-**OmniGraph** is a userfriendly but mostly manual tool for rebuilding the chapter structure of scanned books and of repairing OCR.
+**AetherGraph** is a user-friendly but mostly manual tool for rebuilding the chapter structure of scanned books and of repairing OCR.
 
-**Palimpsest** attempts to provide the experience of studying them.
+**Palimpsest** is a small, but growing, project aimed at study of the books that one owns and scans. It is more of a study system than a RAG system.
+
+## Status
+**November 18th 2026: Facets/findings added to the system. Search/selection has been expanded into a node-based system.
+The UI is in daily use, but only running up against the test server (explained later) which still is 100% old spaghetti code.**
+
+## Roadmap
+Two database constructions must be changed before a new Django server will commence development in this project. Round-trip from/to AetherGraph must also work:
+
+1. Sections (chapters) exists as trees under an overarching concept called flows. Now we want to mix flows and sections (parallel and sequential sections) anywhere in the tree.
+2. The old system used page numbers. Must transition to page names (iii, A1, 81).
+3. The system must be hardened to handle export of books/pages/sections to AetherGraph for fixes and rework. Re-import must not change anything not touched. LLM-generated information must not be lost because a book changes section machine names.
+
+
 
 ## Prelude
 
