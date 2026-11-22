@@ -20,6 +20,12 @@ export const ADMIN_TOOLS: AdminTool[] = [
     path: '/admin/facets',
   },
   {
+    key: 'findings',
+    label: 'Findings',
+    icon: 'person-check',
+    path: '/admin/findings',
+  },
+  {
     key: 'topic-assignments',
     label: 'Topic assignments',
     icon: 'ui-checks-grid',

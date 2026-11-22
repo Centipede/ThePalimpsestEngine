@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { readonly, ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { mount } from '@vue/test-utils';
+import { createMemoryHistory, createRouter } from 'vue-router';
 import type { ContentBlock, FindingContext, FindingContextMap, FindingOccurrence } from '../types/library';
 import { useFacetsStore } from '../stores/facets';
 import SectionFindings from './SectionFindings.vue';
@@ -92,6 +93,12 @@ function mountPanel(props: Record<string, unknown> = {}) {
             ...props,
         },
         global: {
+            // The candidate-count chip resolves its own href, so ContextRow needs a
+            // router in scope now even when no finding has any candidates.
+            plugins: [createRouter({
+                history: createMemoryHistory(),
+                routes: [{ path: '/admin/findings', component: { template: '<div />' } }],
+            })],
             config: { compilerOptions: { isCustomElement: (tag: string) => tag.startsWith('sl-') } },
             stubs: {
                 FindingContextToolset: true,
@@ -116,6 +123,52 @@ describe('SectionFindings', () => {
         const wrapper = mountPanel();
         expect(wrapper.findAll('.category-column')).toHaveLength(2);
         expect(rows(wrapper)).toHaveLength(3);
+    });
+
+    it('shows no candidate chip for findings the scan has not reached', () => {
+        // The fixture findings carry no candidate_counts, which is the ordinary case:
+        // the grid must look exactly as it did before the chip existed.
+        expect(mountPanel().find('.chip').exists()).toBe(false);
+    });
+
+    it('shows the candidate chip on a finding that has candidates', async () => {
+        const withCounts: FindingContextMap = {
+            people: [{
+                ...context(1, 'Leopold I'),
+                candidate_counts: { basis: 'identity', of: 17, compared: 3, triage: 72 },
+            }],
+        };
+        const wrapper = mountPanel({ facets: withCounts });
+
+        const chip = wrapper.find('.chip');
+        expect(chip.exists()).toBe(true);
+        expect(chip.text().replace(/\s+/g, '')).toBe('(3/72)');
+        // Staff get the link into the work area, aimed at this identity.
+        expect(chip.attributes('href')).toContain('identity=17');
+
+        /**
+         * The chip sits inside sl-details' summary slot, where it has to stop its click
+         * from reaching the shadow <summary> that would toggle the finding. That cannot
+         * be asserted here - the stub has no shadow root - so what this checks is that
+         * adding the chip did not disturb the selection wiring beside it.
+         */
+        rows(wrapper)[0].vm.$emit('toggle-select', 1, true);
+        await wrapper.vm.$nextTick();
+        expect(wrapper.find('.selection-bar').text()).toContain('1 selected');
+    });
+
+    it('shows an ordinary reader the figures but not a link', () => {
+        isStaff.value = false;
+        const withCounts: FindingContextMap = {
+            people: [{
+                ...context(1, 'Leopold I'),
+                candidate_counts: { basis: 'identity', of: 17, compared: 3, triage: 72 },
+            }],
+        };
+        const chip = mountPanel({ facets: withCounts }).find('.chip');
+        expect(chip.text().replace(/\s+/g, '')).toBe('(3/72)');
+        expect(chip.element.tagName).toBe('SPAN');
+        expect(chip.attributes('title')).toContain('librarian');
     });
 
     it('shows the staff action bar with nothing selected', () => {

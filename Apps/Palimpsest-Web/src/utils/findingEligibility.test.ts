@@ -17,9 +17,12 @@ import {
     quoteWarning,
     suggestMergedName,
     visibleSelection,
+    canAcceptCandidate,
+    canRejectCandidate,
     type SelectedContext,
 } from './findingEligibility';
 import type { FindingContext, FindingOccurrence, FoundIdentity } from '../types/library';
+import type { CandidateBrief } from '../types/identityMatches';
 
 /** An occurrence carrying only what the rules look at: its id. */
 function occurrence(id: number): FindingOccurrence {
@@ -622,5 +625,85 @@ describe('canDeleteOccurrence', () => {
         const check = canDeleteOccurrence({ occurrence: home.occurrences[0], context: home });
         expect(check.ok).toBe(false);
         expect(check.reason).toContain('Unlink');
+    });
+});
+
+/* ------------------------------------------------- identity match adjudication */
+
+/** A candidate carrying only what the two rules look at. */
+function candidate(over: Partial<CandidateBrief> = {}): CandidateBrief {
+    return {
+        id: 890,
+        of_identity: { id: 17, name: 'Leopold I', of_facet: 3 },
+        of_context: { id: 501, name: 'Emperor Leopold', of_facet: 'person', of_identity: null },
+        of_facet: 'person',
+        in_book_mn: 'belu-soconreal',
+        in_section_pf: 'main.part3.ch9',
+        in_book: null,
+        in_section: null,
+        occurrence_count: 3,
+        stage: 'compared',
+        triage_probability: 0.83,
+        probability: 0.91,
+        verdict: 'pending',
+        reasoning_preview: 'Because...',
+        suggested_at: '2026-11-22T10:12:00Z',
+        decided_at: null,
+        ...over,
+    };
+}
+
+describe('canAcceptCandidate', () => {
+    it('allows an undecided candidate whose finding is still unclaimed', () => {
+        expect(canAcceptCandidate(candidate())).toEqual({ ok: true, reason: '' });
+    });
+
+    it('needs a candidate to be selected at all', () => {
+        expect(canAcceptCandidate(null).ok).toBe(false);
+    });
+
+    it('refuses one that has already been decided', () => {
+        const check = canAcceptCandidate(candidate({ verdict: 'rejected' }));
+        expect(check.ok).toBe(false);
+        expect(check.reason).toContain('already been rejected');
+    });
+
+    it('refuses when the finding has been claimed by someone else meanwhile', () => {
+        // The race the server answers with a 400. Saying it before the click is better
+        // than saying it after, and the rival's name is the useful part.
+        const check = canAcceptCandidate(candidate({
+            of_context: {
+                id: 501,
+                name: 'Emperor Leopold',
+                of_facet: 'person',
+                of_identity: { id: 99, name: 'Leopold II', of_facet: 3 },
+            },
+        }));
+        expect(check.ok).toBe(false);
+        expect(check.reason).toContain('Leopold II');
+        expect(check.reason).toContain('Unlink');
+    });
+});
+
+describe('canRejectCandidate', () => {
+    it('allows an undecided candidate', () => {
+        expect(canRejectCandidate(candidate())).toEqual({ ok: true, reason: '' });
+    });
+
+    it('allows one whose finding has been claimed elsewhere', () => {
+        // "Not this one" is precisely the right answer there, and recording it stops the
+        // scan proposing the pair again.
+        expect(canRejectCandidate(candidate({
+            of_context: {
+                id: 501,
+                name: 'Emperor Leopold',
+                of_facet: 'person',
+                of_identity: { id: 99, name: 'Leopold II', of_facet: 3 },
+            },
+        })).ok).toBe(true);
+    });
+
+    it('refuses one that has already been decided', () => {
+        expect(canRejectCandidate(candidate({ verdict: 'accepted' })).ok).toBe(false);
     });
 });

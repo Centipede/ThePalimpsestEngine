@@ -1,4 +1,4 @@
-import { apiFetch } from '../api';
+import { FindingActionError, post, request } from './http';
 import type { FindingContext, FindingOccurrence, FoundIdentity } from '../types/library';
 
 /**
@@ -8,26 +8,15 @@ import type { FindingContext, FindingOccurrence, FoundIdentity } from '../types/
  *
  * All of these are IsAdminUser server-side, which is the same gate as the frontend's
  * `isStaff`. A 400 carries `{ error }` explaining which business rule was broken.
+ *
+ * The identity *matching* work area lives in api/identityMatches.ts - a different
+ * resource family (found-identity, finding-candidate) with its own URLs. The throw-on
+ * -non-2xx layer both modules need now sits in api/http.ts.
  */
 
-const CONTEXT = '/testbooks/api/v1/finding-context';
-const OCCURRENCE = '/testbooks/api/v1/finding-occurrence';
-
-/**
- * A failed curation call. Carries the server's own explanation, because the rules it
- * enforces (same facet, same section, no conflicting identities) are finer-grained
- * than anything the frontend can check from the section payload alone.
- */
-export class FindingActionError extends Error {
-  // Declared rather than a constructor parameter property: `erasableSyntaxOnly` is on.
-  readonly status: number;
-
-  constructor(message: string, status: number) {
-    super(message);
-    this.name = 'FindingActionError';
-    this.status = status;
-  }
-}
+// Re-exported because six components import it from this path, and the error they
+// catch is the same error whichever module threw it.
+export { FindingActionError };
 
 /**
  * The context shape most curation endpoints return. Deliberately NOT FindingContext:
@@ -100,41 +89,8 @@ export interface OccurrenceCreateResult {
   context_created: boolean;
 }
 
-/**
- * The one place that turns a non-2xx into something a dialog can show.
- *
- * apiFetch resolves on 4xx, and the identity calls this file inherited used to do
- * `if (response.ok) { ... }` with no else - a silent no-op. That is tolerable for a
- * lookup and not for a destructive action, so every curation call throws instead.
- */
-async function request<T>(url: string, init: RequestInit): Promise<T> {
-  const res = await apiFetch(url, init);
-  if (res.ok) return await res.json() as T;
-
-  if (res.status === 403) {
-    throw new FindingActionError('Admin permission is required for this action.', 403);
-  }
-
-  let message = `Request failed (HTTP ${res.status}).`;
-  try {
-    const body = await res.json();
-    // DRF's own errors use `detail`; these endpoints use `error`.
-    message = body?.error || body?.detail || message;
-  } catch {
-    // A non-JSON error body (a proxy error page, say) leaves the generic message.
-  }
-  throw new FindingActionError(message, res.status);
-}
-
-function post<T>(url: string, body?: unknown): Promise<T> {
-  return request<T>(url, {
-    method: 'POST',
-    ...(body === undefined ? {} : {
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    }),
-  });
-}
+const CONTEXT = '/testbooks/api/v1/finding-context';
+const OCCURRENCE = '/testbooks/api/v1/finding-occurrence';
 
 /**
  * Fold several contexts into one.
@@ -341,10 +297,6 @@ export function unlinkIdentity(contextId: number): Promise<FindingContext> {
 
 export function retryWikipediaLink(contextId: number): Promise<FindingContext> {
   return post<FindingContext>(`${CONTEXT}/${contextId}/retry_wikipedia_link/`);
-}
-
-export function fetchFoundIdentity(identityId: number): Promise<FoundIdentity> {
-  return request<FoundIdentity>(`/testbooks/api/v1/found-identity/${identityId}`, { method: 'GET' });
 }
 
 export interface WikidataCandidate {

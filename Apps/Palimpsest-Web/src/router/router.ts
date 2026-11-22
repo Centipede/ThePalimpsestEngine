@@ -11,6 +11,7 @@ import ContentBlockDetailView from "../components/ContentBlockDetailView.vue";
 import AdminFacets from "../views/AdminFacets.vue";
 import AdminFacetDetail from "../views/AdminFacetDetail.vue";
 import AdminTopicAssignments from "../views/AdminTopicAssignments.vue";
+import AdminFindings from "../views/AdminFindings.vue";
 
 export const router = createRouter({
     history: createWebHistory(),
@@ -20,6 +21,7 @@ export const router = createRouter({
         children: [
             { path: 'facets', component: AdminFacets },
             { path: 'facets/:id', component: AdminFacetDetail, props: true },
+            { path: 'findings', component: AdminFindings },
             { path: 'topic-assignments', component: AdminTopicAssignments },
         ]},
         { path: '/study', component: StudyHome },

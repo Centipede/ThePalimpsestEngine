@@ -1,4 +1,5 @@
 import type { FindingContext, FindingOccurrence } from '../types/library';
+import type { CandidateBrief, CandidateDetail } from '../types/identityMatches';
 import { searchForFragments } from './text';
 
 /**
@@ -433,4 +434,60 @@ export function visibleSelection(
         if (onScreen.has(id)) next.add(id);
     });
     return next;
+}
+
+/* ------------------------------------------------- identity match adjudication */
+
+/**
+ * Whether a scan candidate can still be accepted.
+ *
+ * Two cases the frontend can see for itself. A decided candidate is simply stale - the
+ * list is filtered to pending, so this only fires on a row left selected while the
+ * decision happened. A candidate whose context has acquired an identity meanwhile is
+ * the real one: the server refuses it with a 400 naming the rival identity, and saying
+ * so before the click is better than saying it after.
+ *
+ * The server stays authoritative. It knows things this cannot - that the context was
+ * deleted, say - so a refusal here is a courtesy and never the only check.
+ */
+export function canAcceptCandidate(
+    candidate: CandidateBrief | CandidateDetail | null,
+): Eligibility {
+    if (!candidate) {
+        return no('Pick a candidate to decide on.');
+    }
+    if (candidate.verdict !== 'pending') {
+        return no(`This candidate has already been ${candidate.verdict}.`);
+    }
+
+    const claimed = candidate.of_context?.of_identity;
+    if (claimed) {
+        const name = claimed.name || 'another identity';
+        return no(
+            `${quoted(candidate.of_context.name)} already carries the identity ${quoted(name)}. ` +
+            'Unlink it in the section first.',
+        );
+    }
+
+    return OK;
+}
+
+/**
+ * Whether a scan candidate can be rejected.
+ *
+ * Only staleness stops it. A rejection is recorded against the identity/context pair to
+ * stop the scan proposing it again, and that is worth doing whatever else has become of
+ * the context - including its being identified as something else, which is precisely
+ * the case where "not this one" is the correct and useful answer.
+ */
+export function canRejectCandidate(
+    candidate: CandidateBrief | CandidateDetail | null,
+): Eligibility {
+    if (!candidate) {
+        return no('Pick a candidate to decide on.');
+    }
+    if (candidate.verdict !== 'pending') {
+        return no(`This candidate has already been ${candidate.verdict}.`);
+    }
+    return OK;
 }
