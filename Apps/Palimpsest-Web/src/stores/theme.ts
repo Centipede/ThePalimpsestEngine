@@ -1,14 +1,29 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, watchEffect } from 'vue';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
+const THEME_MODES: readonly ThemeMode[] = ['light', 'dark', 'system'];
+const STORAGE_KEY = 'theme';
+
+function readStoredMode(): ThemeMode {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  return THEME_MODES.includes(stored as ThemeMode) ? (stored as ThemeMode) : 'system';
+}
+
 export const useThemeStore = defineStore('theme', () => {
-  const themeMode = ref<ThemeMode>((localStorage.getItem('theme') as ThemeMode) || 'system');
-  
+  const themeMode = ref<ThemeMode>(readStoredMode());
+
+  // Reactive mirror of the OS preference. Reading matchMedia().matches directly
+  // inside a computed would not be tracked by Vue, so the computed would cache
+  // the value it saw first and never notice the OS switching.
+  const mql = window.matchMedia('(prefers-color-scheme: dark)');
+  const systemDark = ref(mql.matches);
+
+  // NOTE: keep this resolution logic in sync with the inline script in index.html.
   const isDark = computed(() => {
     if (themeMode.value === 'system') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+      return systemDark.value;
     }
     return themeMode.value === 'dark';
   });
@@ -30,32 +45,33 @@ export const useThemeStore = defineStore('theme', () => {
 
   function setTheme(mode: ThemeMode) {
     themeMode.value = mode;
-    localStorage.setItem('theme', mode);
-    applyTheme();
+    localStorage.setItem(STORAGE_KEY, mode);
   }
 
-  // Initial application and system listener
-  const mql = window.matchMedia('(prefers-color-scheme: dark)');
-  const onSystemChange = () => {
-    if (themeMode.value === 'system') {
-      applyTheme();
+  // Re-read the OS preference. Idempotent: an unchanged value is a no-op
+  // assignment and does not re-run the watcher.
+  function syncSystem() {
+    systemDark.value = mql.matches;
+  }
+
+  // Applies the theme now and on every later change, whatever caused it.
+  watchEffect(applyTheme);
+
+  mql.addEventListener('change', syncSystem);
+
+  // A background tab may never be handed the 'change' event, so recover any
+  // switch we missed as soon as the tab is looked at again.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      syncSystem();
     }
-  };
-
-  // We use a manual initialization function to be called in App.vue or similar if needed,
-  // but we can also do it here if we ensure it only runs on client side.
-  if (typeof window !== 'undefined') {
-    applyTheme();
-    mql.addEventListener('change', onSystemChange);
-  }
+  });
+  window.addEventListener('focus', syncSystem);
 
   return {
     themeMode,
     isDark,
     themeIcon,
-    setTheme,
-    init: () => {
-        applyTheme();
-    }
+    setTheme
   };
 });

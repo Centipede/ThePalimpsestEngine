@@ -14,7 +14,7 @@ The reality, however, is that every week demands more sophisticated interaction.
 
 I need components.
 
-In OmniGraph (the sister project), I revisited Vue.js and found it to be a much more reasonable framework to work with than when I last used it several years ago.
+In AetherGraph (the sister project), I revisited Vue.js and found it to be a much more reasonable framework to work with than when I last used it several years ago.
 
 ## Performance
 

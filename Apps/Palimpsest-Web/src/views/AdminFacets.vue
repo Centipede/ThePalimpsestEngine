@@ -22,7 +22,7 @@
     </div>
 
     <div v-else class="facet-list">
-      <sl-card v-for="facet in facetQueries" :key="facet.id" class="facet-card" @click="$router.push(`/admin/facets/${facet.id}`)">
+      <sl-card v-for="facet in sortedFacets" :key="facet.id" class="facet-card" @click="$router.push(`/admin/facets/${facet.id}`)">
         <div slot="header" class="card-header">
           <strong>{{ facet.name }}</strong>
           <sl-badge variant="neutral">{{ facet.symbol }}</sl-badge>
@@ -43,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useFacetsStore } from '../stores/facets';
 import { storeToRefs } from 'pinia';
 import FacetForm from '../components/admin/FacetForm.vue';
@@ -52,6 +52,10 @@ const facetsStore = useFacetsStore();
 const { facetQueries, isLoading, error } = storeToRefs(facetsStore);
 
 const showAddDialog = ref(false);
+
+// Facets read in ID order: the ID is how people remember them. Copy before
+// sorting so we don't mutate the store's array from the view.
+const sortedFacets = computed(() => [...facetQueries.value].sort((a, b) => a.id - b.id));
 
 onMounted(() => {
   facetsStore.fetchFacetQueries();
