@@ -209,7 +209,6 @@ import { computed, nextTick, ref, watch } from 'vue';
 import type { FindingContext, FoundIdentity } from '../../../types/library.ts';
 import {
   FindingActionError,
-  fetchFoundIdentity,
   linkIdentity,
   lookupWikidata,
   renameContext,
@@ -217,6 +216,8 @@ import {
   unlinkIdentity,
   type WikidataCandidate,
 } from '../../../api/findings.ts';
+// The found-identity routes moved to their own module with the match work area.
+import { fetchFoundIdentity } from '../../../api/identityMatches.ts';
 import OccurrenceTools from './OccurrenceTools.vue';
 
 const props = defineProps<{

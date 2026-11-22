@@ -1,3 +1,5 @@
+import type { CandidateCounts } from './identityMatches';
+
 import type {ConversationRef, QuestionAnswerRef, StudyNoteRef} from './study';
 
 
@@ -295,6 +297,15 @@ export interface FoundIdentity {
     name: string;
     properties: Record<string, any> | null;
     articles: any[];
+    /** When the identity match scan last rebuilt the two summaries below. */
+    dossier_built_at?: string | null;
+    /**
+     * The dossier: dense LLM summaries the identity-match scan reasons against.
+     * Present only when the request asked for `include_dossier=1`, which is why both
+     * are optional - most payloads carrying a FoundIdentity do not ask.
+     */
+    llm_wikipedia?: string | null;
+    llm_corpus?: string | null;
 }
 
 /**
@@ -310,6 +321,8 @@ export interface FindingOccurrence {
     of_facet?: string;
     of_context: number | null;
     extracted_data: Record<string, any> | null;
+    /** Which pass found it - 'content' for a per-paragraph scan. Display only. */
+    scope?: string;
 }
 
 /**
@@ -321,6 +334,15 @@ export interface FindingContext {
     of_facet?: string;
     of_identity: FoundIdentity | null;
     occurrences: FindingOccurrence[];
+    /**
+     * How many identity-match candidates the background scan is holding for this
+     * finding - the `(3/72)` chip beside its name.
+     *
+     * Absent on payloads that were not asked for findings, and null when the scan has
+     * nothing: the chip renders nothing in either case, so a section the scan has not
+     * reached looks exactly as it did before this existed.
+     */
+    candidate_counts?: CandidateCounts | null;
 }
 
 export interface ActiveFindingContext {

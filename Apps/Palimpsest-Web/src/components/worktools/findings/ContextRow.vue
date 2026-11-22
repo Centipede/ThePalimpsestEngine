@@ -23,6 +23,9 @@
           @sl-change="emit('toggle-select', context.id, ($event.target as HTMLInputElement).checked)"
         ></sl-checkbox>
         <span class="summary-text" :title="context.name">{{ symbol }} {{ context.name }}</span>
+        <!-- After the name and outside .summary-text, so it is never what gets
+             ellipsised, and flex-shrink:0 in its own styles so it never competes. -->
+        <CandidateCountChip :counts="context.candidate_counts" :is-staff="isStaff" />
       </span>
       <sl-icon-button
         v-if="isStaff"
@@ -34,7 +37,7 @@
       ></sl-icon-button>
     </div>
 
-    <div class="occurrences-list">
+    <div class="context-body">
       <div v-if="context.of_identity?.wikipedia_url" class="identity-link">
         <a :href="context.of_identity.wikipedia_url" target="_blank" rel="noopener">
           <sl-icon name="link-45deg"></sl-icon>
@@ -43,35 +46,22 @@
         </a>
       </div>
 
-      <template v-if="context.occurrences.length > 0">
-        <div
-          v-for="occurrence in context.occurrences"
-          :key="occurrence.id"
-          :id="`occurrence-${occurrence.id}`"
-          class="occurrence-item"
-          :class="{ 'is-selected': selectedOccurrence?.id === occurrence.id }"
-        >
-          <div class="occurrence-header">
-            <div class="occurrence-name">{{ occurrence.name }}</div>
-            <sl-icon-button
-              v-if="occurrence.in_block_pi"
-              name="arrow-down-right-circle"
-              label="Jump to paragraph"
-              class="jump-button"
-              @click="emit('jump-to-block', occurrence)"
-            ></sl-icon-button>
-          </div>
-          <blockquote class="occurrence-quote">{{ occurrence.quote }}</blockquote>
-          <div class="occurrence-description">{{ occurrence.description }}</div>
-        </div>
-      </template>
-      <div v-else class="no-occurrences">No occurrences found.</div>
+      <OccurrenceList
+        :occurrences="context.occurrences"
+        :selected-occurrence="selectedOccurrence"
+        action-icon="arrow-down-right-circle"
+        action-label="Jump to paragraph"
+        id-prefix="occurrence"
+        @action="emit('jump-to-block', $event)"
+      />
     </div>
   </sl-details>
 </template>
 
 <script setup lang="ts">
 import type { FindingContext, FindingOccurrence } from '../../../types/library';
+import CandidateCountChip from './CandidateCountChip.vue';
+import OccurrenceList from './OccurrenceList.vue';
 
 /**
  * One finding in the section's findings grid: its name in the summary, its mentions in
@@ -164,7 +154,9 @@ const emit = defineEmits<{
   padding: 0;
 }
 
-.occurrences-list {
+/* The border and inset that used to live on .occurrences-list, now that the list is a
+   component: the Wikipedia link above it has to sit inside the same gutter. */
+.context-body {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
@@ -198,56 +190,4 @@ const emit = defineEmits<{
   opacity: 0.8;
 }
 
-.occurrence-item {
-  transition: background-color 0.3s ease;
-}
-
-.occurrence-item.is-selected {
-  background-color: var(--sl-color-primary-50);
-  border-radius: 4px;
-  padding: 0.25rem;
-  margin: -0.25rem;
-}
-
-.occurrence-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.25rem;
-}
-
-.jump-button {
-  font-size: 0.9rem;
-  flex-shrink: 0;
-  color: var(--sl-color-primary-600);
-}
-
-.jump-button::part(base) {
-  padding: 0;
-}
-
-.occurrence-name {
-  font-weight: 600;
-  color: var(--sl-color-neutral-800);
-  margin-bottom: 0.1rem;
-}
-
-.occurrence-quote {
-  margin: 0;
-  font-style: italic;
-  color: var(--sl-color-neutral-700);
-  line-height: 1.4;
-}
-
-.occurrence-description {
-  font-size: 0.75rem;
-  color: var(--sl-color-neutral-500);
-  margin-top: 0.2rem;
-}
-
-.no-occurrences {
-  font-size: 0.75rem;
-  color: var(--sl-color-neutral-400);
-  font-style: italic;
-}
 </style>
