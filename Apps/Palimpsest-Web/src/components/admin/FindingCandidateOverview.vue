@@ -23,6 +23,7 @@
     </sl-alert>
 
     <IdentityCandidateFilters
+      class="overview__filters"
       :filters="filters"
       :books="libraryStore.books"
       :facets="facetsStore.facetQueries"
@@ -649,6 +650,19 @@ if (hasTarget.value) void candidates.reload();
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+
+  /* The named container everything below sizes itself against, the filter bar included.
+     The window is the wrong ruler for this screen: the admin sidebar takes 220px and the
+     gaps another 50, so a 1256px window leaves the three columns about 940. */
+  container-type: inline-size;
+  container-name: findings;
+}
+
+/* Never compressed by the columns below it. A wrapping flex bar that is handed less
+   height than its rows need does not scroll - it draws its last row outside its own box,
+   over whatever follows. */
+.overview__filters {
+  flex: none;
 }
 
 .view-header {
@@ -686,9 +700,13 @@ if (hasTarget.value) void candidates.reload();
   border-right: none;
 }
 
-/* Three scrolling columns need a width none of them has on a laptop in a split window.
-   Stacked, each one gets a usable height of its own instead. */
-@media (max-width: 1100px) {
+/* Three scrolling columns need a width this pane does not have once it is narrow.
+   Stacked, each one gets a usable height of its own instead.
+
+   The pane, not the window: as a window query this read 1100px and so fired about 280px
+   late, leaving the columns cramped for a wide band of window sizes. 900px is the
+   breakpoint the rest of the app uses. */
+@container findings (max-width: 900px) {
   .overview__columns {
     grid-template-columns: 1fr;
     overflow-y: auto;
