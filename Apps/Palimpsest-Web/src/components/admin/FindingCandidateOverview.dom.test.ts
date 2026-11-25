@@ -369,6 +369,27 @@ describe('FindingCandidateOverview', () => {
     expect(open).toContain('/study/belu-soconreal/section/main.part3.ch9');
   });
 
+  it('folds the open row from its own header without dropping the selection', async () => {
+    // Pinned by the deep link, and deduped out of the listing below it, so the one row
+    // on screen is the pinned copy.
+    const wrapper = await screen({ identity: '17' });
+    expect(wrapper.findAll('.identity-row__body')).toHaveLength(1);
+    const firstFetch = api.fetchCandidates.mock.calls.length;
+
+    await wrapper.findAll('.identity-row__head')[0].trigger('click');
+    expect(wrapper.findAll('.identity-row__body')).toHaveLength(0);
+
+    // Folded, not deselected: column 2 is keyed on the identity and must not restart,
+    // and the pin the URL asked for is still there.
+    expect(wrapper.findAll('.identity-row--selected').length).toBeGreaterThan(0);
+    expect(api.fetchCandidates.mock.calls.length).toBe(firstFetch);
+    expect(wrapper.text()).toContain('Linked from a section');
+    expect(wrapper.text()).toContain('Leopold I');
+
+    await wrapper.findAll('.identity-row__head')[0].trigger('click');
+    expect(wrapper.findAll('.identity-row__body')).toHaveLength(1);
+  });
+
   it('refreshes both lists after an accept and moves on', async () => {
     const wrapper = await screen({ identity: '17' });
     await wrapper.find('.candidate').trigger('click');

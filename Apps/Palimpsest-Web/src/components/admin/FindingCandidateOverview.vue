@@ -40,6 +40,7 @@
         :is-loading="identities.isLoading.value"
         :show-loading="identitiesFirstLoad"
         :error="identities.error.value"
+        :body-open="identityBodyOpen"
         :found-in-open="foundInOpen"
         :found-in="foundIn"
         :found-in-loading="foundInLoading"
@@ -278,6 +279,15 @@ const hasFilters = computed(() => {
     || f.identityId !== null || f.contextId !== null;
 });
 
+/* ------------------------------------------------------------- the row's body */
+
+/**
+ * Whether the selected row shows its body. Held here rather than in the row so that one
+ * flag can serve the listing and the pinned copy of the same identity, and so the
+ * selection watcher below has a single place to put a newly picked row back open.
+ */
+const identityBodyOpen = ref(true);
+
 /* ------------------------------------------------------- the found-in expander */
 
 const foundInOpen = ref(false);
@@ -374,6 +384,17 @@ function reloadCandidate() {
 
 /** Ids, not objects: every refetch replaces every row, and an object would go stale. */
 function selectIdentity(identityId: number) {
+  /**
+   * The row already selected: fold its body away and keep the selection. Columns 2 and 3
+   * are keyed on the identity, not on whether its dossier is on screen, so folding buys
+   * back room in column 1 without interrupting the work. The pin stays too - the
+   * librarian has not navigated away from a deep link, they have folded it.
+   */
+  if (identityId === selectedIdentityId.value) {
+    identityBodyOpen.value = !identityBodyOpen.value;
+    return;
+  }
+
   // Picking from the list leaves context mode and drops the pin: the URL should stop
   // claiming a deep link the librarian has navigated away from.
   if (inContextMode.value || filters.value.identityId !== null) {
@@ -609,6 +630,7 @@ watch([selectedIdentityId, () => filters.value.contextId], () => {
   detailError.value = '';
   conflictError.value = '';
   decisionNotice.value = '';
+  identityBodyOpen.value = true;
   foundInOpen.value = false;
   foundIn.value = null;
   foundInFor = null;

@@ -36,16 +36,21 @@
 
     <!-- Dense LLM prose, shown as written. Deliberately not run through marked: these
          summaries are packed with underscores, asterisks and bracketed dates, and a
-         markdown pass turns a stray pair of them into silent emphasis. -->
-    <section v-if="summaries.corpus" class="dossier__section">
-      <h4 class="dossier__heading">From the corpus</h4>
-      <p class="dossier__prose">{{ summaries.corpus }}</p>
-    </section>
+         markdown pass turns a stray pair of them into silent emphasis.
 
-    <section v-if="summaries.wikipedia" class="dossier__section">
-      <h4 class="dossier__heading">From Wikipedia</h4>
+         Behind expanders, and collapsed: at full length either summary is taller than the
+         rest of the row put together, and an opened identity should still leave the
+         listing it was picked from on screen. Uncontrolled on purpose - each one is a
+         glance the row itself has no reason to remember or to report upwards. -->
+    <sl-details v-if="summaries.corpus" class="dossier__expander">
+      <span slot="summary" class="dossier__heading">From the corpus</span>
+      <p class="dossier__prose">{{ summaries.corpus }}</p>
+    </sl-details>
+
+    <sl-details v-if="summaries.wikipedia" class="dossier__expander">
+      <span slot="summary" class="dossier__heading">From Wikipedia</span>
       <p class="dossier__prose">{{ summaries.wikipedia }}</p>
-    </section>
+    </sl-details>
 
     <p v-if="!summaries.any" class="dossier__muted">
       No dossier has been built for this identity yet, so the close-reading pass has
@@ -127,14 +132,20 @@ const builtAt = computed(() => {
   color: var(--color-text-muted);
 }
 
-.dossier__section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+.dossier__expander::part(base) {
+  border: none;
+  background: none;
+}
+
+.dossier__expander::part(header) {
+  padding: 0.2rem 0;
+}
+
+.dossier__expander::part(content) {
+  padding: 0.3rem 0 0;
 }
 
 .dossier__heading {
-  margin: 0;
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
