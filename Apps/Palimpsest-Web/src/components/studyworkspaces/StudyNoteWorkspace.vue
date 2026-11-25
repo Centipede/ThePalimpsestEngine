@@ -12,7 +12,7 @@
     />
     <div class="content-container">
         <div v-if="!isEditing" class="content-display" @click="startEditing">
-          <div v-if="data.content_md" class="markdown-content" v-html="marked.parse(data.content_md)"></div>
+          <div v-if="data.content_md" class="markdown-content" v-html="renderMarkdown(data.content_md)"></div>
           <span v-else class="content-placeholder">Write your note here... (Markdown supported)</span>
           <sl-icon name="pencil" class="edit-icon"></sl-icon>
         </div>
@@ -37,7 +37,7 @@
 
 <script setup lang="ts">
 import { ref, nextTick } from 'vue';
-import { marked } from 'marked';
+import { renderMarkdown } from '../../utils/renderMarkdown';
 import type { StudyNote, StudyNoteRef } from '../../types/study';
 import { apiFetch } from '../../api';
 import WorkspaceHeader from './WorkspaceHeader.vue';

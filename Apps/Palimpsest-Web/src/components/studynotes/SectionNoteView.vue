@@ -66,7 +66,7 @@ import { ref, onMounted, watch } from 'vue';
 import type { Section, Book } from '../../types/library';
 import type { StudyNote } from '../../types/study';
 import { apiFetch } from '../../api';
-import { marked } from 'marked';
+import { renderMarkdown } from '../../utils/renderMarkdown';
 
 const props = defineProps<{
   section: Section;
@@ -174,10 +174,6 @@ const startEditing = (note: StudyNote) => {
 const cancelAdd = () => {
   isAdding.value = false;
   newNoteTitle.value = '';
-};
-
-const renderMarkdown = (md: string) => {
-  return marked.parse(md);
 };
 
 onMounted(fetchNotes);

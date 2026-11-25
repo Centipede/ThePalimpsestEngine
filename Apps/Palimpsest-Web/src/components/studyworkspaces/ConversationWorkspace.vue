@@ -19,7 +19,7 @@
       summary="Condensed Context Summary"
       class="context-summary"
     >
-      <div class="summary-content" v-html="marked.parse(data.context_dense)"></div>
+      <div class="summary-content" v-html="renderMarkdown(data.context_dense)"></div>
     </sl-details>
 
     <div v-for="turn in data.turns" :key="turn.id">
@@ -82,7 +82,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { marked } from 'marked';
+import { renderMarkdown } from '../../utils/renderMarkdown';
 import { useDraft } from '../../composables/useDraft';
 import type { Conversation, ConversationRef, ConversationTurn } from '../../types/study';
 import { apiFetch } from '../../api';
