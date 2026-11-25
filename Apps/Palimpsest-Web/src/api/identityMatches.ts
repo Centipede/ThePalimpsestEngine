@@ -6,6 +6,7 @@ import type {
   CandidateDetail,
   CandidateOrder,
   CandidateStage,
+  DismissResult,
   FoundIdentityRow,
   FoundInTree,
   IdentityOrder,
@@ -163,10 +164,13 @@ export function fetchCandidate(
 /**
  * Accept a candidate: the candidate context takes on the candidate identity.
  *
- * Refused with a 400 when the context has meanwhile been bound to a different identity,
+ * Refused with a 400 when the context has meanwhile been bound to a DIFFERENT identity,
  * and the server's message names that identity. That is a real race - two librarians, or
  * one librarian and an accepted candidate from elsewhere - so the caller must surface the
  * message and refresh rather than retry.
+ *
+ * A context already bound to the identity being proposed is not that case: the server
+ * accepts it idempotently, recording the verdict and leaving the binding as it stands.
  */
 export function acceptCandidate(candidateId: number): Promise<AcceptResult> {
   return post<AcceptResult>(`${CANDIDATE}/${candidateId}/accept/`, {});
@@ -180,6 +184,21 @@ export function acceptCandidate(candidateId: number): Promise<AcceptResult> {
  */
 export function rejectCandidate(candidateId: number): Promise<RejectResult> {
   return post<RejectResult>(`${CANDIDATE}/${candidateId}/reject/`, {});
+}
+
+/**
+ * Dismiss a candidate: settle the row, write nothing else.
+ *
+ * The escape hatch for a finding that acquired its identity by another route. Deliberately
+ * unguarded server-side - a context bound to this identity or to a rival one both dismiss
+ * cleanly, which is the entire point - so the caller has no pre-check to make beyond
+ * staleness, and calling it twice merely rewrites the verdict.
+ *
+ * The only 400 is `That candidate no longer exists`, for a row deleted between the page
+ * being drawn and the button being pressed.
+ */
+export function dismissCandidate(candidateId: number): Promise<DismissResult> {
+  return post<DismissResult>(`${CANDIDATE}/${candidateId}/dismiss/`, {});
 }
 
 /* --------------------------------------------------------------------- dossier */

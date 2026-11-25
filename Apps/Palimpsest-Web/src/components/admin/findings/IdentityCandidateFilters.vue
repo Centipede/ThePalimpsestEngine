@@ -153,6 +153,7 @@ const VERDICT_OPTIONS: { value: VerdictFilter; label: string }[] = [
   { value: 'pending', label: 'Undecided' },
   { value: 'accepted', label: 'Accepted' },
   { value: 'rejected', label: 'Rejected' },
+  { value: 'dismissed', label: 'Dismissed' },
   { value: 'all', label: 'Any verdict' },
 ];
 

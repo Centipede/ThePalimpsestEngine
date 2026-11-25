@@ -439,13 +439,50 @@ export function visibleSelection(
 /* ------------------------------------------------- identity match adjudication */
 
 /**
+ * The identity a candidate's context already carries, normalised.
+ *
+ * The field is a bare pk on a list row and a nested object on the detail - two serializers,
+ * one name - so every caller would otherwise need the same union narrowing. `name` is null
+ * for the pk form, which is not an error: the id is enough to decide whether the binding is
+ * the rival kind, and a sentence that cannot quote a name says so differently.
+ */
+export function claimedIdentity(
+    candidate: CandidateBrief | CandidateDetail,
+): { id: number | null; name: string | null } {
+    const claimed = candidate.of_context?.of_identity;
+    if (claimed === null || claimed === undefined) return { id: null, name: null };
+    if (typeof claimed === 'number') return { id: claimed, name: null };
+    return { id: claimed.id ?? null, name: claimed.name || null };
+}
+
+const NOTHING_SELECTED = 'Pick a candidate to decide on.';
+
+/**
+ * The refusal all three decisions share, or null when the row is still open.
+ *
+ * Takes a candidate rather than a nullable one so each caller's own `!candidate` guard
+ * narrows the type for the rules that follow; a combined helper would hand every caller
+ * back a value TypeScript still believes might be null.
+ *
+ * A decided candidate is simply stale - the list is filtered to pending, so this only fires
+ * on a row left selected while the decision happened.
+ */
+function staleVerdict(candidate: CandidateBrief | CandidateDetail): Eligibility | null {
+    if (candidate.verdict !== 'pending') {
+        return no(`This candidate has already been ${candidate.verdict}.`);
+    }
+    return null;
+}
+
+/**
  * Whether a scan candidate can still be accepted.
  *
- * Two cases the frontend can see for itself. A decided candidate is simply stale - the
- * list is filtered to pending, so this only fires on a row left selected while the
- * decision happened. A candidate whose context has acquired an identity meanwhile is
- * the real one: the server refuses it with a 400 naming the rival identity, and saying
- * so before the click is better than saying it after.
+ * The case worth catching is a context that has acquired a DIFFERENT identity meanwhile:
+ * the server refuses that with a 400, and saying so before the click is better than saying
+ * it after. A context already bound to the identity being proposed is NOT that case - the
+ * server accepts it idempotently - so it passes with a warning rather than a refusal. The
+ * two were conflated before, which left Dismiss the only way out of rows that were in fact
+ * acceptable, and recorded "settled, no action" for proposals that had been right.
  *
  * The server stays authoritative. It knows things this cannot - that the context was
  * deleted, say - so a refusal here is a courtesy and never the only check.
@@ -453,20 +490,30 @@ export function visibleSelection(
 export function canAcceptCandidate(
     candidate: CandidateBrief | CandidateDetail | null,
 ): Eligibility {
-    if (!candidate) {
-        return no('Pick a candidate to decide on.');
-    }
-    if (candidate.verdict !== 'pending') {
-        return no(`This candidate has already been ${candidate.verdict}.`);
+    if (!candidate) return no(NOTHING_SELECTED);
+    const stale = staleVerdict(candidate);
+    if (stale) return stale;
+
+    const claimed = claimedIdentity(candidate);
+    const proposed = candidate.of_identity?.id ?? null;
+
+    if (claimed.id !== null && claimed.id !== proposed) {
+        const subject = quoted(candidate.of_context.name);
+        // Unlinking is NOT the advice: the binding is very likely correct, and this
+        // proposal simply is not what made it. Dismiss is what clears the row.
+        const tail = 'Dismiss takes this proposal off the list without changing anything.';
+        return no(claimed.name
+            ? `${subject} already carries the identity ${quoted(claimed.name)}. ${tail}`
+            : `${subject} already carries a different identity. ${tail}`);
     }
 
-    const claimed = candidate.of_context?.of_identity;
-    if (claimed) {
-        const name = claimed.name || 'another identity';
-        return no(
-            `${quoted(candidate.of_context.name)} already carries the identity ${quoted(name)}. ` +
-            'Unlink it in the section first.',
-        );
+    if (claimed.id !== null) {
+        return {
+            ok: true,
+            reason: '',
+            warning: `${quoted(candidate.of_context.name)} already carries this identity, so ` +
+                'accepting only records the decision - nothing about the finding changes.',
+        };
     }
 
     return OK;
@@ -483,11 +530,20 @@ export function canAcceptCandidate(
 export function canRejectCandidate(
     candidate: CandidateBrief | CandidateDetail | null,
 ): Eligibility {
-    if (!candidate) {
-        return no('Pick a candidate to decide on.');
-    }
-    if (candidate.verdict !== 'pending') {
-        return no(`This candidate has already been ${candidate.verdict}.`);
-    }
-    return OK;
+    if (!candidate) return no(NOTHING_SELECTED);
+    return staleVerdict(candidate) ?? OK;
+}
+
+/**
+ * Whether a scan candidate can be dismissed.
+ *
+ * Staleness and nothing else, and unlike accept the context's identity is deliberately not
+ * consulted: a context bound to a rival identity is the case dismiss exists for, and one
+ * bound to this very identity is the other. The server guards neither, on purpose.
+ */
+export function canDismissCandidate(
+    candidate: CandidateBrief | CandidateDetail | null,
+): Eligibility {
+    if (!candidate) return no(NOTHING_SELECTED);
+    return staleVerdict(candidate) ?? OK;
 }

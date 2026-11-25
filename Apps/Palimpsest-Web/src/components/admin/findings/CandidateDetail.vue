@@ -6,7 +6,7 @@
       <!-- Above the branch below, not inside it: the list advances on its own after a
            decision, and the decision that empties the queue leaves no candidate to
            hang this off - which is exactly when saying what happened matters most. -->
-      <sl-alert v-if="notice" variant="success" open closable @sl-after-hide="emit('dismiss-notice')">
+      <sl-alert v-if="notice" variant="success" open closable @sl-after-hide="emit('close-notice')">
         <sl-icon slot="icon" name="check2-circle"></sl-icon>
         {{ notice }}
       </sl-alert>
@@ -120,7 +120,9 @@
         </div>
       </sl-alert>
 
-      <p v-if="!acceptCheck.ok" class="decide__reason">{{ acceptCheck.reason }}</p>
+      <!-- A refusal and a caveat read the same way to a librarian - both say "before you
+           press that" - so one line carries whichever the accept rule produced. -->
+      <p v-if="acceptNote" class="decide__reason">{{ acceptNote }}</p>
 
       <div class="decide__buttons">
         <sl-button
@@ -143,6 +145,21 @@
           <sl-icon slot="prefix" name="x-lg"></sl-icon>
           Reject
         </sl-button>
+        <!-- Third and quietest: the escape hatch, not the common path. Reject stays a real
+             reject. The one exception is the state dismiss exists for - see dismissVariant. -->
+        <sl-tooltip content="Already resolved — take it off the list without changing anything.">
+          <sl-button
+            class="decide__dismiss"
+            :variant="dismissVariant"
+            size="small"
+            :disabled="!dismissCheck.ok || busy"
+            :loading="busy && pendingAction === 'dismiss'"
+            @click="emit('dismiss')"
+          >
+            <sl-icon slot="prefix" name="slash-circle"></sl-icon>
+            Dismiss
+          </sl-button>
+        </sl-tooltip>
       </div>
     </div>
   </div>
@@ -157,11 +174,15 @@ import {
   effectiveScore,
   formatScore,
 } from '../../../utils/findingCandidateQuery';
-import { canAcceptCandidate, canRejectCandidate } from '../../../utils/findingEligibility';
+import {
+  canAcceptCandidate,
+  canDismissCandidate,
+  canRejectCandidate,
+} from '../../../utils/findingEligibility';
 import OccurrenceList from '../../worktools/findings/OccurrenceList.vue';
 
 /**
- * Column 3: the case for one proposed match, and the two buttons that settle it.
+ * Column 3: the case for one proposed match, and the three buttons that settle it.
  *
  * Presentational - the screen owns the fetching, the decision and the refetch that
  * follows - which is what lets the conflict alert and the decided state be driven
@@ -172,23 +193,41 @@ const props = defineProps<{
   candidate: CandidateDetail | null;
   loading: boolean;
   loadError: string;
-  /** The server's own sentence from a refused accept. Shown verbatim. */
+  /** The server's own sentence from a refused decision. Shown verbatim. */
   conflict: string;
   notice: string;
   busy: boolean;
-  pendingAction: 'accept' | 'reject' | null;
+  pendingAction: 'accept' | 'reject' | 'dismiss' | null;
 }>();
 
 const emit = defineEmits<{
   (e: 'accept'): void;
   (e: 'reject'): void;
+  (e: 'dismiss'): void;
   (e: 'reload-candidate'): void;
   (e: 'refresh-lists'): void;
-  (e: 'dismiss-notice'): void;
+  /** The success notice was closed. Named apart from `dismiss`, which settles a candidate. */
+  (e: 'close-notice'): void;
 }>();
 
 const acceptCheck = computed(() => canAcceptCandidate(props.candidate));
 const rejectCheck = computed(() => canRejectCandidate(props.candidate));
+const dismissCheck = computed(() => canDismissCandidate(props.candidate));
+
+/** Whichever of the two the accept rule produced; they are never both set. */
+const acceptNote = computed(() => acceptCheck.value.reason || acceptCheck.value.warning || '');
+
+/**
+ * Dismiss is emphasised in exactly one state: Accept refused because the finding carries a
+ * rival identity. That is the dead end the endpoint was added for, and leaving the only way
+ * out as the faintest button on the row is how librarians ended up rejecting correct links.
+ *
+ * Keyed on the accept rule rather than on the identity directly, so the button and the
+ * sentence above it cannot come to disagree about what state the row is in.
+ */
+const dismissVariant = computed(() => (
+  !acceptCheck.value.ok && dismissCheck.value.ok ? 'primary' : 'default'
+));
 
 /** Payload order, never re-sorted: the server sends these in reading order. */
 const occurrences = computed<FindingOccurrence[]>(() =>
@@ -440,6 +479,7 @@ const evidenceDump = computed(() => JSON.stringify(props.candidate?.evidence ?? 
 
 .decide__buttons {
   display: flex;
+  align-items: center;
   gap: 0.4rem;
 }
 </style>
