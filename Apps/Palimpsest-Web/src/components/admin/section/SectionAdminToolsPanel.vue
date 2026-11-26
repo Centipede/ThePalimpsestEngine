@@ -14,101 +14,186 @@
           </sl-tooltip>
         </div>
 
-        <div class="portal-group-title">Section</div>
-        <div class="portal-checkbox-group">
-          <sl-checkbox size="small" :checked="gatherOptions.section.essentials.includes('digest')" @sl-change="toggleGatherOption('section', 'essentials', 'digest', $event.target.checked)">Digest</sl-checkbox>
-          <sl-checkbox size="small" :checked="gatherOptions.section.essentials.includes('outline')" @sl-change="toggleGatherOption('section', 'essentials', 'outline', $event.target.checked)">Outline</sl-checkbox>
+        <sl-alert v-if="gatherError" class="portal-alert" variant="danger" open closable @sl-after-hide="gatherError = ''">
+          {{ gatherError }}
+        </sl-alert>
 
-          <div v-if="bookFacetTypes.length > 0" class="portal-divider"></div>
+        <div v-for="group in LEVEL_GROUPS" :key="`gather-${group.key}`" class="portal-level" :data-level="group.key">
+          <div class="portal-group-title">
+            <sl-tooltip :content="group.hint" hoist>
+              <span class="portal-group-title__label">{{ group.title }}</span>
+            </sl-tooltip>
+            <sl-tooltip :content="masterTooltip(group)" hoist>
+              <sl-checkbox
+                class="portal-group-all"
+                size="small"
+                :checked="masterState('gather', group.key) === 'all'"
+                :indeterminate="masterState('gather', group.key) === 'some'"
+                :disabled="relevantItems(group.key).length === 0"
+                @sl-change="toggleMaster('gather', group.key)"
+              >All</sl-checkbox>
+            </sl-tooltip>
+          </div>
+          <div class="portal-checkbox-group">
+            <sl-checkbox
+              v-for="key in group.essentials"
+              :key="key"
+              size="small"
+              :data-value="key"
+              :checked="isTicked('gather', group.key, 'essentials', key)"
+              @sl-change="toggleOption('gather', group.key, 'essentials', key, $event.target.checked)"
+            >
+              {{ essentialLabel(key) }}
+            </sl-checkbox>
 
-          <sl-checkbox
-            v-for="facetType in bookFacetTypes"
-            :key="facetType"
-            size="small"
-            :checked="gatherOptions.section.facets.includes(facetType)"
-            @sl-change="toggleGatherOption('section', 'facets', facetType, $event.target.checked)"
-          >
-            {{ facetsStore.getFacetByPluralName(facetType)?.name || facetType }}
-          </sl-checkbox>
-        </div>
+            <div v-if="group.essentials.length > 0 && bookFacetTypes.length > 0" class="portal-divider"></div>
 
-        <div class="portal-group-title">Content</div>
-        <div class="portal-checkbox-group">
-          <sl-checkbox size="small" :checked="gatherOptions.content.essentials.includes('digest')" @sl-change="toggleGatherOption('content', 'essentials', 'digest', $event.target.checked)">Digest</sl-checkbox>
-          <sl-checkbox size="small" :checked="gatherOptions.content.essentials.includes('outline')" @sl-change="toggleGatherOption('content', 'essentials', 'outline', $event.target.checked)">Outline</sl-checkbox>
-
-          <div v-if="bookFacetTypes.length > 0" class="portal-divider"></div>
-
-          <sl-checkbox
-            v-for="facetType in bookFacetTypes"
-            :key="facetType"
-            size="small"
-            :checked="gatherOptions.content.facets.includes(facetType)"
-            @sl-change="toggleGatherOption('content', 'facets', facetType, $event.target.checked)"
-          >
-            {{ facetsStore.getFacetByPluralName(facetType)?.name || facetType }}
-          </sl-checkbox>
+            <sl-checkbox
+              v-for="facetType in bookFacetTypes"
+              :key="facetType"
+              size="small"
+              :data-value="facetType"
+              :checked="isTicked('gather', group.key, 'facets', facetType)"
+              @sl-change="toggleOption('gather', group.key, 'facets', facetType, $event.target.checked)"
+            >
+              {{ facetLabel(facetType) }}
+            </sl-checkbox>
+          </div>
         </div>
       </div>
     </sl-details>
 
     <sl-details summary="Remove Records">
       <div class="admin-actions-group">
-        <sl-button variant="danger" size="small" :loading="isRemoving" @click="removeRecords">
+        <sl-button variant="danger" size="small" :loading="isRemoving" :disabled="nothingToRemove" @click="requestRemove">
           <sl-icon slot="prefix" name="trash"></sl-icon>
           Remove
         </sl-button>
 
-        <div class="portal-group-title">Section</div>
-        <div class="portal-checkbox-group">
-          <sl-checkbox size="small" :checked="deleteOptions.section.essentials.includes('digest')" @sl-change="toggleDeleteOption('section', 'essentials', 'digest', $event.target.checked)">Digest</sl-checkbox>
-          <sl-checkbox size="small" :checked="deleteOptions.section.essentials.includes('outline')" @sl-change="toggleDeleteOption('section', 'essentials', 'outline', $event.target.checked)">Outline</sl-checkbox>
+        <sl-alert v-if="removeError" class="portal-alert" variant="danger" open closable @sl-after-hide="removeError = ''">
+          {{ removeError }}
+        </sl-alert>
 
-          <div v-if="bookFacetTypes.length > 0" class="portal-divider"></div>
+        <sl-alert
+          v-if="removalOutcome"
+          class="portal-alert"
+          :variant="removalOutcome.variant"
+          open
+          closable
+          @sl-after-hide="removalOutcome = null"
+        >
+          {{ removalOutcome.text }}
+        </sl-alert>
 
-          <sl-checkbox
-            v-for="facetType in bookFacetTypes"
-            :key="facetType"
-            size="small"
-            :checked="deleteOptions.section.facets.includes(facetType)"
-            @sl-change="toggleDeleteOption('section', 'facets', facetType, $event.target.checked)"
-          >
-            {{ facetsStore.getFacetByPluralName(facetType)?.name || facetType }}
-          </sl-checkbox>
-        </div>
+        <div v-for="group in LEVEL_GROUPS" :key="`delete-${group.key}`" class="portal-level" :data-level="group.key">
+          <div class="portal-group-title">
+            <sl-tooltip :content="group.hint" hoist>
+              <span class="portal-group-title__label">{{ group.title }}</span>
+            </sl-tooltip>
+            <sl-tooltip :content="masterTooltip(group)" hoist>
+              <sl-checkbox
+                class="portal-group-all"
+                size="small"
+                :checked="masterState('delete', group.key) === 'all'"
+                :indeterminate="masterState('delete', group.key) === 'some'"
+                :disabled="relevantItems(group.key).length === 0"
+                @sl-change="toggleMaster('delete', group.key)"
+              >All</sl-checkbox>
+            </sl-tooltip>
+          </div>
+          <div class="portal-checkbox-group">
+            <sl-checkbox
+              v-for="key in group.essentials"
+              :key="key"
+              size="small"
+              :data-value="key"
+              :checked="isTicked('delete', group.key, 'essentials', key)"
+              @sl-change="toggleOption('delete', group.key, 'essentials', key, $event.target.checked)"
+            >
+              {{ essentialLabel(key) }}
+            </sl-checkbox>
 
-        <div class="portal-group-title">Content</div>
-        <div class="portal-checkbox-group">
-          <sl-checkbox size="small" :checked="deleteOptions.content.essentials.includes('digest')" @sl-change="toggleDeleteOption('content', 'essentials', 'digest', $event.target.checked)">Digest</sl-checkbox>
-          <sl-checkbox size="small" :checked="deleteOptions.content.essentials.includes('outline')" @sl-change="toggleDeleteOption('content', 'essentials', 'outline', $event.target.checked)">Outline</sl-checkbox>
+            <div v-if="group.essentials.length > 0 && bookFacetTypes.length > 0" class="portal-divider"></div>
 
-          <div v-if="bookFacetTypes.length > 0" class="portal-divider"></div>
+            <sl-checkbox
+              v-for="facetType in bookFacetTypes"
+              :key="facetType"
+              size="small"
+              :data-value="facetType"
+              :checked="isTicked('delete', group.key, 'facets', facetType)"
+              @sl-change="toggleOption('delete', group.key, 'facets', facetType, $event.target.checked)"
+            >
+              {{ facetLabel(facetType) }}
+            </sl-checkbox>
 
-          <sl-checkbox
-            v-for="facetType in bookFacetTypes"
-            :key="facetType"
-            size="small"
-            :checked="deleteOptions.content.facets.includes(facetType)"
-            @sl-change="toggleDeleteOption('content', 'facets', facetType, $event.target.checked)"
-          >
-            {{ facetsStore.getFacetByPluralName(facetType)?.name || facetType }}
-          </sl-checkbox>
+            <template v-if="group.key === 'contexts'">
+              <div class="portal-divider"></div>
+              <sl-checkbox
+                class="portal-checkbox-grave"
+                size="small"
+                :checked="deleteOptions.contexts.include_identified"
+                @sl-change="deleteOptions.contexts.include_identified = $event.target.checked"
+              >
+                Include identified groupings
+              </sl-checkbox>
+              <p class="portal-group-note">
+                A grouping tied to a found identity is kept by default, along with its identity
+                candidates. Ticking this throws that work away too.
+              </p>
+              <p class="portal-group-note">
+                Removing a grouping leaves its mentions in place and loose. Gather Contexts
+                afterwards to group them again; in between, this facet having no groupings is
+                expected and not a fault.
+              </p>
+            </template>
+          </div>
         </div>
       </div>
     </sl-details>
+
+    <ConfirmDialog
+      v-model:open="showRemoveConfirm"
+      label="Remove identified groupings"
+      confirm-label="Remove"
+      variant="danger"
+      :busy="isRemoving"
+      :error="removeError"
+      @confirm="performRemove"
+    >
+      <p>
+        {{ confirmFacetNames.length === 1
+          ? `Every grouping of ${confirmFacetNames[0]} in this section and its subsections will be removed`
+          : `Every grouping of ${joinNames(confirmFacetNames)} in this section and its subsections will be removed` }},
+        the ones a human has tied to a found identity included — and each of those takes its
+        identity candidates with it. The mentions themselves stay behind.
+      </p>
+      <p v-if="identifiedHereCount > 0" class="confirm-count">
+        {{ identifiedHereCount === 1
+          ? 'This section alone holds 1 identified grouping'
+          : `This section alone holds ${identifiedHereCount} identified groupings` }};
+        the subsections are included too and are not counted here.
+      </p>
+    </ConfirmDialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { apiFetch } from '../../../api';
 import type { BookStructure, SectionContentResponse } from '../../../types/library';
 import { useFacetsStore } from '../../../stores/facets.ts';
 import { useFacetExpectations } from '../../../composables/useFacetExpectations.ts';
+import ConfirmDialog from '../../worktools/ConfirmDialog.vue';
+import {
+  removeSectionRecords,
+  startSectionGatherInfo,
+  type DeleteOptions,
+} from '../../../api/maintenance';
+import { describeRemoval, type RemovalOutcome } from '../../../utils/maintenanceOutcome';
 import {
   cloneGatherOptions,
   emptyGatherOptions,
   isGatherOptionsEmpty,
+  relevantOptions,
   suggestGatherOptions,
   type GatherOptions,
 } from '../../../utils/gatherSuggestion';
@@ -119,6 +204,10 @@ import {
  * Both effects reach past this pane - a started job belongs in the info pane's task tree,
  * and removed records change the payload the view is rendering - so they leave as events
  * rather than being wired to the other pane directly.
+ *
+ * The two halves ask for the same three levels and differ only in what they do with
+ * them, so the checkbox columns are rendered from one description of the levels rather
+ * than written out six times.
  */
 
 const props = defineProps<{
@@ -137,22 +226,65 @@ const facetsStore = useFacetsStore();
 
 const isGathering = ref(false);
 const isRemoving = ref(false);
+const gatherError = ref('');
+const removeError = ref('');
+const removalOutcome = ref<RemovalOutcome | null>(null);
+const showRemoveConfirm = ref(false);
 
-interface GranularDeleteOptions {
+type Side = 'gather' | 'delete';
+type Level = 'section' | 'contexts' | 'content';
+type Category = 'essentials' | 'facets';
+
+interface LevelGroup {
+  key: Level;
+  title: string;
+  hint: string;
+  /** Empty for the mid level, which has nothing of the digest/outline kind. */
   essentials: string[];
-  facets: string[];
 }
 
-interface DeleteOptions {
-  section: GranularDeleteOptions;
-  content: GranularDeleteOptions;
+// Content keeps both essentials even though BlockEssentials.outline is still marked for
+// future use: the box has always been there, and the server decides what it can do.
+const LEVEL_GROUPS: LevelGroup[] = [
+  {
+    key: 'section',
+    title: 'Section',
+    hint: 'What the section itself owns: its digest, its outline and its section-level findings.',
+    essentials: ['digest', 'outline'],
+  },
+  {
+    key: 'contexts',
+    title: 'Contexts',
+    hint: 'The groupings of this section’s block findings. Removing a grouping leaves its mentions in place.',
+    essentials: [],
+  },
+  {
+    key: 'content',
+    title: 'Content',
+    hint: 'The block-level findings themselves. Removing a facet here takes its groupings with it as well.',
+    essentials: ['digest', 'outline'],
+  },
+];
+
+const ESSENTIAL_LABELS: Record<string, string> = { digest: 'Digest', outline: 'Outline' };
+
+function essentialLabel(key: string): string {
+  return ESSENTIAL_LABELS[key] ?? key;
 }
 
-const deleteOptions = ref<DeleteOptions>({
-  section: { essentials: [], facets: [] },
-  content: { essentials: [], facets: [] },
-});
+function facetLabel(plural: string): string {
+  return facetsStore.getFacetByPluralName(plural)?.name || plural;
+}
 
+function emptyDeleteOptions(): DeleteOptions {
+  return {
+    section: { essentials: [], facets: [] },
+    contexts: { facets: [], include_identified: false },
+    content: { essentials: [], facets: [] },
+  };
+}
+
+const deleteOptions = ref<DeleteOptions>(emptyDeleteOptions());
 const gatherOptions = ref<GatherOptions>(emptyGatherOptions());
 
 const { expectations } = useFacetExpectations(() => props.bookStructure?.book);
@@ -177,6 +309,9 @@ const suggestedGatherOptions = computed<GatherOptions>(() => suggestGatherOption
 }));
 
 const nothingToGather = computed(() => isGatherOptionsEmpty(gatherOptions.value));
+// DeleteOptions is a GatherOptions with include_identified alongside the context facets,
+// and that flag on its own removes nothing, so the same emptiness test answers for both.
+const nothingToRemove = computed(() => isGatherOptionsEmpty(deleteOptions.value));
 
 function resetGatherOptions() {
   gatherOptions.value = cloneGatherOptions(suggestedGatherOptions.value);
@@ -188,43 +323,90 @@ function resetGatherOptions() {
 // which is what we want.
 watch(() => JSON.stringify(suggestedGatherOptions.value), resetGatherOptions, { immediate: true });
 
-function toggleDeleteOption(type: 'section' | 'content', category: 'essentials' | 'facets', value: string, checked: boolean) {
-  const options = deleteOptions.value[type][category];
+/* ------------------------------------------------------------------ the checkboxes */
+
+/**
+ * The array behind one checkbox column. Undefined where a level does not carry that
+ * category at all, which is the mid level and essentials.
+ */
+function listFor(side: Side, level: Level, category: Category): string[] | undefined {
+  const options = side === 'gather' ? gatherOptions.value : deleteOptions.value;
+  const group = options[level] as { essentials?: string[]; facets: string[] };
+  return category === 'essentials' ? group.essentials : group.facets;
+}
+
+function isTicked(side: Side, level: Level, category: Category, value: string): boolean {
+  return listFor(side, level, category)?.includes(value) ?? false;
+}
+
+function toggleOption(side: Side, level: Level, category: Category, value: string, checked: boolean) {
+  const options = listFor(side, level, category);
+  if (!options) return;
+  const index = options.indexOf(value);
   if (checked) {
-    if (!options.includes(value)) {
-      options.push(value);
-    }
-  } else {
-    const index = options.indexOf(value);
-    if (index > -1) {
-      options.splice(index, 1);
-    }
+    if (index === -1) options.push(value);
+  } else if (index > -1) {
+    options.splice(index, 1);
   }
 }
 
-function toggleGatherOption(type: 'section' | 'content', category: 'essentials' | 'facets', value: string, checked: boolean) {
-  const options = gatherOptions.value[type][category];
-  if (checked) {
-    if (!options.includes(value)) {
-      options.push(value);
-    }
-  } else {
-    const index = options.indexOf(value);
-    if (index > -1) {
-      options.splice(index, 1);
-    }
+/** Everything the book's facet scheme applies at a level - what "All" means. */
+const relevant = computed<GatherOptions>(() => relevantOptions(expectations.value));
+
+function relevantItems(level: Level): { category: Category; value: string }[] {
+  const group = relevant.value[level] as { essentials?: string[]; facets: string[] };
+  return [
+    ...(group.essentials ?? []).map(value => ({ category: 'essentials' as Category, value })),
+    ...group.facets.map(value => ({ category: 'facets' as Category, value })),
+  ];
+}
+
+function masterState(side: Side, level: Level): 'all' | 'some' | 'none' {
+  const items = relevantItems(level);
+  if (items.length === 0) return 'none';
+  const ticked = items.filter(item => isTicked(side, level, item.category, item.value)).length;
+  if (ticked === 0) return 'none';
+  return ticked === items.length ? 'all' : 'some';
+}
+
+/**
+ * Ticks everything the scheme applies here, or clears the level outright once it is all
+ * ticked. Clearing takes the boxes outside the scheme with it: they are the ones a hand
+ * put there, and leaving them behind would make "All" off look like nothing is selected
+ * while a facet is still armed.
+ */
+function toggleMaster(side: Side, level: Level) {
+  const clearing = masterState(side, level) === 'all';
+
+  for (const category of ['essentials', 'facets'] as Category[]) {
+    const options = listFor(side, level, category);
+    if (!options) continue;
+    if (clearing) options.splice(0);
+  }
+  if (clearing) return;
+
+  for (const item of relevantItems(level)) {
+    toggleOption(side, level, item.category, item.value, true);
   }
 }
+
+function masterTooltip(group: LevelGroup): string {
+  return relevantItems(group.key).length === 0
+    ? `No facet is applied to this book at the ${group.title.toLowerCase()} level`
+    : `Everything this book applies at the ${group.title.toLowerCase()} level`;
+}
+
+/* ----------------------------------------------------------------------- the calls */
 
 async function gatherSectionInfo() {
   isGathering.value = true;
+  gatherError.value = '';
   try {
-    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/maintenance/job/start_gather_info`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(gatherOptions.value)
+    await startSectionGatherInfo({
+      machineName: props.machineName,
+      sectionPath: props.sectionPath,
+      options: gatherOptions.value,
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     emit('job-started');
     // Cleared, not re-seeded: the job has started but not finished, so the suggestion
@@ -232,28 +414,72 @@ async function gatherSectionInfo() {
     // fetchSection() seeds again from the updated manifests.
     gatherOptions.value = emptyGatherOptions();
   } catch (e) {
+    gatherError.value = e instanceof Error ? e.message : 'Failed to start the gather info job.';
     console.error('Failed to start gather info job:', e);
   } finally {
     isGathering.value = false;
   }
 }
 
-async function removeRecords() {
-  isRemoving.value = true;
-  try {
-    const res = await apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/maintenance/remove_records`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(deleteOptions.value)
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+/** The facets whose identified groupings the pending removal would take. */
+const confirmFacetNames = computed(() => deleteOptions.value.contexts.facets.map(facetLabel));
 
+/**
+ * The identified groupings this section holds for those facets.
+ *
+ * A floor, not a total: the endpoint reaches every descendant, while the payload the
+ * panel was given covers this section only. The dialog says so rather than printing a
+ * number that reads as the whole cost.
+ */
+const identifiedHereCount = computed(() => {
+  const contexts = props.sectionData?.section.findings?.contexts ?? {};
+  return deleteOptions.value.contexts.facets.reduce(
+    (total, plural) => total + (contexts[plural] ?? []).filter(c => c.of_identity !== null).length,
+    0,
+  );
+});
+
+function joinNames(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? '';
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+/**
+ * Removing a human's own work is the one case here that gets a confirmation. Everything
+ * else this panel deletes, the pipeline can make again.
+ */
+const removalNeedsConfirming = computed(
+  () => deleteOptions.value.contexts.include_identified && deleteOptions.value.contexts.facets.length > 0,
+);
+
+function requestRemove() {
+  removeError.value = '';
+  removalOutcome.value = null;
+  if (removalNeedsConfirming.value) {
+    showRemoveConfirm.value = true;
+    return;
+  }
+  void performRemove();
+}
+
+async function performRemove() {
+  isRemoving.value = true;
+  removeError.value = '';
+  try {
+    const result = await removeSectionRecords({
+      machineName: props.machineName,
+      sectionPath: props.sectionPath,
+      options: deleteOptions.value,
+    });
+
+    removalOutcome.value = describeRemoval(result);
+    showRemoveConfirm.value = false;
     emit('records-removed');
-    deleteOptions.value = {
-      section: { essentials: [], facets: [] },
-      content: { essentials: [], facets: [] },
-    };
+    deleteOptions.value = emptyDeleteOptions();
   } catch (e) {
+    // Stays on screen beside the button that caused it, which is inside the dialog when
+    // the dialog is what started the call.
+    removeError.value = e instanceof Error ? e.message : 'Failed to remove the records.';
     console.error('Failed to remove records:', e);
   } finally {
     isRemoving.value = false;
@@ -294,13 +520,29 @@ async function removeRecords() {
   gap: 0.25rem;
 }
 
+.portal-level {
+  display: flex;
+  flex-direction: column;
+}
+
 .portal-group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--sl-color-neutral-500);
   text-transform: uppercase;
   margin-top: 0.5rem;
   margin-bottom: 0.25rem;
+}
+
+.portal-group-all::part(label) {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--sl-color-neutral-500);
 }
 
 .portal-divider {
@@ -318,5 +560,36 @@ async function removeRecords() {
 
 .portal-checkbox-group sl-checkbox::part(label) {
   font-size: 0.8rem;
+}
+
+.portal-checkbox-grave::part(label) {
+  color: var(--sl-color-danger-700);
+}
+
+/*
+ * The pane is about a fifth of the window wide, and an alert's icon and close button eat
+ * into that before any text is laid out. Without this the lines come out two words long.
+ */
+.portal-alert::part(message) {
+  padding: 0.5rem;
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.portal-alert::part(close-button) {
+  font-size: 0.7rem;
+  padding: 0 0.25rem;
+}
+
+.portal-group-note {
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: var(--sl-color-neutral-500);
+}
+
+.confirm-count {
+  margin: 0;
+  color: var(--sl-color-neutral-600);
 }
 </style>

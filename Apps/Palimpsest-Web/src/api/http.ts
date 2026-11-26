@@ -28,7 +28,7 @@ export class FindingActionError extends Error {
 }
 
 /**
- * The one place that turns a non-2xx into something a dialog can show.
+ * A call whose failure is raised rather than returned.
  *
  * apiFetch resolves on 4xx, and the identity calls this layer grew out of used to do
  * `if (response.ok) { ... }` with no else - a silent no-op. That is tolerable for a
@@ -37,31 +37,67 @@ export class FindingActionError extends Error {
 export async function request<T>(url: string, init: RequestInit): Promise<T> {
   const res = await apiFetch(url, init);
   if (res.ok) return await res.json() as T;
+  throw await failure(res);
+}
 
+/**
+ * The same call for an endpoint that may answer 200 with an empty body.
+ *
+ * request() reads the body unconditionally, which would turn a successful call into a
+ * phantom failure on an empty 200 - a job-starting endpoint that answers with nothing is
+ * the case this exists for. The same reading as jsonOrNull in SectionAdminInfoPanel.
+ */
+export async function requestMaybeEmpty<T>(url: string, init: RequestInit): Promise<T | null> {
+  const res = await apiFetch(url, init);
+  if (!res.ok) throw await failure(res);
+
+  const text = await res.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    // A 200 with a non-JSON body is not something a caller can use, but it is also not
+    // a failure: the action went through. Report it as no body at all.
+    return null;
+  }
+}
+
+/** The one place that turns a non-2xx into something a dialog can show. */
+async function failure(res: Response): Promise<FindingActionError> {
   if (res.status === 403) {
-    throw new FindingActionError('Admin permission is required for this action.', 403);
+    return new FindingActionError('Admin permission is required for this action.', 403);
   }
 
   let message = `Request failed (HTTP ${res.status}).`;
   try {
     const body = await res.json();
-    // DRF's own errors use `detail`; these endpoints use `error`.
-    message = body?.error || body?.detail || message;
+    // DRF's own errors use `detail`; these endpoints use `error`, and the maintenance
+    // ones answer `{ status: 'error', message }` instead.
+    message = body?.error || body?.detail || body?.message || message;
   } catch {
     // A non-JSON error body (a proxy error page, say) leaves the generic message.
   }
-  throw new FindingActionError(message, res.status);
+  return new FindingActionError(message, res.status);
 }
 
-export function post<T>(url: string, body?: unknown, signal?: AbortSignal): Promise<T> {
-  return request<T>(url, {
+function postInit(body?: unknown, signal?: AbortSignal): RequestInit {
+  return {
     method: 'POST',
     ...(signal ? { signal } : {}),
     ...(body === undefined ? {} : {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
-  });
+  };
+}
+
+export function post<T>(url: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+  return request<T>(url, postInit(body, signal));
+}
+
+/** Like post(), for endpoints that may answer 200 with an empty body. */
+export function postMaybeEmpty<T>(url: string, body?: unknown, signal?: AbortSignal): Promise<T | null> {
+  return requestMaybeEmpty<T>(url, postInit(body, signal));
 }
 
 export function get<T>(url: string, signal?: AbortSignal): Promise<T> {

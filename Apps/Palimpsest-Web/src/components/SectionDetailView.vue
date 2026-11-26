@@ -198,7 +198,7 @@
             :book-structure="bookStructure"
             :section-data="data"
             @job-started="adminInfoRef?.refreshTask()"
-            @records-removed="fetchSection"
+            @records-removed="fetchSection({ silent: true })"
         />
       </Teleport>
 
@@ -1217,8 +1217,16 @@ async function handleReferencesUpdated() {
   }
 }
 
-async function fetchSection() {
-  loading.value = true;
+/**
+ * Refetches the section.
+ *
+ * `silent` leaves the payload on screen while the call runs. The admin panes are inside
+ * the v-if that `loading` drives, so raising it for a refetch unmounts them and takes
+ * whatever they were reporting - the counts from a removal, say - down with them.
+ */
+async function fetchSection({ silent = false }: { silent?: boolean } = {}) {
+  // A section with nothing on screen yet has nothing to keep, so it always says so.
+  loading.value = !silent || !data.value;
   error.value = '';
   try {
     const sectionPromise = apiFetch(`/testbooks/api/v1/book/${props.machineName}/section/${props.sectionPath}/?sec_info=essentials,findings,pm&cont_info=essentials,findings,emphasis,pm&path_coded=1&pageinfo=1`);
@@ -1245,8 +1253,9 @@ async function fetchSection() {
   }
 }
 
-onMounted(fetchSection);
-watch(() => props.sectionPath, fetchSection);
+onMounted(() => fetchSection());
+// Wrapped: a watcher hands its callback the new path, which would land in the options.
+watch(() => props.sectionPath, () => fetchSection());
 </script>
 
 <style scoped>
