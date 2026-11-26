@@ -6,11 +6,7 @@
     <template v-else-if="data">
       <Teleport to=".nav-mid-title-portal">
         <div class="nav-portal-content">
-          <sl-breadcrumb>
-            <sl-breadcrumb-item v-for="crumb in breadcrumbs.slice(1)" :key="crumb.path">
-              <router-link :to="crumb.path" class="breadcrumb-link">{{ crumb.title }}</router-link>
-            </sl-breadcrumb-item>
-          </sl-breadcrumb>
+          <SectionTrail :levels="trail" :machine-name="machineName" />
           <sl-badge variant="neutral" pill >{{ data.section.path_coded ?? data.section.path_full }}</sl-badge>
         </div>
       </Teleport>
@@ -434,8 +430,10 @@ import TableOfContents from './TableOfContents.vue';
 import CorpusStudyDialog from './corpus/CorpusStudyDialog.vue';
 import StudyWorkspaceDialog from './studyworkspaces/StudyWorkspaceDialog.vue';
 import AdminPanelToggle from './admin/AdminPanelToggle.vue';
+import SectionTrail from './SectionTrail.vue';
 import SectionAdminInfoPanel from './admin/section/SectionAdminInfoPanel.vue';
 import SectionAdminToolsPanel from './admin/section/SectionAdminToolsPanel.vue';
+import { buildSectionTrail } from '../utils/sectionTrail';
 import {useLibraryStore} from "../stores/library.ts";
 import {useFacetsStore} from "../stores/facets.ts";
 import { useAdminPanels } from "../composables/useAdminPanels.ts";
@@ -928,40 +926,14 @@ const segmentedData = computed(() => {
 });
 
 
-const breadcrumbs = computed(() => {
-  if (!props.bookStructure) return [];
-  const mainFlow = props.bookStructure.flows.find(f => f.name === 'main');
-  const tree = mainFlow?.tree;
-  if (!tree) return [];
-
-  const crumbs = [];
-  crumbs.push({
-    title: props.bookStructure.book.title,
-    path: `/study/${props.machineName}`
-  });
-
-  const parts = props.sectionPath.split('.').slice(1);
-
-  let currentTree: Section | null = tree;
-
-  let currentPath = '';
-  for (const part of parts) {
-    if (currentPath) currentPath += '.';
-    currentPath += part;
-
-    const found: Section | undefined = currentTree?.subsections?.find(s => s.path_id === part);
-    if (found) {
-      crumbs.push({
-        title: found.title_text,
-        path: `/study/${props.machineName}/section/${found.path_full}`
-      });
-      currentTree = found;
-    } else {
-      break;
-    }
-  }
-
-  return crumbs;
+/**
+ * The ancestor chain of the current section, each level carrying its own siblings so
+ * the nav trail can offer sideways navigation. The book itself is not a level here:
+ * BookDetailView already shows it in the same nav portal.
+ */
+const trail = computed(() => {
+  const mainFlow = props.bookStructure?.flows.find(f => f.name === 'main');
+  return buildSectionTrail(mainFlow?.tree, props.sectionPath);
 });
 
 async function handleConversationCreated(id: number) {
@@ -1336,21 +1308,18 @@ watch(() => props.sectionPath, () => fetchSection());
   font-style: italic;
 }
 
-.breadcrumb-link {
-  color: var(--sl-color-neutral-600);
-  text-decoration: none;
-  font-size: 0.9rem;
-}
-
-.breadcrumb-link:hover {
-  color: var(--sl-color-primary-600);
-}
-
 .nav-portal-content {
   display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  margin-left: 0.5rem;
+  align-items: stretch;
+  gap: 0.75rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* The trail blocks stretch to the header's height; the badge only centres in it. */
+.nav-portal-content > sl-badge {
+  align-self: center;
+  flex: none;
 }
 
 .segments-container {

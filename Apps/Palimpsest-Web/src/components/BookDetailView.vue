@@ -341,24 +341,37 @@ onMounted(async () => {
   width: 60px;
 }
 
+/* Two fixed rows, shared with each level of the section trail (SectionTrail.vue), so
+   that the book's title sits on the same line as the trail's titles and the author on
+   the same line as the sibling strips. The row heights do that work, not the font
+   sizes: the book is deliberately set larger than the trail. */
 .book-study__header {
   max-width: 18rem;
   overflow: hidden;
-  padding: 0.1rem 1rem 0.1rem;
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid var(--sl-color-neutral-200);
+  padding: 0 1rem;
+  display: grid;
+  grid-template-rows: var(--nav-block-row1) var(--nav-block-row2);
+  align-items: center;
+  align-content: center;
+  border-right: 1px solid var(--color-border);
 }
 
 .book-study__title-link {
   text-decoration: none;
+  /* A grid item defaults to min-width: auto, which would let a long title push past
+     the block instead of ellipsizing inside it. */
+  min-width: 0;
+  overflow: hidden;
 }
 
 .book-study__title {
   margin: 0;
   font-size: 1rem;
   font-weight: 400;
+  line-height: 1;
   color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .book-study__title-link:hover .book-study__title {
@@ -366,10 +379,13 @@ onMounted(async () => {
 }
 
 .book-study__author {
-  margin: 0.25rem 0 0;
+  margin: 0;
   font-size: 0.8rem;
   font-weight: 300;
+  line-height: 1;
   color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .book-study__status {
