@@ -67,7 +67,10 @@ const handleMenuSelect = (event: Event) => {
 .admin-layout {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  /* 100% of .vue-content, not 100vh: this sits below NavBar, so a viewport height made
+     the whole admin screen ~50px taller than the room it had and pushed the bottom of
+     every tool - the pagers on the findings columns among them - below the fold. */
+  height: 100%;
   padding: 1rem;
   box-sizing: border-box;
 }
@@ -96,6 +99,23 @@ const handleMenuSelect = (event: Event) => {
   flex: 1;
   overflow-y: auto;
   padding-right: 1rem;
+}
+
+/* The 220px rail is a tax on the work area once the window is not wide, and nothing is
+   lost by dropping it: NavBar's menu carries /admin and every ADMIN_TOOLS entry, and the
+   breadcrumbs above lead back. */
+@media (max-width: 1400px) {
+  .admin-sidebar {
+    display: none;
+  }
+
+  .admin-content {
+    gap: 0;
+  }
+
+  .admin-header {
+    margin-bottom: 1rem;
+  }
 }
 
 h1 {

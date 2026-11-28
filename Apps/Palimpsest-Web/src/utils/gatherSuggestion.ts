@@ -1,20 +1,39 @@
 import type { FacetExpectation } from '../composables/useFacetExpectations';
 import type { PMCompleted } from '../types/library';
 
+/**
+ * What the section maintenance panel should have ticked, per level.
+ *
+ * Shared by both halves of the panel: the Gather side seeds itself from
+ * suggestGatherOptions (the work the section still owes) and the Remove side has nothing
+ * to suggest, but both drive their "All" master checkbox from relevantOptions (everything
+ * the book's facet scheme applies at a level).
+ */
+
 export interface GatherGroup {
     essentials: string[];
+    facets: string[];
+}
+
+/**
+ * The mid level carries facets only: there is nothing of the digest/outline kind to
+ * cluster, and the grouping of a facet's block findings is the whole of the level.
+ */
+export interface ContextGatherGroup {
     facets: string[];
 }
 
 /** The body the start_gather_info endpoint takes: what to run, per level. */
 export interface GatherOptions {
     section: GatherGroup;
+    contexts: ContextGatherGroup;
     content: GatherGroup;
 }
 
 export function emptyGatherOptions(): GatherOptions {
     return {
         section: { essentials: [], facets: [] },
+        contexts: { facets: [] },
         content: { essentials: [], facets: [] },
     };
 }
@@ -26,6 +45,7 @@ export function emptyGatherOptions(): GatherOptions {
 export function cloneGatherOptions(options: GatherOptions): GatherOptions {
     return {
         section: { essentials: [...options.section.essentials], facets: [...options.section.facets] },
+        contexts: { facets: [...options.contexts.facets] },
         content: { essentials: [...options.content.essentials], facets: [...options.content.facets] },
     };
 }
@@ -92,14 +112,53 @@ export function suggestGatherOptions(input: GatherSuggestionInput): GatherOption
 
         // Content-level work spans two records: the per-block findings in each block's
         // own manifest, and the clustering of those into FindingContexts, which only
-        // the section records. Either one missing leaves work to do.
+        // the section records. Either one missing leaves work to do - but they are not
+        // the same work, and since the mid level exists the cheaper half can be asked
+        // for alone. A block still missing its findings needs the extraction, which
+        // clusters what it finds on the way; findings already in every block need the
+        // clustering only, and re-running extraction for it would be waste.
         if (exp.expectsContexts && hasBlocks) {
             const clustered = sectionContexts.includes(plural);
             const foundInEveryBlock =
                 !nothingProcessed && knownBlocks.every(c => (c.facets ?? []).includes(plural));
-            if (!clustered || !foundInEveryBlock) {
+
+            if (!foundInEveryBlock) {
                 options.content.facets.push(plural);
+            } else if (!clustered) {
+                options.contexts.facets.push(plural);
             }
+        }
+    }
+
+    return options;
+}
+
+/**
+ * Everything the book's facet scheme applies at each level - what the panel's "All"
+ * master checkbox means.
+ *
+ * Deliberately reads no manifest and does not ask whether the section has content blocks
+ * of its own: both maintenance endpoints apply to the addressed section plus all of its
+ * descendants, so a chapter node that holds nothing but subsections is still a legitimate
+ * target. That cascading case - regrouping a whole set of chapters at once - is the one
+ * the mid level was added for.
+ *
+ * Distinct from suggestGatherOptions, which seeds the Gather side with what is still
+ * owed. This is every box that level has a reason to offer.
+ */
+export function relevantOptions(expectations: FacetExpectation[]): GatherOptions {
+    const options = emptyGatherOptions();
+
+    options.section.essentials.push('digest', 'outline');
+    // Content carries digest only: BlockEssentials.outline is marked for future use.
+    options.content.essentials.push('digest');
+
+    for (const exp of expectations) {
+        const plural = exp.facet.machine_name_plural;
+        if (exp.expectsSection) options.section.facets.push(plural);
+        if (exp.expectsContexts) {
+            options.contexts.facets.push(plural);
+            options.content.facets.push(plural);
         }
     }
 
@@ -111,6 +170,7 @@ export function isGatherOptionsEmpty(options: GatherOptions): boolean {
     return (
         options.section.essentials.length === 0 &&
         options.section.facets.length === 0 &&
+        options.contexts.facets.length === 0 &&
         options.content.essentials.length === 0 &&
         options.content.facets.length === 0
     );

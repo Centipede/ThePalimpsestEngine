@@ -50,14 +50,14 @@
     </div>
 
     <div class="section-content">
-      <div class="markdown-content" v-html="marked.parse(content || '')"></div>
+      <div class="markdown-content" v-html="renderMarkdown(content)"></div>
     </div>
   </sl-details>
 </template>
 
 <script setup lang="ts">
 import { ref, nextTick } from 'vue';
-import { marked } from 'marked';
+import { renderMarkdown } from '../../utils/renderMarkdown';
 import { apiFetch } from '../../api';
 
 const props = defineProps<{

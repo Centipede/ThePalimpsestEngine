@@ -91,7 +91,7 @@ function logout_and_redirect() {
 
 <style scoped>
 .vue-header {
-  height: var(--header-height, 56px);
+  height: var(--header-height, 48px);
   background: var(--color-surface, #ffffff);
   border-bottom: 1px solid var(--color-border, #dee2e6);
   flex-shrink: 0;
@@ -99,9 +99,11 @@ function logout_and_redirect() {
 
 nav {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-between;
-  padding: 0.1rem 1rem 0.5rem 0;
+  /* No bottom padding: the portal's two-row blocks need the header's full height,
+     and 0.5rem of it was being spent clipping them. */
+  padding: 0 1rem 0 0;
   height: 100%;
 }
 
@@ -109,13 +111,16 @@ nav {
   flex: 1;
   display: flex;
   justify-content: flex-start;
-  align-items: center;
+  align-items: stretch;
   padding: 0 1rem;
-  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
   min-width: 0;
+  /* Teleported content measures itself against this rather than the viewport, which
+     is what lets SectionTrail collapse its outer levels when the nav runs out of
+     room without any element being measured in JavaScript. */
+  container-type: inline-size;
+  container-name: navportal;
 }
 
 .nav-end-tools-portal {
@@ -141,9 +146,9 @@ nav {
 }
 
 *.nav-logo-palimpsest {
-  width: calc(var(--header-height, 56px) - 0.2rem);
-  height: calc(var(--header-height, 56px) - 0.2rem);
-  font-size: calc(var(--header-height, 56px) - 0.2rem);
+  width: calc(var(--header-height, 48px) - 0.2rem);
+  height: calc(var(--header-height, 48px) - 0.2rem);
+  font-size: calc(var(--header-height, 48px) - 0.2rem);
 }
 
 *.nav-logo-palimpsest::part(base) {

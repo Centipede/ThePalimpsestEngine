@@ -45,6 +45,7 @@ const api = vi.hoisted(() => ({
   fetchCandidate: vi.fn(),
   acceptCandidate: vi.fn(),
   rejectCandidate: vi.fn(),
+  dismissCandidate: vi.fn(),
   dossierSummaries: vi.fn(),
 }));
 
@@ -369,6 +370,27 @@ describe('FindingCandidateOverview', () => {
     expect(open).toContain('/study/belu-soconreal/section/main.part3.ch9');
   });
 
+  it('folds the open row from its own header without dropping the selection', async () => {
+    // Pinned by the deep link, and deduped out of the listing below it, so the one row
+    // on screen is the pinned copy.
+    const wrapper = await screen({ identity: '17' });
+    expect(wrapper.findAll('.identity-row__body')).toHaveLength(1);
+    const firstFetch = api.fetchCandidates.mock.calls.length;
+
+    await wrapper.findAll('.identity-row__head')[0].trigger('click');
+    expect(wrapper.findAll('.identity-row__body')).toHaveLength(0);
+
+    // Folded, not deselected: column 2 is keyed on the identity and must not restart,
+    // and the pin the URL asked for is still there.
+    expect(wrapper.findAll('.identity-row--selected').length).toBeGreaterThan(0);
+    expect(api.fetchCandidates.mock.calls.length).toBe(firstFetch);
+    expect(wrapper.text()).toContain('Linked from a section');
+    expect(wrapper.text()).toContain('Leopold I');
+
+    await wrapper.findAll('.identity-row__head')[0].trigger('click');
+    expect(wrapper.findAll('.identity-row__body')).toHaveLength(1);
+  });
+
   it('refreshes both lists after an accept and moves on', async () => {
     const wrapper = await screen({ identity: '17' });
     await wrapper.find('.candidate').trigger('click');
@@ -414,6 +436,95 @@ describe('FindingCandidateOverview', () => {
     const alerts = wrapper.findAll('sl-alert').map(a => a.text());
     expect(alerts.some(text => text.includes('Accepted') && text.includes('Leopold I')))
       .toBe(true);
+  });
+
+  it('dismisses without touching the context, and still moves on', async () => {
+    const wrapper = await screen({ identity: '17' });
+    // Opened first, so "the tree was not refetched" is an assertion about the dismiss and
+    // not merely about an expander that was never on screen.
+    await wrapper.find('.identity-row__found-in').trigger('sl-show');
+    await flushPromises();
+    expect(api.fetchFoundIn).toHaveBeenCalledTimes(1);
+
+    await wrapper.find('.candidate').trigger('click');
+    await flushPromises();
+
+    api.dismissCandidate.mockResolvedValue({
+      status: 'success',
+      candidate: candidateDetail({ verdict: 'dismissed' }),
+    });
+    api.fetchCandidates.mockResolvedValue(page([], 0));
+
+    const dismiss = wrapper.findAll('sl-button').find(b => b.text().includes('Dismiss'));
+    await dismiss!.trigger('click');
+    await flushPromises();
+
+    expect(api.dismissCandidate).toHaveBeenCalledWith(890);
+    // The queue shortened and the counts moved, so both lists are refetched...
+    expect(api.fetchCandidates).toHaveBeenCalledTimes(2);
+    expect(api.fetchFoundIdentities).toHaveBeenCalledTimes(2);
+    // ...but nothing was written to the context, so the tree cannot have changed.
+    expect(api.fetchFoundIn).toHaveBeenCalledTimes(1);
+    // And the librarian is told the one thing they need: that nothing else happened.
+    expect(wrapper.text()).toContain('nothing was changed');
+  });
+
+  it('points at Dismiss, emphasised, when the finding carries a rival identity', async () => {
+    // The dead end the endpoint was added for. Accept is refused, and leaving the only way
+    // out as the faintest button on the row is how correct links got rejected.
+    const claimed = { id: 99, name: 'Leopold II', of_facet: 3 };
+    api.fetchCandidates.mockResolvedValue(page([candidateBrief({
+      of_context: { id: 501, name: 'Emperor Leopold', of_facet: 'person', of_identity: 99 },
+    })]));
+    api.fetchCandidate.mockResolvedValue(candidateDetail({
+      of_context: { ...candidateDetail().of_context, of_identity: claimed },
+    }));
+
+    const wrapper = await screen({ identity: '17' });
+    await wrapper.find('.candidate').trigger('click');
+    await flushPromises();
+
+    // A custom element stringifies the binding, so the attribute is 'true'/'false' rather
+    // than present/absent.
+    const accept = wrapper.findAll('sl-button').find(b => b.text().includes('Accept'));
+    expect(accept!.attributes('disabled')).toBe('true');
+    expect(wrapper.find('.decide__reason').text()).toContain('Leopold II');
+    expect(wrapper.find('.decide__reason').text()).toContain('Dismiss');
+
+    const dismiss = wrapper.find('.decide__dismiss');
+    expect(dismiss.attributes('disabled')).toBe('false');
+    expect(dismiss.attributes('variant')).toBe('primary');
+  });
+
+  it('keeps Accept when the finding already carries the very identity proposed', async () => {
+    // The server takes this idempotently. Greying it here left Dismiss the only way out of
+    // a row that was acceptable, and recorded "no action" for a proposal that was right.
+    api.fetchCandidate.mockResolvedValue(candidateDetail({
+      of_context: {
+        ...candidateDetail().of_context,
+        of_identity: { id: 17, name: 'Leopold I', of_facet: 3 },
+      },
+    }));
+
+    const wrapper = await screen({ identity: '17' });
+    await wrapper.find('.candidate').trigger('click');
+    await flushPromises();
+
+    const accept = wrapper.findAll('sl-button').find(b => b.text().includes('Accept'));
+    expect(accept!.attributes('disabled')).toBe('false');
+    // Enabled, but not silently: the caveat is why the line renders a warning too.
+    expect(wrapper.find('.decide__reason').text()).toContain('already carries this identity');
+    // And the escape hatch stays quiet, because this row is not stuck.
+    expect(wrapper.find('.decide__dismiss').attributes('variant')).toBe('default');
+  });
+
+  it('badges a dismissed row without dressing it as a rejection', async () => {
+    api.fetchCandidates.mockResolvedValue(page([candidateBrief({ verdict: 'dismissed' })]));
+    const wrapper = await screen({ identity: '17' });
+
+    const tag = wrapper.findAll('sl-tag').find(t => t.text().includes('dismissed'));
+    expect(tag).toBeDefined();
+    expect(tag!.attributes('variant')).toBe('neutral');
   });
 
   it('leaves column 1 alone for a filter that only narrows column 2', async () => {

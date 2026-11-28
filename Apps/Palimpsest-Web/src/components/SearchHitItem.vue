@@ -11,21 +11,31 @@
           <div v-if="loadingAncestors" class="hit-ancestors-loading">
             <sl-spinner></sl-spinner> Loading path...
           </div>
-          <sl-breadcrumb v-else-if="ancestors && book" class="hit-breadcrumb">
-            <sl-breadcrumb-item v-for="ancestor in ancestors" :key="ancestor.path_full">
+          <nav v-else-if="ancestors && book" class="hit-path" aria-label="Section path">
+            <div
+              v-for="(ancestor, depth) in ancestors"
+              :key="ancestor.path_full"
+              class="hit-path__row"
+            >
+              <span v-if="depth > 0" class="hit-path__mark" aria-hidden="true">&rsaquo;</span>
               <router-link
                 :to="{
                   path: `/study/${book.machine_name}/section/${ancestor.path_full}`,
                   query: ancestor.path_full === hit.in_section.path_full && hit.in_block_pi ? { pi: hit.in_block_pi } : {}
                 }"
-                class="breadcrumb-link"
+                class="hit-path__link"
+                :class="{ 'hit-path__link--leaf': ancestor.path_full === hit.in_section.path_full }"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {{ ancestor.title_text || (ancestor as any).title }}
+                {{ ancestorLabel(ancestor) }}<sl-icon
+                  v-if="ancestor.path_full === hit.in_section.path_full"
+                  name="box-arrow-in-right"
+                  class="hit-path__jump"
+                ></sl-icon>
               </router-link>
-            </sl-breadcrumb-item>
-          </sl-breadcrumb>
+            </div>
+          </nav>
           <template v-else>
             <router-link
               v-if="book"
@@ -116,6 +126,10 @@ const hasMoreUp = ref(true);
 const hasMoreDown = ref(true);
 const ancestors = ref<Section[] | null>(props.hit.in_section.ancestors || null);
 const loadingAncestors = ref(false);
+
+function ancestorLabel(ancestor: Section & { title?: string }): string {
+  return ancestor.title_text || ancestor.title || ancestor.path_full;
+}
 
 async function fetchAncestors() {
   if (ancestors.value || loadingAncestors.value || !book.value) return;
@@ -244,6 +258,7 @@ function expandDown() {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  min-width: 0;
 }
 
 .hit-title-row {
@@ -280,19 +295,46 @@ a.hit-section:hover {
   text-decoration: underline;
 }
 
-.hit-breadcrumb {
-  --sl-spacing-x-small: 0.25rem;
+.hit-path {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
   font-size: 0.85rem;
+  min-width: 0;
 }
 
-.breadcrumb-link {
-  color: var(--color-accent, var(--sl-color-primary-600));
+.hit-path__row {
+  display: flex;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.hit-path__mark {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.hit-path__link {
+  color: var(--color-text-muted);
   text-decoration: none;
-  font-weight: 500;
+  font-weight: 400;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
-.breadcrumb-link:hover {
+.hit-path__link--leaf {
+  color: var(--color-accent, var(--sl-color-primary-600));
+  font-weight: 600;
+}
+
+.hit-path__link:hover {
   text-decoration: underline;
+}
+
+.hit-path__jump {
+  margin-left: 0.25rem;
+  vertical-align: -0.1em;
 }
 
 .hit-ancestors-loading {

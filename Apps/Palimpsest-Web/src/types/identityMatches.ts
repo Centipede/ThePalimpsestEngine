@@ -20,14 +20,22 @@ import type { FindingOccurrence, FoundIdentity } from './library';
  */
 export type CandidateStage = 'triage' | 'compared';
 
-export type CandidateVerdict = 'pending' | 'accepted' | 'rejected';
+/**
+ * How a candidate was settled.
+ *
+ * `dismissed` is an accept with no operation attached: it settles the row and takes it out
+ * of the pending queue without touching the context. It exists for the case the scan cannot
+ * see - the finding acquired its identity by another route, so the proposal was right but
+ * was not what linked it, and rejecting it would record the opposite of what happened.
+ */
+export type CandidateVerdict = 'pending' | 'accepted' | 'rejected' | 'dismissed';
 
 /** `all` is a filter value only; no candidate ever carries it. */
 export type VerdictFilter = CandidateVerdict | 'all';
 
 export const CANDIDATE_STAGES: readonly CandidateStage[] = ['triage', 'compared'];
 export const VERDICT_FILTERS: readonly VerdictFilter[] =
-  ['pending', 'accepted', 'rejected', 'all'];
+  ['pending', 'accepted', 'rejected', 'dismissed', 'all'];
 
 /* --------------------------------------------------------------------- ordering */
 
@@ -186,9 +194,15 @@ export interface CandidateContext {
   of_facet: string;
   /**
    * Null is the normal case - an unclaimed context is what a candidate proposes an
-   * identity FOR. Non-null means someone bound it meanwhile, and accepting will 400.
+   * identity FOR. Non-null means someone bound it meanwhile, which refuses an accept only
+   * when it is a DIFFERENT identity: accepting a candidate whose context already carries
+   * the proposed one succeeds idempotently, and the server has a test pinning that.
+   *
+   * A bare pk on a list row and a nested object on the detail - the two come from different
+   * serializers. Read it through `claimedIdentity` in utils/findingEligibility.ts rather
+   * than reaching in here, which is where that difference is absorbed.
    */
-  of_identity: FoundIdentity | CandidateIdentityBrief | null;
+  of_identity: number | FoundIdentity | CandidateIdentityBrief | null;
   occurrences?: FindingOccurrence[];
   candidate_counts?: CandidateCounts | null;
 }
@@ -254,6 +268,15 @@ export interface AcceptResult {
 }
 
 export interface RejectResult {
+  status: string;
+  candidate: CandidateDetail;
+}
+
+/**
+ * The same shape as RejectResult, declared apart from it rather than aliased: the absence
+ * of a `context` key is the meaning of the endpoint, not a coincidence of its payload.
+ */
+export interface DismissResult {
   status: string;
   candidate: CandidateDetail;
 }

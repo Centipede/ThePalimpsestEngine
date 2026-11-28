@@ -18,7 +18,9 @@ import {
     suggestMergedName,
     visibleSelection,
     canAcceptCandidate,
+    canDismissCandidate,
     canRejectCandidate,
+    claimedIdentity,
     type SelectedContext,
 } from './findingEligibility';
 import type { FindingContext, FindingOccurrence, FoundIdentity } from '../types/library';
@@ -653,6 +655,30 @@ function candidate(over: Partial<CandidateBrief> = {}): CandidateBrief {
     };
 }
 
+/** The same candidate with its context bound to `of_identity`, in either payload form. */
+function claimedBy(of_identity: CandidateBrief['of_context']['of_identity']): CandidateBrief {
+    return candidate({
+        of_context: { id: 501, name: 'Emperor Leopold', of_facet: 'person', of_identity },
+    });
+}
+
+describe('claimedIdentity', () => {
+    it('reads the nested object the detail payload sends', () => {
+        expect(claimedIdentity(claimedBy({ id: 99, name: 'Leopold II', of_facet: 3 })))
+            .toEqual({ id: 99, name: 'Leopold II' });
+    });
+
+    it('reads the bare pk a list row sends, and has no name to offer', () => {
+        // FindingContextBriefSerializer sends the pk alone. Treating that as an object is
+        // what made every list row report "another identity" regardless of which it was.
+        expect(claimedIdentity(claimedBy(99))).toEqual({ id: 99, name: null });
+    });
+
+    it('reports an unclaimed context as nothing at all', () => {
+        expect(claimedIdentity(claimedBy(null))).toEqual({ id: null, name: null });
+    });
+});
+
 describe('canAcceptCandidate', () => {
     it('allows an undecided candidate whose finding is still unclaimed', () => {
         expect(canAcceptCandidate(candidate())).toEqual({ ok: true, reason: '' });
@@ -668,20 +694,41 @@ describe('canAcceptCandidate', () => {
         expect(check.reason).toContain('already been rejected');
     });
 
+    it('refuses one that has already been dismissed', () => {
+        expect(canAcceptCandidate(candidate({ verdict: 'dismissed' })).reason)
+            .toContain('already been dismissed');
+    });
+
     it('refuses when the finding has been claimed by someone else meanwhile', () => {
         // The race the server answers with a 400. Saying it before the click is better
         // than saying it after, and the rival's name is the useful part.
-        const check = canAcceptCandidate(candidate({
-            of_context: {
-                id: 501,
-                name: 'Emperor Leopold',
-                of_facet: 'person',
-                of_identity: { id: 99, name: 'Leopold II', of_facet: 3 },
-            },
-        }));
+        const check = canAcceptCandidate(claimedBy({ id: 99, name: 'Leopold II', of_facet: 3 }));
         expect(check.ok).toBe(false);
         expect(check.reason).toContain('Leopold II');
-        expect(check.reason).toContain('Unlink');
+        // The way out, not "unlink it first": the binding is very likely correct and this
+        // proposal simply is not what made it.
+        expect(check.reason).toContain('Dismiss');
+    });
+
+    it('refuses a rival claim sent as a bare pk, without inventing a name', () => {
+        const check = canAcceptCandidate(claimedBy(99));
+        expect(check.ok).toBe(false);
+        expect(check.reason).toContain('a different identity');
+        expect(check.reason).toContain('Dismiss');
+    });
+
+    it('allows one whose finding already carries the very identity proposed', () => {
+        // The server accepts this idempotently - it has a test pinning that - so refusing
+        // it here left Dismiss the only way out of a row that was in fact acceptable, and
+        // recorded "settled, no action" for a proposal that had been right.
+        const check = canAcceptCandidate(claimedBy({ id: 17, name: 'Leopold I', of_facet: 3 }));
+        expect(check.ok).toBe(true);
+        expect(check.warning).toContain('already carries this identity');
+        expect(check.warning).toContain('nothing about the finding changes');
+    });
+
+    it('allows it on the bare pk form too, where the ids are all there is to compare', () => {
+        expect(canAcceptCandidate(claimedBy(17)).ok).toBe(true);
     });
 });
 
@@ -693,17 +740,36 @@ describe('canRejectCandidate', () => {
     it('allows one whose finding has been claimed elsewhere', () => {
         // "Not this one" is precisely the right answer there, and recording it stops the
         // scan proposing the pair again.
-        expect(canRejectCandidate(candidate({
-            of_context: {
-                id: 501,
-                name: 'Emperor Leopold',
-                of_facet: 'person',
-                of_identity: { id: 99, name: 'Leopold II', of_facet: 3 },
-            },
-        })).ok).toBe(true);
+        expect(canRejectCandidate(claimedBy({ id: 99, name: 'Leopold II', of_facet: 3 })).ok)
+            .toBe(true);
     });
 
     it('refuses one that has already been decided', () => {
         expect(canRejectCandidate(candidate({ verdict: 'accepted' })).ok).toBe(false);
+    });
+});
+
+describe('canDismissCandidate', () => {
+    it('allows an undecided candidate', () => {
+        expect(canDismissCandidate(candidate())).toEqual({ ok: true, reason: '' });
+    });
+
+    it('allows one whose finding carries a rival identity - the case it exists for', () => {
+        expect(canDismissCandidate(claimedBy({ id: 99, name: 'Leopold II', of_facet: 3 })).ok)
+            .toBe(true);
+    });
+
+    it('allows one whose finding already carries the identity proposed', () => {
+        expect(canDismissCandidate(claimedBy(17)).ok).toBe(true);
+    });
+
+    it('needs a candidate to be selected at all', () => {
+        expect(canDismissCandidate(null).ok).toBe(false);
+    });
+
+    it('refuses one that has already been decided', () => {
+        const check = canDismissCandidate(candidate({ verdict: 'dismissed' }));
+        expect(check.ok).toBe(false);
+        expect(check.reason).toContain('already been dismissed');
     });
 });

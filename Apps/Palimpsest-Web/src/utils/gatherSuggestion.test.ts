@@ -3,6 +3,7 @@ import {
     cloneGatherOptions,
     emptyGatherOptions,
     isGatherOptionsEmpty,
+    relevantOptions,
     suggestGatherOptions,
     type GatherSuggestionInput,
 } from './gatherSuggestion';
@@ -62,16 +63,19 @@ describe('suggestGatherOptions', () => {
         expect(options.content.facets).toEqual([]);
     });
 
-    it('suggests a content-level facet whose findings are not clustered', () => {
+    it('suggests the mid level for findings that are extracted but not clustered', () => {
         const options = suggest({
             sectionCompleted: { ...completeSection, facet_contexts: ['events', 'people', 'places', 'times'] },
         });
 
-        expect(options.content.facets).toEqual(['works']);
+        // Every block already holds its works findings, so the clustering is the only
+        // work left and re-running the extraction for it would be waste.
+        expect(options.contexts.facets).toEqual(['works']);
+        expect(options.content.facets).toEqual([]);
         expect(options.section.facets).toEqual([]);
     });
 
-    it('suggests a content-level facet that a single block is missing', () => {
+    it('suggests the content level for a facet that a single block is missing', () => {
         const options = suggest({
             blockCompleteds: [
                 { facets: ['people', 'works'], essentials: ['digest'] },
@@ -79,6 +83,22 @@ describe('suggestGatherOptions', () => {
             ],
         });
 
+        // The extraction has to run, and it clusters what it finds on the way.
+        expect(options.content.facets).toEqual(['works']);
+        expect(options.contexts.facets).toEqual([]);
+    });
+
+    it('keeps the two halves of content-level work apart in one suggestion', () => {
+        const options = suggest({
+            // people is extracted everywhere but unclustered; works is missing from a block.
+            sectionCompleted: { ...completeSection, facet_contexts: ['events', 'places', 'times', 'works'] },
+            blockCompleteds: [
+                { facets: ['people', 'works'], essentials: ['digest'] },
+                { facets: ['people'], essentials: ['digest'] },
+            ],
+        });
+
+        expect(options.contexts.facets).toEqual(['people']);
         expect(options.content.facets).toEqual(['works']);
     });
 
@@ -89,7 +109,8 @@ describe('suggestGatherOptions', () => {
         });
 
         expect(options.section.facets).toEqual([]);
-        expect(options.content.facets).toEqual(['people']);
+        expect(options.contexts.facets).toEqual(['people']);
+        expect(options.content.facets).toEqual([]);
     });
 
     it('never suggests a facet outside the scheme for that level', () => {
@@ -98,16 +119,20 @@ describe('suggestGatherOptions', () => {
             blockCompleteds: [{ facets: [], essentials: [] }],
         });
 
-        // institutions is section-only, works content-only, people both.
+        // institutions is section-only, works content-only, people both. Nothing has been
+        // extracted, so the content level owns all of it and the mid level nothing.
         expect(options.section.facets).toEqual(['people', 'institutions']);
         expect(options.content.facets).toEqual(['people', 'works']);
+        expect(options.contexts.facets).toEqual([]);
     });
 
     it('treats a manifest written before facet_contexts existed as unclustered', () => {
         const legacy = { facets: ['institutions', 'people'], essentials: ['digest', 'outline'] } as PMCompleted;
         const options = suggest({ sectionCompleted: legacy });
 
-        expect(options.content.facets).toEqual(['people', 'works']);
+        // The blocks have their findings, so what such a manifest is missing is clustering.
+        expect(options.contexts.facets).toEqual(['people', 'works']);
+        expect(options.content.facets).toEqual([]);
         expect(options.section.facets).toEqual([]);
     });
 
@@ -158,6 +183,7 @@ describe('suggestGatherOptions', () => {
 
             expect(options.content.essentials).toEqual(['digest']);
             expect(options.content.facets).toEqual(['people', 'works']);
+            expect(options.contexts.facets).toEqual([]);
         });
     });
 
@@ -168,6 +194,7 @@ describe('suggestGatherOptions', () => {
         });
 
         expect(options.content).toEqual({ essentials: [], facets: [] });
+        expect(options.contexts).toEqual({ facets: [] });
         expect(options.section.essentials).toEqual(['digest', 'outline']);
     });
 
@@ -194,8 +221,61 @@ describe('cloneGatherOptions', () => {
         const copy = cloneGatherOptions(suggestion);
         copy.section.facets.push('extra');
         copy.section.essentials.pop();
+        copy.contexts.facets.push('extra');
 
         expect(suggestion.section.facets).not.toContain('extra');
         expect(suggestion.section.essentials).toEqual(['digest', 'outline']);
+        expect(suggestion.contexts.facets).not.toContain('extra');
+    });
+});
+
+describe('isGatherOptionsEmpty', () => {
+    it('counts the mid level, so a reclustering is a gather like any other', () => {
+        const options = emptyGatherOptions();
+        expect(isGatherOptionsEmpty(options)).toBe(true);
+
+        options.contexts.facets.push('people');
+        expect(isGatherOptionsEmpty(options)).toBe(false);
+    });
+});
+
+describe('relevantOptions', () => {
+    it('offers every level what the book applies there', () => {
+        const options = relevantOptions(expectations);
+
+        expect(options.section.facets).toEqual(['people', 'institutions']);
+        expect(options.contexts.facets).toEqual(['people', 'works']);
+        expect(options.content.facets).toEqual(['people', 'works']);
+    });
+
+    it('offers the section both essentials and the content level only a digest', () => {
+        const options = relevantOptions(expectations);
+
+        expect(options.section.essentials).toEqual(['digest', 'outline']);
+        expect(options.content.essentials).toEqual(['digest']);
+    });
+
+    it('names a facet applied at both levels once per level, never twice in one', () => {
+        const options = relevantOptions(expectations);
+
+        expect(options.contexts.facets.filter(f => f === 'people')).toHaveLength(1);
+        expect(options.section.facets.filter(f => f === 'people')).toHaveLength(1);
+    });
+
+    it('offers nothing the scheme does not apply', () => {
+        const options = relevantOptions([expectation(2, 'institutions', { section: true })]);
+
+        // institutions is section-only: the two lower levels have no facet to offer.
+        expect(options.section.facets).toEqual(['institutions']);
+        expect(options.contexts.facets).toEqual([]);
+        expect(options.content.facets).toEqual([]);
+    });
+
+    it('offers only the essentials for a book with no facet applications', () => {
+        const options = relevantOptions([]);
+
+        expect(options.section).toEqual({ essentials: ['digest', 'outline'], facets: [] });
+        expect(options.contexts).toEqual({ facets: [] });
+        expect(options.content).toEqual({ essentials: ['digest'], facets: [] });
     });
 });

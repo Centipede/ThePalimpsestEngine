@@ -1,7 +1,18 @@
 <template>
   <div class="identity-row" :class="{ 'identity-row--selected': selected }">
-    <button type="button" class="identity-row__head" @click="emit('select')">
+    <button
+      type="button"
+      class="identity-row__head"
+      :aria-expanded="open"
+      @click="emit('select')"
+    >
       <span class="identity-row__name">
+        <!-- The same two chevrons IdentityFoundIn uses for its books and sections, so
+             one fold affordance reads the same everywhere on this screen. -->
+        <sl-icon
+          class="identity-row__chevron"
+          :name="open ? 'chevron-down' : 'chevron-right'"
+        ></sl-icon>
         <span v-if="showFacet && identity.facet" class="identity-row__symbol">
           {{ identity.facet.symbol }}
         </span>
@@ -18,7 +29,7 @@
 
     <span v-if="pinned" class="identity-row__pin">Linked from a section</span>
 
-    <div v-if="selected" class="identity-row__body">
+    <div v-if="open" class="identity-row__body">
       <IdentityDossier :identity="identity" />
 
       <sl-details class="identity-row__found-in" :open="foundInOpen" @sl-show="emit('open-found-in')" @sl-hide="emit('close-found-in')">
@@ -54,10 +65,13 @@ import IdentityFoundIn from './IdentityFoundIn.vue';
  * One confirmed identity in column 1. Collapsed it is a name and its candidate counts;
  * selected it opens its dossier and the tree of sections it is already linked in.
  *
- * Expansion and selection are the same gesture on purpose. The screen can only answer
- * questions about one identity at a time - column 2 is keyed on it - so a row that could
- * be open without being selected would be showing a dossier next to someone else's
- * candidates.
+ * Selecting a row opens it, and the open row can be folded again from the same header
+ * without losing the selection: column 2 is keyed on the identity, not on whether its
+ * dossier is on screen, so folding only buys back room in a crowded column.
+ *
+ * What stays forbidden is the other direction - a row open while a different identity is
+ * selected - which would be showing a dossier next to someone else's candidates. That is
+ * why `bodyOpen` can only ever open the selected row.
  */
 
 const props = defineProps<{
@@ -67,6 +81,8 @@ const props = defineProps<{
   showFacet: boolean;
   /** Marks a row fetched by id for a deep link rather than drawn from the listing. */
   pinned: boolean;
+  /** The screen's fold state, which applies to this row only while it is selected. */
+  bodyOpen: boolean;
   foundInOpen: boolean;
   foundIn: FoundInTree | null;
   foundInLoading: boolean;
@@ -82,6 +98,8 @@ const emit = defineEmits<{
   (e: 'toggle-book', bookId: number): void;
   (e: 'toggle-section', sectionId: number): void;
 }>();
+
+const open = computed(() => props.selected && props.bodyOpen);
 
 const counts = computed(() =>
   hasCandidates(props.identity.candidate_counts) ? props.identity.candidate_counts : null);
@@ -126,6 +144,15 @@ const counts = computed(() =>
 
 .identity-row--selected .identity-row__name {
   font-weight: 600;
+}
+
+/* Inline rather than a flex item: .identity-row__name is the shrinking item and keeps
+   its ellipsis, so the name is what gets clipped in a narrow column, never the chevron. */
+.identity-row__chevron {
+  margin-right: 0.15rem;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  vertical-align: -0.05em;
 }
 
 .identity-row__symbol {

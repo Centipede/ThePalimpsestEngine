@@ -107,6 +107,14 @@ describe('toFindingsQuery', () => {
         expect(parseFindingsQuery(toFindingsQuery(filters))).toEqual(filters);
     });
 
+    it('round-trips the dismissed verdict', () => {
+        // The fourth verdict has to survive the URL, or the only view of a dismissed row
+        // is one that cannot be linked to or reloaded.
+        const filters: MatchFilters = { ...defaultFilters(), verdict: 'dismissed' };
+        expect(toFindingsQuery(filters)).toEqual({ verdict: 'dismissed' });
+        expect(parseFindingsQuery(toFindingsQuery(filters))).toEqual(filters);
+    });
+
     it('round-trips a context pin', () => {
         const filters: MatchFilters = { ...defaultFilters(), contextId: 501 };
         expect(parseFindingsQuery(toFindingsQuery(filters))).toEqual(filters);

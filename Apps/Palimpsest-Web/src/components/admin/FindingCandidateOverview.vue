@@ -23,6 +23,7 @@
     </sl-alert>
 
     <IdentityCandidateFilters
+      class="overview__filters"
       :filters="filters"
       :books="libraryStore.books"
       :facets="facetsStore.facetQueries"
@@ -39,6 +40,7 @@
         :is-loading="identities.isLoading.value"
         :show-loading="identitiesFirstLoad"
         :error="identities.error.value"
+        :body-open="identityBodyOpen"
         :found-in-open="foundInOpen"
         :found-in="foundIn"
         :found-in-loading="foundInLoading"
@@ -89,9 +91,10 @@
         :pending-action="pendingAction"
         @accept="decide('accept')"
         @reject="decide('reject')"
+        @dismiss="decide('dismiss')"
         @reload-candidate="reloadCandidate"
         @refresh-lists="refreshLists"
-        @dismiss-notice="decisionNotice = ''"
+        @close-notice="decisionNotice = ''"
       />
     </div>
   </div>
@@ -105,6 +108,7 @@ import { useLibraryStore } from '../../stores/library';
 import { FindingActionError } from '../../api/http';
 import {
   acceptCandidate,
+  dismissCandidate,
   fetchCandidate,
   fetchCandidates,
   fetchFoundIdentities,
@@ -277,6 +281,15 @@ const hasFilters = computed(() => {
     || f.identityId !== null || f.contextId !== null;
 });
 
+/* ------------------------------------------------------------- the row's body */
+
+/**
+ * Whether the selected row shows its body. Held here rather than in the row so that one
+ * flag can serve the listing and the pinned copy of the same identity, and so the
+ * selection watcher below has a single place to put a newly picked row back open.
+ */
+const identityBodyOpen = ref(true);
+
 /* ------------------------------------------------------- the found-in expander */
 
 const foundInOpen = ref(false);
@@ -373,6 +386,17 @@ function reloadCandidate() {
 
 /** Ids, not objects: every refetch replaces every row, and an object would go stale. */
 function selectIdentity(identityId: number) {
+  /**
+   * The row already selected: fold its body away and keep the selection. Columns 2 and 3
+   * are keyed on the identity, not on whether its dossier is on screen, so folding buys
+   * back room in column 1 without interrupting the work. The pin stays too - the
+   * librarian has not navigated away from a deep link, they have folded it.
+   */
+  if (identityId === selectedIdentityId.value) {
+    identityBodyOpen.value = !identityBodyOpen.value;
+    return;
+  }
+
   // Picking from the list leaves context mode and drops the pin: the URL should stop
   // claiming a deep link the librarian has navigated away from.
   if (inContextMode.value || filters.value.identityId !== null) {
@@ -389,8 +413,11 @@ function selectCandidate(candidateId: number) {
 
 /* --------------------------------------------------------------------- decisions */
 
+/** The three decisions, in the one spelling the API, the panel and the notices all use. */
+type Decision = 'accept' | 'reject' | 'dismiss';
+
 const deciding = ref(false);
-const pendingAction = ref<'accept' | 'reject' | null>(null);
+const pendingAction = ref<Decision | null>(null);
 const writeError = ref('');
 const conflictError = ref('');
 const decisionNotice = ref('');
@@ -403,13 +430,26 @@ async function refreshLists() {
   ]);
 }
 
+const DECIDERS: Record<Decision, (id: number) => Promise<{ candidate: CandidateDetail }>> = {
+  accept: acceptCandidate,
+  reject: rejectCandidate,
+  dismiss: dismissCandidate,
+};
+
+/** Past tense, for the failure sentence when the server gave none of its own. */
+const DECISION_VERBS: Record<Decision, string> = {
+  accept: 'accepted',
+  reject: 'rejected',
+  dismiss: 'dismissed',
+};
+
 /**
- * Accept or reject, then put the screen back in step with the server.
+ * Accept, reject or dismiss, then put the screen back in step with the server.
  *
  * Non-optimistic, like the rest of the admin screens: nothing local changes before the
  * server has answered, so a refusal needs no rollback.
  */
-async function decide(action: 'accept' | 'reject') {
+async function decide(action: Decision) {
   const candidate = candidateDetail.value;
   if (!candidate || deciding.value) return;
 
@@ -425,15 +465,20 @@ async function decide(action: 'accept' | 'reject') {
   conflictError.value = '';
 
   try {
-    const result = action === 'accept'
-      ? await acceptCandidate(id)
-      : await rejectCandidate(id);
+    const result = await DECIDERS[action](id);
 
     // Shown decided at once, so the panel does not blank between the two refetches.
     candidateDetail.value = result.candidate;
-    decisionNotice.value = action === 'accept'
-      ? `Accepted: “${subject}” is now ${target}.`
-      : `Rejected: “${subject}” is not ${target}.`;
+    /**
+     * The dismiss sentence says what did NOT happen, deliberately: a librarian reaching for
+     * it has just been told the finding is already linked, and the one thing they need to
+     * know is that pressing it did not disturb that.
+     */
+    decisionNotice.value = {
+      accept: `Accepted: “${subject}” is now ${target}.`,
+      reject: `Rejected: “${subject}” is not ${target}.`,
+      dismiss: `Dismissed: “${subject}” is off the list; nothing was changed.`,
+    }[action];
 
     // Same offset, so a decision two hundred rows in does not throw the librarian back
     // to the first page.
@@ -450,8 +495,9 @@ async function decide(action: 'accept' | 'reject') {
     selectedCandidateId.value = next?.id ?? null;
     if (!next) candidateDetail.value = null;
 
-    // The counts moved either way. On an accept the context also joined the tree, so
-    // that is refetched too - but only if it is on screen to be looked at.
+    // The counts moved whichever decision it was. On an accept the context also joined the
+    // tree, so that is refetched too - but only if it is on screen to be looked at. A
+    // dismiss writes nothing but the verdict, so the tree cannot have changed.
     const refreshes: Promise<unknown>[] = [identities.refresh()];
     if (action === 'accept' && foundInOpen.value && selectedIdentityId.value !== null) {
       refreshes.push(loadFoundIn(selectedIdentityId.value));
@@ -459,13 +505,14 @@ async function decide(action: 'accept' | 'reject') {
     await Promise.all(refreshes);
   } catch (e) {
     /**
-     * A 400 on these two is the race: the context was bound to another identity between
-     * the page being drawn and the button being pressed. It is the only documented 400
-     * here, which is what lets this key on the status alone - if a second rule is ever
-     * added server-side it will show up as a mislabelled conflict rather than vanish.
+     * A 400 means the row in hand no longer describes the server's. On an accept that is
+     * the race - the context was bound to another identity between the page being drawn
+     * and the button being pressed - and on a dismiss it is a candidate deleted meanwhile.
+     * Both want the same alert and the same two recovery actions, reload and refresh, so
+     * this keys on the status rather than enumerating the messages.
      *
-     * The server's sentence names the rival identity, which is more than this screen
-     * knows, so it is shown exactly as written.
+     * The server's sentence says which it was, and on an accept names the rival identity -
+     * more than this screen knows - so it is shown exactly as written.
      */
     if (e instanceof FindingActionError && e.status === 400) {
       conflictError.value = e.message;
@@ -474,7 +521,7 @@ async function decide(action: 'accept' | 'reject') {
     } else {
       writeError.value = e instanceof Error
         ? e.message
-        : `The candidate could not be ${action === 'accept' ? 'accepted' : 'rejected'}.`;
+        : `The candidate could not be ${DECISION_VERBS[action]}.`;
     }
   } finally {
     deciding.value = false;
@@ -608,6 +655,7 @@ watch([selectedIdentityId, () => filters.value.contextId], () => {
   detailError.value = '';
   conflictError.value = '';
   decisionNotice.value = '';
+  identityBodyOpen.value = true;
   foundInOpen.value = false;
   foundIn.value = null;
   foundInFor = null;
@@ -649,6 +697,19 @@ if (hasTarget.value) void candidates.reload();
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+
+  /* The named container everything below sizes itself against, the filter bar included.
+     The window is the wrong ruler for this screen: the admin sidebar takes 220px and the
+     gaps another 50, so a 1256px window leaves the three columns about 940. */
+  container-type: inline-size;
+  container-name: findings;
+}
+
+/* Never compressed by the columns below it. A wrapping flex bar that is handed less
+   height than its rows need does not scroll - it draws its last row outside its own box,
+   over whatever follows. */
+.overview__filters {
+  flex: none;
 }
 
 .view-header {
@@ -686,9 +747,13 @@ if (hasTarget.value) void candidates.reload();
   border-right: none;
 }
 
-/* Three scrolling columns need a width none of them has on a laptop in a split window.
-   Stacked, each one gets a usable height of its own instead. */
-@media (max-width: 1100px) {
+/* Three scrolling columns need a width this pane does not have once it is narrow.
+   Stacked, each one gets a usable height of its own instead.
+
+   The pane, not the window: as a window query this read 1100px and so fired about 280px
+   late, leaving the columns cramped for a wide band of window sizes. 900px is the
+   breakpoint the rest of the app uses. */
+@container findings (max-width: 900px) {
   .overview__columns {
     grid-template-columns: 1fr;
     overflow-y: auto;

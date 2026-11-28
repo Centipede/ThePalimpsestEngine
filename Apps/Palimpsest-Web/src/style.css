@@ -16,6 +16,18 @@
   --color-accent-hover: #1d4ed8;
   --color-bg-selected:  #8397aa;
   --header-height:      48px;
+  /* The nav portal stacks two-row blocks side by side (the book in BookDetailView,
+     each level of the section trail in SectionTrail). Fixed row heights, rather than
+     matching font sizes, are what keep their title rows on one line and their sub
+     rows on another. The two together must stay inside the header's content height:
+     --header-height less the nav's own padding. */
+  --nav-block-row1:       1.15rem;
+  --nav-block-row2:       0.95rem;
+  --nav-block-title-size: 0.95rem;
+  /* Keep --nav-block-*-size in step with subRowCharRatio in config/sectionTrail.ts:
+     the sibling strip budgets its width from the ratio between the two. */
+  --nav-block-sub-size:   0.68rem;
+  --nav-block-max-width:  9.5rem;
 }
 
 [data-theme="dark"] {
@@ -37,6 +49,18 @@
   --color-accent-hover: #93c5fd;
   --color-bg-selected:  #424a53;
   --header-height:      48px;
+  /* The nav portal stacks two-row blocks side by side (the book in BookDetailView,
+     each level of the section trail in SectionTrail). Fixed row heights, rather than
+     matching font sizes, are what keep their title rows on one line and their sub
+     rows on another. The two together must stay inside the header's content height:
+     --header-height less the nav's own padding. */
+  --nav-block-row1:       1.15rem;
+  --nav-block-row2:       0.95rem;
+  --nav-block-title-size: 0.95rem;
+  /* Keep --nav-block-*-size in step with subRowCharRatio in config/sectionTrail.ts:
+     the sibling strip budgets its width from the ratio between the two. */
+  --nav-block-sub-size:   0.68rem;
+  --nav-block-max-width:  9.5rem;
 }
 
 html, body {

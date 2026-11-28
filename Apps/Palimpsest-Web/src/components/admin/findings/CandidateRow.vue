@@ -37,7 +37,7 @@
       <sl-tag
         v-if="candidate.verdict !== 'pending'"
         size="small"
-        :variant="candidate.verdict === 'accepted' ? 'success' : 'danger'"
+        :variant="VERDICT_VARIANTS[candidate.verdict]"
       >
         {{ candidate.verdict }}
       </sl-tag>
@@ -51,7 +51,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { CandidateBrief } from '../../../types/identityMatches';
+import type { CandidateBrief, CandidateVerdict } from '../../../types/identityMatches';
 import { effectiveScore, formatScore } from '../../../utils/findingCandidateQuery';
 
 /**
@@ -63,6 +63,20 @@ import { effectiveScore, formatScore } from '../../../utils/findingCandidateQuer
  * carries no quotes, so the quotes are column 3's job; if these three prove too thin in
  * practice the fix is a condensed quote strip on the brief row, server-side.
  */
+
+/**
+ * Keyed over the whole verdict union rather than a ternary, so a verdict added server-side
+ * fails the type-check here instead of quietly colouring itself like a rejection.
+ *
+ * `dismissed` is neutral on purpose: it is the one settled verdict that asserts nothing
+ * about the proposal, and dressing it in red would say the scan had been wrong.
+ */
+const VERDICT_VARIANTS: Record<CandidateVerdict, string> = {
+  pending: 'neutral',
+  accepted: 'success',
+  rejected: 'danger',
+  dismissed: 'neutral',
+};
 
 const props = defineProps<{
   candidate: CandidateBrief;

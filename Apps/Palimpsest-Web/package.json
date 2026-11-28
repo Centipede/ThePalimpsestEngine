@@ -11,12 +11,13 @@
   },
   "dependencies": {
     "@shoelace-style/shoelace": "^2.20.1",
+    "@unhead/vue": "^1.11.18",
+    "dompurify": "^3.5.0",
     "levenshtein-search": "^0.1.2",
     "marked": "^18.0.11",
     "pinia": "^3.0.4",
     "vue": "^3.5.32",
-    "vue-router": "^5.1.0",
-    "@unhead/vue": "^1.11.18"
+    "vue-router": "^5.1.0"
   },
   "devDependencies": {
     "@types/marked": "^5.0.2",

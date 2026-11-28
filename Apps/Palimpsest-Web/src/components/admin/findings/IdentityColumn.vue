@@ -12,6 +12,7 @@
           :selected="selectedId === pinnedIdentity.id"
           :show-facet="true"
           :pinned="true"
+          :body-open="bodyOpen"
           :found-in-open="foundInOpen"
           :found-in="foundIn"
           :found-in-loading="foundInLoading"
@@ -68,6 +69,7 @@
           :selected="selectedId === identity.id"
           :show-facet="!group.label"
           :pinned="false"
+          :body-open="bodyOpen"
           :found-in-open="foundInOpen"
           :found-in="selectedId === identity.id ? foundIn : null"
           :found-in-loading="selectedId === identity.id && foundInLoading"
@@ -127,6 +129,8 @@ defineProps<{
   /** True only while there is genuinely nothing to show, so paging never blanks. */
   showLoading: boolean;
   error: string;
+  /** Whether the selected row shows its body; the other rows have none to show. */
+  bodyOpen: boolean;
   foundInOpen: boolean;
   foundIn: FoundInTree | null;
   foundInLoading: boolean;
